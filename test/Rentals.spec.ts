@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { Rentals } from '../typechain-types/Rentals'
+import { getRenterSignature, getTenantSignature } from './utils/rentals'
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -46,48 +47,6 @@ describe('Rentals', () => {
         salt: ethers.utils.randomBytes(32),
       }
 
-      const renterSignature = await renter._signTypedData(
-        {
-          chainId: 31337,
-          name: 'Rentals',
-          verifyingContract: rentals.address,
-          version: '1',
-        },
-        {
-          RenterSignData: [
-            {
-              type: 'address',
-              name: 'renter',
-            },
-            {
-              type: 'uint256',
-              name: 'maxDays',
-            },
-            {
-              type: 'uint256',
-              name: 'price',
-            },
-            {
-              type: 'uint256',
-              name: 'expiration',
-            },
-            {
-              type: 'address',
-              name: '_contract',
-            },
-            {
-              type: 'uint256',
-              name: 'tokenId',
-            },
-            {
-              type: 'bytes32',
-              name: 'salt',
-            },
-          ],
-        },
-        renterParams
-      )
-
       const tenantParams = {
         tenant: tenant.address,
         _days: '0',
@@ -97,43 +56,8 @@ describe('Rentals', () => {
         salt: ethers.utils.randomBytes(32),
       }
 
-      const tenantSignature = await tenant._signTypedData(
-        {
-          chainId: 31337,
-          name: 'Rentals',
-          verifyingContract: rentals.address,
-          version: '1',
-        },
-        {
-          TenantSignData: [
-            {
-              type: 'address',
-              name: 'tenant',
-            },
-            {
-              type: 'uint256',
-              name: '_days',
-            },
-            {
-              type: 'uint256',
-              name: 'expiration',
-            },
-            {
-              type: 'address',
-              name: '_contract',
-            },
-            {
-              type: 'uint256',
-              name: 'tokenId',
-            },
-            {
-              type: 'bytes32',
-              name: 'salt',
-            },
-          ],
-        },
-        tenantParams
-      )
+      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
+      const tenantSignature = await getTenantSignature(tenant, rentals, tenantParams)
 
       await rentals.connect(deployer).initialize(owner.address)
 
