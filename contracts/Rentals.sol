@@ -23,7 +23,7 @@ contract Rentals is OwnableUpgradeable {
         RenterParams calldata _renterParams,
         TenantParams calldata _tenantParams
     ) external {
-        bytes[] memory sigs;
+        bytes[] memory sigs = new bytes[](2);
 
         sigs[0] = _renterParams.sig;
         sigs[1] = _tenantParams.sig;

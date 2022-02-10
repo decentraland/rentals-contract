@@ -32,6 +32,20 @@ describe("Rentals", () => {
     });
   });
 
+  describe("rent", () => {
+    it("should reject both renter and tenant signatures", async () => {
+      const sigA = "0x7369676e6174757265";
+      const sigB = "0x616e6f746865722d7369676e6174757265";
+      await rentals.connect(deployer).initialize(owner.address);
+      await rentals.rent({ sig: sigA }, { sig: sigB });
+      const res = await Promise.all([
+        rentals.isSignatureRejected(sigA),
+        rentals.isSignatureRejected(sigB),
+      ]);
+      expect(res.every((isRejected) => isRejected)).to.be.true;
+    });
+  });
+
   describe("rejectSignatures", () => {
     let sig: string;
 
@@ -48,7 +62,7 @@ describe("Rentals", () => {
 
     it("should set isSignatureRejected mapping value for all the provided signatures to true", async () => {
       await rentals.connect(deployer).initialize(owner.address);
-      const anotherSig = "0x616e6f746865722d7369676e6174757265";
+      const anotherSig = "0x616e6f746865722d7369676e6174757265"; // Hex for another-signature
       await rentals.rejectSignatures([sig, anotherSig]);
       const res = await Promise.all([
         rentals.isSignatureRejected(sig),
