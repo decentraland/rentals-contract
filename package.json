@@ -29,20 +29,5 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
     "@openzeppelin/contracts-upgradeable": "^4.5.0"
-  },
-  "prettier": {
-    "overrides": [
-      {
-        "files": "*.sol",
-        "options": {
-          "printWidth": 80,
-          "tabWidth": 4,
-          "useTabs": false,
-          "singleQuote": false,
-          "bracketSpacing": false,
-          "explicitTypes": "always"
-        }
-      }
-    ]
   }
 }
