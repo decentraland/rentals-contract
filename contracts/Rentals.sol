@@ -5,8 +5,6 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 
-import "hardhat/console.sol";
-
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
     // Constants
     bytes32 private constant RENTER_SIGN_DATA_TYPEHASH =
