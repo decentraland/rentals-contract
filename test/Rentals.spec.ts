@@ -36,8 +36,11 @@ describe('Rentals', () => {
   })
 
   describe('rent', () => {
-    it('should reject both renter and tenant signatures', async () => {
-      const renterParams = {
+    let renterParams: any
+    let tenantParams: any
+
+    beforeEach(() => {
+      renterParams = {
         renter: renter.address,
         maxDays: '0',
         price: '0',
@@ -47,7 +50,7 @@ describe('Rentals', () => {
         salt: ethers.utils.randomBytes(32),
       }
 
-      const tenantParams = {
+      tenantParams = {
         tenant: tenant.address,
         _days: '0',
         expiration: '0',
@@ -55,18 +58,43 @@ describe('Rentals', () => {
         tokenId: '0',
         salt: ethers.utils.randomBytes(32),
       }
-
+    })
+    it('should add both the tenant and renter signatures to the isRejectedSignature mapping', async () => {
       const renterSignature = await getRenterSignature(renter, rentals, renterParams)
       const tenantSignature = await getTenantSignature(tenant, rentals, tenantParams)
 
       await rentals.connect(deployer).initialize(owner.address)
 
       await rentals.rent({ ...renterParams, sig: renterSignature }, { ...tenantParams, sig: tenantSignature })
+
       const res = await Promise.all([
         rentals.isSignatureRejected(renterSignature),
         rentals.isSignatureRejected(tenantSignature),
       ])
+
       expect(res.every((isRejected) => isRejected)).to.be.true
+    })
+
+    it('should revert when the recovered renter is not the same as in the params', async () => {
+      const renterSignature = await getRenterSignature(renter, rentals, { ...renterParams, maxDays: '100' })
+      const tenantSignature = await getTenantSignature(tenant, rentals, tenantParams)
+
+      await rentals.connect(deployer).initialize(owner.address)
+
+      await expect(
+        rentals.rent({ ...renterParams, sig: renterSignature }, { ...tenantParams, sig: tenantSignature })
+      ).to.be.revertedWith('Rentals#rent: SIGNER_NOT_RENTER')
+    })
+
+    it('should revert when the recovered tenant is not the same as in the params', async () => {
+      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
+      const tenantSignature = await getTenantSignature(tenant, rentals, { ...tenantParams, _days: '100' })
+
+      await rentals.connect(deployer).initialize(owner.address)
+
+      await expect(
+        rentals.rent({ ...renterParams, sig: renterSignature }, { ...tenantParams, sig: tenantSignature })
+      ).to.be.revertedWith('Rentals#rent: SIGNER_NOT_TENANT')
     })
   })
 
