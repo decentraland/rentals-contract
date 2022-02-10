@@ -1,5 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { ethers } from 'hardhat'
 import { Rentals } from '../../typechain-types'
+
+export const getRandomSignature = () => ethers.utils.randomBytes(65)
+
+export const getRandomSalt = () => ethers.utils.randomBytes(32)
 
 export const getRenterSignature = (
   renter: SignerWithAddress,

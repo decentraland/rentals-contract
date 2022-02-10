@@ -53,7 +53,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
         __EIP712_init("Rentals", "1");
     }
 
-    function rent(RenterParams calldata _renterParams, TenantParams calldata _tenantParams) external {
+    function rent(
+        RenterParams calldata _renterParams,
+        TenantParams calldata _tenantParams,
+        bytes[] memory _otherRejectSignatures
+    ) external {
         // Validate renter signature
         bytes32 renterMessageHash = _hashTypedDataV4(
             keccak256(
@@ -94,10 +98,14 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
         require(tenant == _tenantParams.tenant, "Rentals#rent: SIGNER_NOT_TENANT");
 
         // Reject signatures so they cannot be used again
-        bytes[] memory sigs = new bytes[](2);
+        bytes[] memory sigs = new bytes[](2 + _otherRejectSignatures.length);
 
         sigs[0] = _renterParams.sig;
         sigs[1] = _tenantParams.sig;
+
+        for (uint256 i = 0; i < _otherRejectSignatures.length; i++) {
+            sigs[i + 2] = _otherRejectSignatures[i];
+        }
 
         rejectSignatures(sigs);
     }
@@ -108,6 +116,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
         for (uint256 i = 0; i < _sigs.length; i++) {
             bytes memory _sig = _sigs[i];
 
+            require(_sig.length == 65, "Rentals#rejectSignature: INVALID_SIGNATURE_LENGTH");
             require(!isSignatureRejected[_sig], "Rentals#rejectSignature: ALREADY_REJECTED");
 
             isSignatureRejected[_sig] = true;
