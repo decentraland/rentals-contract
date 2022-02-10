@@ -4,7 +4,7 @@
 
 Add rental functionality to LAND and Estates. 
 
-## Test
+## Running Tests
 
 Install dependencies with `npm ci`
 
