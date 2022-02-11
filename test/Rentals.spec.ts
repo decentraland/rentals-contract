@@ -73,7 +73,7 @@ describe('Rentals', () => {
         expiration: latestBlock.timestamp + 100,
         tokenAddress: erc721.address,
         tokenId: tokenId,
-        fingerprint: getRandomSalt(),
+        fingerprint: tokenId,
         salt: getRandomSalt(),
       }
     })
@@ -108,6 +108,26 @@ describe('Rentals', () => {
       await rentals.connect(tenant).rent(renterParams, days)
       // Check rentals contract is the onwer of the NFT
       expect(await erc721.ownerOf(tokenId)).to.be.equal(rentals.address)
+    })
+
+    it('should transfer the composabble erc721 token from the renter to the contract', async () => {
+      // Mint and Approve ERC721
+      await composableErc721.mint(renter.address, tokenId)
+      await composableErc721.connect(renter).approve(rentals.address, tokenId)
+      // Mint and Approve ERC20
+      await erc20.mint(tenant.address, ether('100'))
+      await erc20.connect(tenant).approve(rentals.address, ether('100'))
+      // Signature
+      const fingerprint = await composableErc721.getFingerprint(tokenId)
+      renterParams = { ...renterParams, tokenAddress: composableErc721.address, fingerprint }
+      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
+      renterParams = { ...renterParams, sig: renterSignature }
+      // Check renter is the owner of the NFT
+      expect(await composableErc721.ownerOf(tokenId)).to.be.equal(renter.address)
+      // Rent
+      await rentals.connect(tenant).rent(renterParams, days)
+      // Check rentals contract is the onwer of the NFT
+      expect(await composableErc721.ownerOf(tokenId)).to.be.equal(rentals.address)
     })
 
     it('should transfer the erc20 token from the tenant to the renter', async () => {
