@@ -82,10 +82,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         Require._ERC721(_renterParams.tokenAddress);
         Require._composableERC721(_renterParams.tokenAddress, _renterParams.tokenId, _renterParams.fingerprint);
 
-        IERC721 token = IERC721(_renterParams.tokenAddress);
-
         // Transfer ERC721 token to the rentals contract
-        token.safeTransferFrom(renter, address(this), _renterParams.tokenId);
+        IERC721(_renterParams.tokenAddress).safeTransferFrom(renter, address(this), _renterParams.tokenId);
 
         // Transfer ERC20 token from tenant to renter
         erc20Token.transferFrom(msg.sender, renter, _renterParams.price);
