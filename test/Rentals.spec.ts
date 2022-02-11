@@ -1,8 +1,9 @@
+import { Block } from '@ethersproject/abstract-provider'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { Rentals } from '../typechain-types/Rentals'
-import { getRandomSalt, getRandomSignature, getRenterSignature, getTenantSignature } from './utils/rentals'
+import { getRandomSalt, getRandomSignature, getRenterSignature } from './utils/rentals'
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -37,90 +38,68 @@ describe('Rentals', () => {
 
   describe('rent', () => {
     let renterParams: any
-    let tenantParams: any
+    let days: number
+    let latestBlock: Block
 
-    beforeEach(() => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address)
+
+      latestBlock = await ethers.provider.getBlock('latest')
+
       renterParams = {
         renter: renter.address,
-        maxDays: '0',
-        price: '0',
-        expiration: '0',
+        maxDays: 10,
+        price: 0,
+        expiration: latestBlock.timestamp + 100,
         _contract: rentals.address,
-        tokenId: '0',
+        tokenId: 0,
         salt: getRandomSalt(),
       }
 
-      tenantParams = {
-        tenant: tenant.address,
-        _days: '0',
-        expiration: '0',
-        _contract: rentals.address,
-        tokenId: '0',
-        salt: getRandomSalt(),
-      }
+      days = 10
     })
 
     it('should add both the tenant and renter signatures to the isRejectedSignature mapping', async () => {
       const renterSignature = await getRenterSignature(renter, rentals, renterParams)
-      const tenantSignature = await getTenantSignature(tenant, rentals, tenantParams)
-
-      await rentals.connect(deployer).initialize(owner.address)
-
-      await rentals.rent({ ...renterParams, sig: renterSignature }, { ...tenantParams, sig: tenantSignature }, [])
-
-      const res = await Promise.all([
-        rentals.isSignatureRejected(renterSignature),
-        rentals.isSignatureRejected(tenantSignature),
-      ])
-
-      expect(res.every((isRejected) => isRejected)).to.be.true
-    })
-
-    it('should add signatures provided in _otherRejectedSignatures param to the isRejectedSignature mapping as well as the tenant and renter signatures', async () => {
-      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
-      const tenantSignature = await getTenantSignature(tenant, rentals, tenantParams)
-
-      await rentals.connect(deployer).initialize(owner.address)
-
-      const sigsToReject = [getRandomSignature(), getRandomSignature(), getRandomSignature()]
-
-      await rentals.rent(
-        { ...renterParams, sig: renterSignature },
-        { ...tenantParams, sig: tenantSignature },
-        sigsToReject
-      )
-
-      const res = await Promise.all([
-        rentals.isSignatureRejected(renterSignature),
-        rentals.isSignatureRejected(tenantSignature),
-        rentals.isSignatureRejected(sigsToReject[0]),
-        rentals.isSignatureRejected(sigsToReject[1]),
-        rentals.isSignatureRejected(sigsToReject[2]),
-      ])
-
-      expect(res.every((isRejected) => isRejected)).to.be.true
+      renterParams = { ...renterParams, sig: renterSignature }
+      await rentals.connect(tenant).rent(renterParams, days)
+      expect(await rentals.isSignatureRejected(renterSignature)).to.be.true
     })
 
     it('should revert when the recovered renter is not the same as in the params', async () => {
-      const renterSignature = await getRenterSignature(renter, rentals, { ...renterParams, maxDays: '100' })
-      const tenantSignature = await getTenantSignature(tenant, rentals, tenantParams)
-
-      await rentals.connect(deployer).initialize(owner.address)
-
-      await expect(
-        rentals.rent({ ...renterParams, sig: renterSignature }, { ...tenantParams, sig: tenantSignature }, [])
-      ).to.be.revertedWith('Rentals#rent: SIGNER_NOT_RENTER')
+      const renterSignature = await getRenterSignature(renter, rentals, { ...renterParams, maxDays: 100 })
+      await expect(rentals.connect(tenant).rent({ ...renterParams, sig: renterSignature }, days)).to.be.revertedWith(
+        'Rentals#rent: SIGNER_NOT_RENTER'
+      )
     })
 
-    it('should revert when the recovered tenant is not the same as in the params', async () => {
+    it('should revert when the expiration is lower than the current time', async () => {
+      renterParams = { ...renterParams, expiration: latestBlock.timestamp - 100 }
       const renterSignature = await getRenterSignature(renter, rentals, renterParams)
-      const tenantSignature = await getTenantSignature(tenant, rentals, { ...tenantParams, _days: '100' })
+      renterParams = { ...renterParams, sig: renterSignature }
+      await expect(rentals.connect(tenant).rent(renterParams, days)).to.be.revertedWith('Rentals#rent: EXPIRED')
+    })
 
-      await rentals.connect(deployer).initialize(owner.address)
+    it('should revert when _days > maxDays', async () => {
+      days = 100
+      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
+      renterParams = { ...renterParams, sig: renterSignature }
+      await expect(rentals.connect(tenant).rent(renterParams, days)).to.be.revertedWith('Rentals#rent: TOO_MANY_DAYS')
+    })
 
-      await expect(
-        rentals.rent({ ...renterParams, sig: renterSignature }, { ...tenantParams, sig: tenantSignature }, [])
-      ).to.be.revertedWith('Rentals#rent: SIGNER_NOT_TENANT')
+    it('should revert when _days == 0', async () => {
+      days = 0
+      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
+      renterParams = { ...renterParams, sig: renterSignature }
+      await expect(rentals.connect(tenant).rent(renterParams, days)).to.be.revertedWith('Rentals#rent: ZERO_DAYS')
+    })
+
+    it('should revert when sender is the same as the renter', async () => {
+      const renterSignature = await getRenterSignature(renter, rentals, renterParams)
+      renterParams = { ...renterParams, sig: renterSignature }
+      await expect(rentals.connect(renter).rent(renterParams, days)).to.be.revertedWith(
+        'Rentals#rent: RENTER_CANNOT_BE_TENANT'
+      )
     })
   })
 
