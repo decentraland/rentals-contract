@@ -46,6 +46,10 @@ export const getRenterSignature = (
         },
         {
           type: 'bytes32',
+          name: 'fingerprint',
+        },
+        {
+          type: 'bytes32',
           name: 'salt',
         },
       ],

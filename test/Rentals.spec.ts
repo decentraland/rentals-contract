@@ -53,6 +53,7 @@ describe('Rentals', () => {
         expiration: latestBlock.timestamp + 100,
         _contract: rentals.address,
         tokenId: 0,
+        fingerprint: getRandomSalt(),
         salt: getRandomSalt(),
       }
 

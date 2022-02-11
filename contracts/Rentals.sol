@@ -10,7 +10,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
     bytes32 private constant RENTER_SIGN_DATA_TYPEHASH =
         keccak256(
             bytes(
-                "RenterSignData(address renter,uint256 maxDays,uint256 price,uint256 expiration,address _contract,uint256 tokenId,bytes32 salt)"
+                "RenterSignData(address renter,uint256 maxDays,uint256 price,uint256 expiration,address _contract,uint256 tokenId,bytes32 fingerprint,bytes32 salt)"
             )
         );
 
@@ -25,6 +25,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
         uint256 expiration;
         address _contract;
         uint256 tokenId;
+        bytes32 fingerprint;
         bytes32 salt;
         bytes sig;
     }
@@ -47,6 +48,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
                     _renterParams.expiration,
                     _renterParams._contract,
                     _renterParams.tokenId,
+                    _renterParams.fingerprint,
                     _renterParams.salt
                 )
             )
