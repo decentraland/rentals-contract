@@ -63,7 +63,6 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable {
         require(_days <= _renterParams.maxDays, "Rentals#rent: TOO_MANY_DAYS");
         require(_days != 0, "Rentals#rent: ZERO_DAYS");
         require(msg.sender != _renterParams.renter, "Rentals#rent: RENTER_CANNOT_BE_TENANT");
-        require(_renterParams._contract != address(0));
 
         // Reject the renter signature so it cannot be used again
         _rejectSignature(_renterParams.sig);
