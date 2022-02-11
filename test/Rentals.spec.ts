@@ -57,6 +57,21 @@ describe('Rentals', () => {
     })
   })
 
+  describe('setERC20Token', () => {
+    it('should update the erc20 token variable', async () => {
+      await rentals.connect(deployer).initialize(owner.address, deployer.address)
+      await rentals.connect(owner).setERC20Token(erc20.address)
+      expect(await rentals.erc20Token()).to.be.equal(erc20.address)
+    })
+
+    it('should revert when sender is not owner', async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await expect(rentals.connect(renter).setERC20Token(erc20.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+    })
+  })
+
   describe('rent', () => {
     let renterParams: any
     let days: number
