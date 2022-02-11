@@ -41,8 +41,12 @@ describe('Rentals', () => {
   describe('initialize', () => {
     it('should set the owner', async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
-      const rentalsOwner = await rentals.owner()
-      expect(rentalsOwner).to.be.equal(owner.address)
+      expect(await rentals.owner()).to.be.equal(owner.address)
+    })
+
+    it('should set the erc20 token', async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      expect(await rentals.erc20Token()).to.be.equal(erc20.address)
     })
 
     it('should revert when initialized more than once', async () => {
