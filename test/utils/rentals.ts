@@ -6,6 +6,8 @@ export const getRandomSignature = () => ethers.utils.randomBytes(65)
 
 export const getRandomSalt = () => ethers.utils.randomBytes(32)
 
+export const ether = (amount: string) => ethers.utils.parseUnits(amount, 'ether')
+
 export const getRenterSignature = (
   renter: SignerWithAddress,
   rentals: Rentals,
@@ -38,14 +40,14 @@ export const getRenterSignature = (
         },
         {
           type: 'address',
-          name: '_contract',
+          name: 'tokenAddress',
         },
         {
           type: 'uint256',
           name: 'tokenId',
         },
         {
-          type: 'bytes32',
+          type: 'bytes',
           name: 'fingerprint',
         },
         {
