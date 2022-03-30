@@ -1,7 +1,7 @@
 import { Block } from '@ethersproject/abstract-provider'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumberish } from 'ethers'
+import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
@@ -189,6 +189,46 @@ describe('Rentals', () => {
               }
             )
           ).to.be.revertedWith('Rentals#rent: EXPIRED_USER_SIGNATURE')
+        })
+      })
+    })
+
+    describe('when validating user provided days', () => {
+      describe('when provided days is lower than owner min days', () => {
+        it('should revert with not in range error', async () => {
+          userParams = { ...userParams, _days: BigNumber.from(ownerParams.minDays).sub(1) }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+        })
+      })
+
+      describe('when provided days is higher than owner max days', () => {
+        it('should revert with not in range error', async () => {
+          userParams = { ...userParams, _days: BigNumber.from(ownerParams.maxDays).add(1) }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
         })
       })
     })
