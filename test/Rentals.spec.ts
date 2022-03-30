@@ -276,10 +276,74 @@ describe('Rentals', () => {
       })
     })
 
+    describe('when validating the contract address', () => {
+      describe('when the owner and the user provide different values', () => {
+        it('should revert with a different contract address error', async () => {
+          userParams = { ...userParams, contractAddress: assetOwner.address }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: DIFFERENT_CONTRACT_ADDRESS')
+        })
+      })
+    })
+
+    describe('when validating the token id', () => {
+      describe('when the owner and the user provide different values', () => {
+        it('should revert with a different token id error', async () => {
+          userParams = { ...userParams, tokenId: 200 }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: DIFFERENT_TOKEN_ID')
+        })
+      })
+    })
+
+    describe('when validating the fingerprint', () => {
+      describe('when the owner and the user provide different values', () => {
+        it('should revert with a different fingerprint error', async () => {
+          userParams = { ...userParams, fingerprint: getRandomBytes() }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
+        })
+      })
+    })
+
     describe('when validating the provided asset', () => {
       describe('when the contract address is not a contract', () => {
         it('should revert with a is not a contract error', async () => {
           ownerParams = { ...ownerParams, contractAddress: assetOwner.address }
+          userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
 
           await expect(
             rentals.connect(assetOwner).rent(
@@ -299,6 +363,7 @@ describe('Rentals', () => {
       describe('when the contract address does not implement `supportsInterface` function', () => {
         it('should revert with a function selector not recognized error', async () => {
           ownerParams = { ...ownerParams, contractAddress: erc20.address }
+          userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
 
           await expect(
             rentals.connect(assetOwner).rent(
@@ -323,6 +388,7 @@ describe('Rentals', () => {
           const falseSupportsInterface = await DummyFalseSupportsInterfaceFactory.connect(deployer).deploy()
 
           ownerParams = { ...ownerParams, contractAddress: falseSupportsInterface.address }
+          userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
 
           await expect(
             rentals.connect(assetOwner).rent(
@@ -351,6 +417,12 @@ describe('Rentals', () => {
               fingerprint: getRandomBytes(),
             }
 
+            userParams = {
+              ...userParams,
+              contractAddress: ownerParams.contractAddress,
+              fingerprint: ownerParams.fingerprint,
+            }
+
             await expect(
               rentals.connect(assetOwner).rent(
                 {
@@ -373,6 +445,11 @@ describe('Rentals', () => {
 
             ownerParams = {
               ...ownerParams,
+              contractAddress: falseVerifyFingerprint.address,
+            }
+
+            userParams = {
+              ...userParams,
               contractAddress: falseVerifyFingerprint.address,
             }
 

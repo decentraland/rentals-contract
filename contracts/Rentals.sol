@@ -109,8 +109,23 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             "Rentals#rent: DAYS_NOT_IN_RANGE"
         );
 
-        // Validate both parties provided the same price
-        require(_ownerRentParams.pricePerDay == _userRentParams.pricePerDay, "Rentals#rent: DIFFERENT_PRICE");
+        // Validate both signers provided the same price per day
+        require(_ownerRentParams.pricePerDay == _userRentParams.pricePerDay, "Rentals#rent: DIFFERENT_PRICE_PER_DAY");
+
+        // Validate both signers provided the same contract address
+        require(
+            _ownerRentParams.contractAddress == _userRentParams.contractAddress,
+            "Rentals#rent: DIFFERENT_CONTRACT_ADDRESS"
+        );
+
+        // Validate both signers provided the same tokenId
+        require(_ownerRentParams.tokenId == _userRentParams.tokenId, "Rentals#rent: DIFFERENT_TOKEN_ID");
+
+        // Validate both signers provided the same fingerprint
+        require(
+            keccak256(_ownerRentParams.fingerprint) == keccak256(_userRentParams.fingerprint),
+            "Rentals#rent: DIFFERENT_FINGERPRINT"
+        );
 
         // Validate that the address provided belongs to an ERC721
         Require.isERC721(_ownerRentParams.contractAddress);
