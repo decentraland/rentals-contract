@@ -8,6 +8,8 @@ export const getRandomSalt = () => ethers.utils.randomBytes(32)
 
 export const ether = (amount: string) => ethers.utils.parseUnits(amount, 'ether')
 
+export const now = () => Math.trunc(Date.now() / 1000)
+
 export const getOwnerRentSignature = (
   signer: SignerWithAddress,
   contract: Rentals,

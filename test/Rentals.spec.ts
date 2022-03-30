@@ -2,10 +2,17 @@ import { Block } from '@ethersproject/abstract-provider'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumberish } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, network } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
-import { ether, getOwnerRentSignature, getRandomSalt, getRandomSignature, getUserRentSignature } from './utils/rentals'
+import {
+  ether,
+  getOwnerRentSignature,
+  getRandomSalt,
+  getRandomSignature,
+  getUserRentSignature,
+  now,
+} from './utils/rentals'
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -76,38 +83,38 @@ describe('Rentals', () => {
   })
 
   describe('rent', () => {
+    let ownerParams: Omit<Rentals.OwnerRentParamsStruct, 'signature'>
+    let userParams: Omit<Rentals.UserRentParamsStruct, 'signature'>
+
+    beforeEach(async () => {
+      ownerParams = {
+        owner: assetOwner.address,
+        contractAddress: erc721.address,
+        tokenId: 100,
+        fingerprint: getRandomSalt(),
+        maxDays: 20,
+        minDays: 10,
+        pricePerDay: ether('100'),
+        expiration: now() + 1000,
+        rentalNonce: 0,
+      }
+
+      userParams = {
+        user: user.address,
+        contractAddress: erc721.address,
+        tokenId: 100,
+        fingerprint: getRandomSalt(),
+        _days: 15,
+        pricePerDay: ether('100'),
+        expiration: now() + 1000,
+        rentalNonce: 0,
+        offerNonce: 0,
+      }
+
+      await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+    })
+
     describe('when validating signers', () => {
-      let ownerParams: Omit<Rentals.OwnerRentParamsStruct, 'signature'>
-      let userParams: Omit<Rentals.UserRentParamsStruct, 'signature'>
-
-      beforeEach(async () => {
-        ownerParams = {
-          owner: assetOwner.address,
-          contractAddress: erc721.address,
-          tokenId: 100,
-          fingerprint: getRandomSalt(),
-          maxDays: 20,
-          minDays: 10,
-          pricePerDay: ether('100'),
-          expiration: Date.now() + 1000,
-          rentalNonce: 0,
-        }
-
-        userParams = {
-          user: user.address,
-          contractAddress: erc721.address,
-          tokenId: 100,
-          fingerprint: getRandomSalt(),
-          _days: 15,
-          pricePerDay: ether('100'),
-          expiration: Date.now() + 1000,
-          rentalNonce: 0,
-          offerNonce: 0,
-        }
-
-        await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
-      })
-
       describe('when the owner signer does not match the owner provided in params', () => {
         it('should revert with error invalid owner rent siganture error', async () => {
           await expect(
@@ -124,7 +131,7 @@ describe('Rentals', () => {
                 signature: await getUserRentSignature(user, rentals, userParams),
               }
             )
-          ).to.be.revertedWith('Rentals#_validateOwnerRentSignature: INVALID_OWNER_RENT_SIGNATURE')
+          ).to.be.revertedWith('Rentals#_validateOwnerRentSigner: INVALID_OWNER_RENT_SIGNATURE')
         })
       })
 
@@ -141,7 +148,47 @@ describe('Rentals', () => {
                 signature: await getUserRentSignature(user, rentals, { ...userParams, user: assetOwner.address }),
               }
             )
-          ).to.be.revertedWith('Rentals#_validateUserRentSignature: INVALID_USER_RENT_SIGNATURE')
+          ).to.be.revertedWith('Rentals#_validateUserRentSigner: INVALID_USER_RENT_SIGNATURE')
+        })
+      })
+    })
+
+    describe('when validating expiration', () => {
+      describe('when the owner signature has expired', () => {
+        it('should revert with expired owner signature error', async () => {
+          ownerParams = { ...ownerParams, expiration: now() - 1000 }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: EXPIRED_OWNER_SIGNATURE')
+        })
+      })
+
+      describe('when the user signature has expired', () => {
+        it('should revert with expired user signature error', async () => {
+          userParams = { ...userParams, expiration: now() - 1000 }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: EXPIRED_USER_SIGNATURE')
         })
       })
     })

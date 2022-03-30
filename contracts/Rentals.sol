@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "hardhat/console.sol";
 
 import "./libraries/Require.sol";
 
@@ -90,8 +91,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external view {
-        _validateOwnerRentSignature(_ownerRentParams);
-        _validateUserRentSignature(_userRentParams);
+        _validateOwnerRentSigner(_ownerRentParams);
+        _validateUserRentSigner(_userRentParams);
+
+        require(_ownerRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_OWNER_SIGNATURE");
+        require(_userRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_USER_SIGNATURE");
     }
 
     // function rent(OwnerRentParams calldata _renterParams, uint256 _days) external {
@@ -161,7 +165,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         erc20Token = _erc20Token;
     }
 
-    function _validateOwnerRentSignature(OwnerRentParams calldata _ownerRentParams) internal view {
+    function _validateOwnerRentSigner(OwnerRentParams calldata _ownerRentParams) internal view {
         bytes32 messageHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
@@ -179,12 +183,13 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             )
         );
 
-        address signer = ECDSAUpgradeable.recover(messageHash, _ownerRentParams.signature);
-
-        require(signer == _ownerRentParams.owner, "Rentals#_validateOwnerRentSignature: INVALID_OWNER_RENT_SIGNATURE");
+        require(
+            ECDSAUpgradeable.recover(messageHash, _ownerRentParams.signature) == _ownerRentParams.owner,
+            "Rentals#_validateOwnerRentSigner: INVALID_OWNER_RENT_SIGNATURE"
+        );
     }
 
-    function _validateUserRentSignature(UserRentParams calldata _userRentParams) internal view {
+    function _validateUserRentSigner(UserRentParams calldata _userRentParams) internal view {
         bytes32 messageHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
@@ -202,9 +207,10 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             )
         );
 
-        address signer = ECDSAUpgradeable.recover(messageHash, _userRentParams.signature);
-
-        require(signer == _userRentParams.user, "Rentals#_validateUserRentSignature: INVALID_USER_RENT_SIGNATURE");
+        require(
+            ECDSAUpgradeable.recover(messageHash, _userRentParams.signature) == _userRentParams.user,
+            "Rentals#_validateUserRentSigner: INVALID_USER_RENT_SIGNATURE"
+        );
     }
 
     // function _rejectSignature(bytes memory _sig) internal {
