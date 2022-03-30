@@ -36,6 +36,17 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     // Signers can disable signatures created with a different nonce by changing the nonce for their address
     mapping(address => uint256) public signerNonce;
 
+    // Stores who the owner of an asset was before being transfered to the contract.
+    // Useful when claiming the asset back or starting a new rental without the original owner having to claim it back.
+    // Schema: contractAddress -> tokenId -> originalOwnerAddress
+    // Whenever the asset is claimed back the address goes back to address(0)
+    mapping(address => mapping(uint256 => address)) originalOwners;
+
+    // Stores current rentals by providing the ending timestamp for a given asset.
+    // Schema: contractAddress -> tokenId -> rentalEndTimestamp.
+    // If the block timestamp is higher than the rental end timestamp is because the rental has finished.
+    mapping(address => mapping(uint256 => uint256)) ongoingRentals;
+
     struct OwnerRentParams {
         // Address of the user that wants to rent the asset.
         address owner;
@@ -112,7 +123,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         signerNonce[msg.sender]++;
     }
 
-    function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external view {
+    function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external {
         bytes32 ownerRentMessageHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
@@ -214,7 +225,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         // Validate that the address provided belongs to an ERC721
         Require.isERC721(_ownerRentParams.contractAddress);
 
-        // Validate that the asset is a composable ERC721 if fingerprint is provided
+        // Validate that the asset is a composable ERC721 if fingerprint is provided and that the fingerprint is valid
         if (_ownerRentParams.fingerprint.length > 0) {
             Require.isComposableERC721(
                 _ownerRentParams.contractAddress,
@@ -222,6 +233,37 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                 _ownerRentParams.fingerprint
             );
         }
+
+        // Validate that the asset is not currently being rented
+        require(
+            ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] == 0 ||
+                // Not <= because if 2 rentals are sent in the same block the time will be the same an be valid for the require.
+                ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] < block.timestamp,
+            "Rentals#rent: CURRENTLY_RENTED"
+        );
+
+        IERC721 erc721 = IERC721(_ownerRentParams.contractAddress);
+
+        // Check if the rental contract already owns the asset the signer wants to rent.
+        if (erc721.ownerOf(_ownerRentParams.tokenId) == address(this)) {
+            // Validate that the provided owner is the original owner of the asset.
+            require(
+                originalOwners[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] == _ownerRentParams.owner,
+                "Rentals#rent: NOT_ORIGINAL_OWNER"
+            );
+        }
+        // If the contract does not own the asset, transfer it from the original owner to it and keep track of it.
+        else {
+            originalOwners[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] = _ownerRentParams.owner;
+            // TODO: Reentrancy? Maybe call the transfer after all state changes were made.
+            erc721.safeTransferFrom(_ownerRentParams.owner, address(this), _ownerRentParams.tokenId);
+        }
+
+        // Update the ongoing rental end timestamp for this asset. Maybe move before the transfer for reentrancy safety
+        ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] =
+            block.timestamp +
+            _userRentParams._days *
+            86400; // 86400 seconds in 1 day
     }
 
     function onERC721Received(

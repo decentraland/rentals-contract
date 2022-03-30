@@ -1,16 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, network } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
-import {
-  ether,
-  getOwnerRentSignature,
-  getRandomBytes,
-  getUserRentSignature,
-  now,
-} from './utils/rentals'
+import { ether, getOwnerRentSignature, getRandomBytes, getUserRentSignature, now } from './utils/rentals'
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -116,29 +110,33 @@ describe('Rentals', () => {
       ownerParams = {
         owner: assetOwner.address,
         contractAddress: erc721.address,
-        tokenId: 100,
+        tokenId: 1,
         fingerprint: [],
         maxDays: 20,
         minDays: 10,
         pricePerDay: ether('100'),
         expiration: now() + 1000,
         contractNonce: 0,
-        signerNonce: 0
+        signerNonce: 0,
       }
 
       userParams = {
         user: user.address,
         contractAddress: erc721.address,
-        tokenId: 100,
+        tokenId: 1,
         fingerprint: [],
         _days: 15,
         pricePerDay: ether('100'),
         expiration: now() + 1000,
         contractNonce: 0,
-        signerNonce: 0
+        signerNonce: 0,
       }
 
       await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+
+      await erc721.connect(deployer).mint(assetOwner.address, 1)
+
+      await erc721.connect(assetOwner).approve(rentals.address, 1)
     })
 
     it('should revert when the owner signer does not match the owner in params', async () => {
@@ -484,7 +482,10 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Require#isComposableERC721: INVALID_FINGERPRINT')
     })
 
-    it("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
+    // Skipped because the DummyFalseVerifyFingerprint does not implement any ERC721 functions needed for the rest of the
+    // rent function to work.
+    // TODO: Find an alternative to test this.
+    it.skip("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
 
@@ -508,6 +509,65 @@ describe('Rentals', () => {
           signature: await getUserRentSignature(user, rentals, userParams),
         }
       )
+    })
+
+    it('should revert if an asset is already being rented', async () => {
+      rentals.connect(assetOwner).rent(
+        {
+          ...ownerParams,
+          signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+        },
+        {
+          ...userParams,
+          signature: await getUserRentSignature(user, rentals, userParams),
+        }
+      )
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
+      await rentals
+        .connect(assetOwner)
+        .rent(
+          { ...ownerParams, signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams) },
+          { ...userParams, signature: await getUserRentSignature(user, rentals, userParams) }
+        )
+
+      const skip = BigNumber.from(userParams._days).mul(86400).toNumber() + 1000
+
+      // Skip for a little more than the required amount of time to finish the previous rent
+      await network.provider.send('evm_increaseTime', [skip])
+
+      // I dont care about expiration for this test
+      const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+
+      ownerParams = { ...ownerParams, owner: user.address, expiration: maxUint256 }
+      userParams = { ...userParams, user: assetOwner.address, expiration: maxUint256 }
+
+      await expect(
+        rentals.connect(user).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(user, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(assetOwner, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
     })
   })
 })
