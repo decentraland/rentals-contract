@@ -254,6 +254,70 @@ describe('Rentals', () => {
       })
     })
 
+    describe('when validating the provided asset', () => {
+      describe('when the contract address is not a contract', () => {
+        it('should revert with a is not a contract error', async () => {
+          ownerParams = { ...ownerParams, contractAddress: assetOwner.address }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_A_CONTRACT')
+        })
+      })
+
+      describe('when the contract address does not implement `supportsInterface` function', () => {
+        it('should revert with a function selector not recognized error', async () => {
+          ownerParams = { ...ownerParams, contractAddress: erc20.address }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith(
+            "Transaction reverted: function selector was not recognized and there's no fallback function"
+          )
+        })
+      })
+
+      describe("when the contract address's `supportsInterface` returns false", () => {
+        it('should revert with not an ERC721 error', async () => {
+          const DummyFalseSupportsInterfaceFactory = await ethers.getContractFactory('DummyFalseSupportsInterface')
+          const falseSupportsInterface = await DummyFalseSupportsInterfaceFactory.connect(deployer).deploy()
+
+          ownerParams = { ...ownerParams, contractAddress: falseSupportsInterface.address }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_AN_ERC721')
+        })
+      })
+    })
+
     // let renterParams: any
     // let days: number
     // let latestBlock: Block

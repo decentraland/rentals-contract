@@ -106,6 +106,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             _userRentParams._days >= _ownerRentParams.minDays && _userRentParams._days <= _ownerRentParams.maxDays,
             "Rentals#rent: DAYS_NOT_IN_RANGE"
         );
+
+        // Validate that the address provided belongs to an ERC721
+        Require.isERC721(_ownerRentParams.contractAddress);
+
+        // Require._composableERC721(_renterParams.tokenAddress, _renterParams.tokenId, _renterParams.fingerprint);
     }
 
     // function rent(OwnerRentParams calldata _renterParams, uint256 _days) external {
