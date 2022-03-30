@@ -6,6 +6,8 @@ import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-typ
 import { Rentals } from '../typechain-types/Rentals'
 import { ether, getOwnerRentSignature, getRandomBytes, getUserRentSignature, now } from './utils/rentals'
 
+const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+
 describe('Rentals', () => {
   let deployer: SignerWithAddress
   let contractOwner: SignerWithAddress
@@ -76,7 +78,7 @@ describe('Rentals', () => {
 
   describe('bumpContractNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+      await rentals.connect(deployer).initialize(contractOwner.address, erc20.address)
     })
 
     it('should increase the contractNonce by 1', async () => {
@@ -92,7 +94,7 @@ describe('Rentals', () => {
 
   describe('bumpSignerNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+      await rentals.connect(deployer).initialize(contractOwner.address, erc20.address)
     })
 
     it('should increase the signerNonce for the sender by 1', async () => {
@@ -132,11 +134,15 @@ describe('Rentals', () => {
         signerNonce: 0,
       }
 
-      await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+      await rentals.connect(deployer).initialize(contractOwner.address, erc20.address)
 
       await erc721.connect(deployer).mint(assetOwner.address, 1)
 
       await erc721.connect(assetOwner).approve(rentals.address, 1)
+
+      await erc20.connect(deployer).mint(user.address, ether('100000'))
+
+      await erc20.connect(user).approve(rentals.address, maxUint256)
     })
 
     it('should revert when the owner signer does not match the owner in params', async () => {
@@ -549,9 +555,6 @@ describe('Rentals', () => {
 
       // Skip for a little more than the required amount of time to finish the previous rent
       await network.provider.send('evm_increaseTime', [skip])
-
-      // I dont care about expiration for this test
-      const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
       ownerParams = { ...ownerParams, owner: user.address, expiration: maxUint256 }
       userParams = { ...userParams, user: assetOwner.address, expiration: maxUint256 }

@@ -259,6 +259,13 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             erc721.safeTransferFrom(_ownerRentParams.owner, address(this), _ownerRentParams.tokenId);
         }
 
+        // Transfer the tokens from the user to the owner of the asset.
+        erc20Token.transferFrom(
+            _userRentParams.user,
+            _ownerRentParams.owner,
+            _userRentParams.pricePerDay * _userRentParams._days
+        );
+
         // Update the ongoing rental end timestamp for this asset. Maybe move before the transfer for reentrancy safety
         ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] =
             block.timestamp +
