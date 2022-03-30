@@ -115,357 +115,305 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
     })
 
-    describe('when validating signers', () => {
-      describe('when the owner signer does not match the owner provided in params', () => {
-        it('should revert with error invalid owner rent siganture error', async () => {
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, {
-                  ...ownerParams,
-                  owner: user.address,
-                }),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#_validateOwnerRentSigner: INVALID_OWNER_RENT_SIGNATURE')
-        })
-      })
-
-      describe('when the user signer does not match the user provided in params', () => {
-        it('should revert with error invalid user rent siganture error', async () => {
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, { ...userParams, user: assetOwner.address }),
-              }
-            )
-          ).to.be.revertedWith('Rentals#_validateUserRentSigner: INVALID_USER_RENT_SIGNATURE')
-        })
-      })
-    })
-
-    describe('when validating expiration', () => {
-      describe('when the owner signature has expired', () => {
-        it('should revert with expired owner signature error', async () => {
-          ownerParams = { ...ownerParams, expiration: now() - 1000 }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: EXPIRED_OWNER_SIGNATURE')
-        })
-      })
-
-      describe('when the user signature has expired', () => {
-        it('should revert with expired user signature error', async () => {
-          userParams = { ...userParams, expiration: now() - 1000 }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: EXPIRED_USER_SIGNATURE')
-        })
-      })
-    })
-
-    describe('when validating owner min and max days', () => {
-      describe('when min days is higher than max days', () => {
-        it('should revert with max days not greater or equal than min days', async () => {
-          ownerParams = { ...ownerParams, minDays: BigNumber.from(ownerParams.maxDays).add(1) }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS')
-        })
-      })
-    })
-
-    describe('when validating user provided days', () => {
-      describe('when provided days is lower than owner min days', () => {
-        it('should revert with not in range error', async () => {
-          userParams = { ...userParams, _days: BigNumber.from(ownerParams.minDays).sub(1) }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
-        })
-      })
-
-      describe('when provided days is higher than owner max days', () => {
-        it('should revert with not in range error', async () => {
-          userParams = { ...userParams, _days: BigNumber.from(ownerParams.maxDays).add(1) }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
-        })
-      })
-    })
-
-    describe('when validating the price per day', () => {
-      describe('when the owner and the user provide different values', () => {
-        it('should revert with a different price error', async () => {
-          userParams = { ...userParams, pricePerDay: BigNumber.from(ownerParams.pricePerDay).add(1) }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: DIFFERENT_PRICE')
-        })
-      })
-    })
-
-    describe('when validating the contract address', () => {
-      describe('when the owner and the user provide different values', () => {
-        it('should revert with a different contract address error', async () => {
-          userParams = { ...userParams, contractAddress: assetOwner.address }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: DIFFERENT_CONTRACT_ADDRESS')
-        })
-      })
-    })
-
-    describe('when validating the token id', () => {
-      describe('when the owner and the user provide different values', () => {
-        it('should revert with a different token id error', async () => {
-          userParams = { ...userParams, tokenId: 200 }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: DIFFERENT_TOKEN_ID')
-        })
-      })
-    })
-
-    describe('when validating the fingerprint', () => {
-      describe('when the owner and the user provide different values', () => {
-        it('should revert with a different fingerprint error', async () => {
-          userParams = { ...userParams, fingerprint: getRandomBytes() }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
-        })
-      })
-    })
-
-    describe('when validating the provided asset', () => {
-      describe('when the contract address is not a contract', () => {
-        it('should revert with a is not a contract error', async () => {
-          ownerParams = { ...ownerParams, contractAddress: assetOwner.address }
-          userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_A_CONTRACT')
-        })
-      })
-
-      describe('when the contract address does not implement `supportsInterface` function', () => {
-        it('should revert with a function selector not recognized error', async () => {
-          ownerParams = { ...ownerParams, contractAddress: erc20.address }
-          userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith(
-            "Transaction reverted: function selector was not recognized and there's no fallback function"
-          )
-        })
-      })
-
-      describe("when the contract address's `supportsInterface` returns false", () => {
-        it('should revert with not an ERC721 error', async () => {
-          const DummyFalseSupportsInterfaceFactory = await ethers.getContractFactory('DummyFalseSupportsInterface')
-          const falseSupportsInterface = await DummyFalseSupportsInterfaceFactory.connect(deployer).deploy()
-
-          ownerParams = { ...ownerParams, contractAddress: falseSupportsInterface.address }
-          userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
-
-          await expect(
-            rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_AN_ERC721')
-        })
-      })
-
-      describe('when `verifyFingerprint` returns false on the provided ComposableERC721', () => {
-        describe('when providing a fingerprint', () => {
-          it('should revert with not an invalid fingerprint error', async () => {
-            const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
-            const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
-
-            ownerParams = {
+    it('should revert when the owner signer does not match the owner in params', async () => {
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, {
               ...ownerParams,
-              contractAddress: falseVerifyFingerprint.address,
-              fingerprint: getRandomBytes(),
-            }
+              owner: user.address,
+            }),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#_validateOwnerRentSigner: INVALID_OWNER_RENT_SIGNATURE')
+    })
 
-            userParams = {
-              ...userParams,
-              contractAddress: ownerParams.contractAddress,
-              fingerprint: ownerParams.fingerprint,
-            }
+    it('should revert when the user signer does not match the user provided in params', async () => {
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, { ...userParams, user: assetOwner.address }),
+          }
+        )
+      ).to.be.revertedWith('Rentals#_validateUserRentSigner: INVALID_USER_RENT_SIGNATURE')
+    })
 
-            await expect(
-              rentals.connect(assetOwner).rent(
-                {
-                  ...ownerParams,
-                  signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-                },
-                {
-                  ...userParams,
-                  signature: await getUserRentSignature(user, rentals, userParams),
-                }
-              )
-            ).to.be.revertedWith('Require#isComposableERC721: INVALID_FINGERPRINT')
-          })
-        })
+    it('should revert when the block timestamp is higher than the provided owner signature expiration', async () => {
+      ownerParams = { ...ownerParams, expiration: now() - 1000 }
 
-        describe('when the fingerprint is empty', () => {
-          it('should not revert as the vaidation will not occur', async () => {
-            const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
-            const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: EXPIRED_OWNER_SIGNATURE')
+    })
 
-            ownerParams = {
-              ...ownerParams,
-              contractAddress: falseVerifyFingerprint.address,
-            }
+    it('should revert when the block timestamp is higher than the provided user signature expiration', async () => {
+      userParams = { ...userParams, expiration: now() - 1000 }
 
-            userParams = {
-              ...userParams,
-              contractAddress: falseVerifyFingerprint.address,
-            }
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: EXPIRED_USER_SIGNATURE')
+    })
 
-            await rentals.connect(assetOwner).rent(
-              {
-                ...ownerParams,
-                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-              },
-              {
-                ...userParams,
-                signature: await getUserRentSignature(user, rentals, userParams),
-              }
-            )
-          })
-        })
-      })
+    it('should revert when max days is lower than min days', async () => {
+      ownerParams = { ...ownerParams, minDays: BigNumber.from(ownerParams.maxDays).add(1) }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS')
+    })
+
+    it('should revert when user days is lower than owner min days', async () => {
+      userParams = { ...userParams, _days: BigNumber.from(ownerParams.minDays).sub(1) }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+    })
+
+    it('should revert when user days is higher than owner max days', async () => {
+      userParams = { ...userParams, _days: BigNumber.from(ownerParams.maxDays).add(1) }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+    })
+
+    it('should revert when owner and user provide different price per day', async () => {
+      userParams = { ...userParams, pricePerDay: BigNumber.from(ownerParams.pricePerDay).add(1) }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: DIFFERENT_PRICE')
+    })
+
+    it('should revert when owner and user provide different contract addresses', async () => {
+      userParams = { ...userParams, contractAddress: assetOwner.address }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: DIFFERENT_CONTRACT_ADDRESS')
+    })
+
+    it('should revert when owner and user provide different token ids', async () => {
+      userParams = { ...userParams, tokenId: 200 }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: DIFFERENT_TOKEN_ID')
+    })
+
+    it('should revert when owner and user provide different fingerprints', async () => {
+      userParams = { ...userParams, fingerprint: getRandomBytes() }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
+    })
+
+    it('should revert when the provided contract address is not for a contract', async () => {
+      ownerParams = { ...ownerParams, contractAddress: assetOwner.address }
+      userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_A_CONTRACT')
+    })
+
+    it('should revert when the provided contract address does not implement `supportsInterface`', async () => {
+      ownerParams = { ...ownerParams, contractAddress: erc20.address }
+      userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith(
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
+    })
+
+    it("should revert when the provided contract address's `supportsInterface` returns false", async () => {
+      const DummyFalseSupportsInterfaceFactory = await ethers.getContractFactory('DummyFalseSupportsInterface')
+      const falseSupportsInterface = await DummyFalseSupportsInterfaceFactory.connect(deployer).deploy()
+
+      ownerParams = { ...ownerParams, contractAddress: falseSupportsInterface.address }
+      userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_AN_ERC721')
+    })
+
+    it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
+      const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
+      const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
+
+      ownerParams = {
+        ...ownerParams,
+        contractAddress: falseVerifyFingerprint.address,
+        fingerprint: getRandomBytes(),
+      }
+
+      userParams = {
+        ...userParams,
+        contractAddress: ownerParams.contractAddress,
+        fingerprint: ownerParams.fingerprint,
+      }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Require#isComposableERC721: INVALID_FINGERPRINT')
+    })
+
+    it("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
+      const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
+      const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
+
+      ownerParams = {
+        ...ownerParams,
+        contractAddress: falseVerifyFingerprint.address,
+      }
+
+      userParams = {
+        ...userParams,
+        contractAddress: falseVerifyFingerprint.address,
+      }
+
+      await rentals.connect(assetOwner).rent(
+        {
+          ...ownerParams,
+          signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+        },
+        {
+          ...userParams,
+          signature: await getUserRentSignature(user, rentals, userParams),
+        }
+      )
     })
 
     // let renterParams: any
