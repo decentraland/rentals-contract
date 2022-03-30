@@ -255,6 +255,27 @@ describe('Rentals', () => {
       })
     })
 
+    describe('when validating the price per day', () => {
+      describe('when the owner and the user provide different values', () => {
+        it('should revert with a different price error', async () => {
+          userParams = { ...userParams, pricePerDay: BigNumber.from(ownerParams.pricePerDay).add(1) }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: DIFFERENT_PRICE')
+        })
+      })
+    })
+
     describe('when validating the provided asset', () => {
       describe('when the contract address is not a contract', () => {
         it('should revert with a is not a contract error', async () => {

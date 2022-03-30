@@ -94,8 +94,10 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         _validateOwnerRentSigner(_ownerRentParams);
         _validateUserRentSigner(_userRentParams);
 
-        // Validate signature expirations
+        // Validate owner signature expiration
         require(_ownerRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_OWNER_SIGNATURE");
+
+        // Validate user signature expirations
         require(_userRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_USER_SIGNATURE");
 
         // Validate max days is higher or equal to min days
@@ -106,6 +108,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             _userRentParams._days >= _ownerRentParams.minDays && _userRentParams._days <= _ownerRentParams.maxDays,
             "Rentals#rent: DAYS_NOT_IN_RANGE"
         );
+
+        // Validate both parties provided the same price
+        require(_ownerRentParams.pricePerDay == _userRentParams.pricePerDay, "Rentals#rent: DIFFERENT_PRICE");
 
         // Validate that the address provided belongs to an ERC721
         Require.isERC721(_ownerRentParams.contractAddress);
