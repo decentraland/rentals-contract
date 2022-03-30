@@ -94,11 +94,14 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         _validateOwnerRentSigner(_ownerRentParams);
         _validateUserRentSigner(_userRentParams);
 
+        // Validate signature expirations
         require(_ownerRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_OWNER_SIGNATURE");
         require(_userRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_USER_SIGNATURE");
 
+        // Validate max days is higher or equal to min days
         require(_ownerRentParams.maxDays >= _ownerRentParams.minDays, "Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS");
 
+        // Validate user days is within range of owner min and max days
         require(
             _userRentParams._days >= _ownerRentParams.minDays && _userRentParams._days <= _ownerRentParams.maxDays,
             "Rentals#rent: DAYS_NOT_IN_RANGE"
