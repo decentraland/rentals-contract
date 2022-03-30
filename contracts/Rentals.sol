@@ -98,8 +98,50 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external view {
-        _validateOwnerRentSigner(_ownerRentParams);
-        _validateUserRentSigner(_userRentParams);
+        bytes32 ownerRentMessageHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    OWNER_RENT_TYPE_HASH,
+                    _ownerRentParams.owner,
+                    _ownerRentParams.contractAddress,
+                    _ownerRentParams.tokenId,
+                    keccak256(_ownerRentParams.fingerprint),
+                    _ownerRentParams.maxDays,
+                    _ownerRentParams.minDays,
+                    _ownerRentParams.pricePerDay,
+                    _ownerRentParams.expiration,
+                    _ownerRentParams.contractNonce
+                )
+            )
+        );
+
+        bytes32 userRentMessageHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    USER_RENT_TYPE_HASH,
+                    _userRentParams.user,
+                    _userRentParams.contractAddress,
+                    _userRentParams.tokenId,
+                    keccak256(_userRentParams.fingerprint),
+                    _userRentParams._days,
+                    _userRentParams.pricePerDay,
+                    _userRentParams.expiration,
+                    _userRentParams.contractNonce
+                )
+            )
+        );
+
+        // Validate that the owner signature was created by the same owner provided in the params
+        require(
+            ECDSAUpgradeable.recover(ownerRentMessageHash, _ownerRentParams.signature) == _ownerRentParams.owner,
+            "Rentals#rent: INVALID_OWNER_RENT_SIGNATURE"
+        );
+
+        // Validate that the user signature was created by the same user provided in the params
+        require(
+            ECDSAUpgradeable.recover(userRentMessageHash, _userRentParams.signature) == _userRentParams.user,
+            "Rentals#rent: INVALID_USER_RENT_SIGNATURE"
+        );
 
         // Validate owner signature expiration
         require(_ownerRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_OWNER_SIGNATURE");
@@ -153,57 +195,6 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         }
     }
 
-    // function rent(OwnerRentParams calldata _renterParams, uint256 _days) external {
-    //     // Validate renter signature
-    //     bytes32 renterMessageHash = _hashTypedDataV4(
-    //         keccak256(
-    //             abi.encode(
-    //                 RENTER_SIGN_DATA_TYPEHASH,
-    //                 _renterParams.renter,
-    //                 _renterParams.maxDays,
-    //                 _renterParams.price,
-    //                 _renterParams.expiration,
-    //                 _renterParams.tokenAddress,
-    //                 _renterParams.tokenId,
-    //                 keccak256(_renterParams.fingerprint),
-    //                 _renterParams.salt
-    //             )
-    //         )
-    //     );
-
-    //     address renter = ECDSAUpgradeable.recover(renterMessageHash, _renterParams.sig);
-
-    //     require(renter == _renterParams.renter, "Rentals#rent: SIGNER_NOT_RENTER");
-
-    //     // Validate parameters
-    //     require(_renterParams.price > 0, "Rentals#rent: INVALID_PRICE");
-    //     require(block.timestamp < _renterParams.expiration, "Rentals#rent: EXPIRED");
-    //     require(_days <= _renterParams.maxDays, "Rentals#rent: TOO_MANY_DAYS");
-    //     require(_days != 0, "Rentals#rent: ZERO_DAYS");
-    //     require(msg.sender != _renterParams.renter, "Rentals#rent: RENTER_CANNOT_BE_TENANT");
-
-    //     // Validate NFT address
-    //     Require._ERC721(_renterParams.tokenAddress);
-    //     Require._composableERC721(_renterParams.tokenAddress, _renterParams.tokenId, _renterParams.fingerprint);
-
-    //     // Transfer ERC721 token to the rentals contract
-    //     IERC721(_renterParams.tokenAddress).safeTransferFrom(renter, address(this), _renterParams.tokenId);
-
-    //     // Transfer ERC20 token from tenant to renter
-    //     erc20Token.transferFrom(msg.sender, renter, _renterParams.price);
-
-    //     // Reject the renter signature so it cannot be used again
-    //     _rejectSignature(_renterParams.sig);
-    // }
-
-    // function rejectSignatures(bytes[] memory _sigs) external {
-    //     require(_sigs.length > 0, "Rentals#rejectSignatures: EMPTY_SIGNATURE_ARRAY");
-
-    //     for (uint256 i = 0; i < _sigs.length; i++) {
-    //         _rejectSignature(_sigs[i]);
-    //     }
-    // }
-
     function onERC721Received(
         address, // operator,
         address, // from,
@@ -219,58 +210,4 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     function _setERC20Token(IERC20 _erc20Token) internal {
         erc20Token = _erc20Token;
     }
-
-    function _validateOwnerRentSigner(OwnerRentParams calldata _ownerRentParams) internal view {
-        bytes32 messageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    OWNER_RENT_TYPE_HASH,
-                    _ownerRentParams.owner,
-                    _ownerRentParams.contractAddress,
-                    _ownerRentParams.tokenId,
-                    keccak256(_ownerRentParams.fingerprint),
-                    _ownerRentParams.maxDays,
-                    _ownerRentParams.minDays,
-                    _ownerRentParams.pricePerDay,
-                    _ownerRentParams.expiration,
-                    _ownerRentParams.contractNonce
-                )
-            )
-        );
-
-        require(
-            ECDSAUpgradeable.recover(messageHash, _ownerRentParams.signature) == _ownerRentParams.owner,
-            "Rentals#_validateOwnerRentSigner: INVALID_OWNER_RENT_SIGNATURE"
-        );
-    }
-
-    function _validateUserRentSigner(UserRentParams calldata _userRentParams) internal view {
-        bytes32 messageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    USER_RENT_TYPE_HASH,
-                    _userRentParams.user,
-                    _userRentParams.contractAddress,
-                    _userRentParams.tokenId,
-                    keccak256(_userRentParams.fingerprint),
-                    _userRentParams._days,
-                    _userRentParams.pricePerDay,
-                    _userRentParams.expiration,
-                    _userRentParams.contractNonce
-                )
-            )
-        );
-
-        require(
-            ECDSAUpgradeable.recover(messageHash, _userRentParams.signature) == _userRentParams.user,
-            "Rentals#_validateUserRentSigner: INVALID_USER_RENT_SIGNATURE"
-        );
-    }
-
-    // function _rejectSignature(bytes memory _sig) internal {
-    //     require(_sig.length == 65, "Rentals#rejectSignature: INVALID_SIGNATURE_LENGTH");
-    //     require(!isSignatureRejected[_sig], "Rentals#rejectSignature: ALREADY_REJECTED");
-
-    //     isSignatureRejected[_sig] = true;
-    // }
 }

@@ -142,7 +142,7 @@ describe('Rentals', () => {
             signature: await getUserRentSignature(user, rentals, userParams),
           }
         )
-      ).to.be.revertedWith('Rentals#_validateOwnerRentSigner: INVALID_OWNER_RENT_SIGNATURE')
+      ).to.be.revertedWith('Rentals#rent: INVALID_OWNER_RENT_SIGNATURE')
     })
 
     it('should revert when the user signer does not match the user provided in params', async () => {
@@ -157,7 +157,7 @@ describe('Rentals', () => {
             signature: await getUserRentSignature(user, rentals, { ...userParams, user: assetOwner.address }),
           }
         )
-      ).to.be.revertedWith('Rentals#_validateUserRentSigner: INVALID_USER_RENT_SIGNATURE')
+      ).to.be.revertedWith('Rentals#rent: INVALID_USER_RENT_SIGNATURE')
     })
 
     it('should revert when the block timestamp is higher than the provided owner signature expiration', async () => {
