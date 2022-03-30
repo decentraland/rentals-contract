@@ -96,6 +96,18 @@ describe('Rentals', () => {
     })
   })
 
+  describe('bumpSignerNonce', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+    })
+
+    it('should increase the signerNonce for the sender by 1', async () => {
+      expect(await rentals.connect(assetOwner).signerNonce(assetOwner.address)).to.equal(0)
+      await rentals.connect(assetOwner).bumpSignerNonce()
+      expect(await rentals.connect(assetOwner).signerNonce(assetOwner.address)).to.equal(1)
+    })
+  })
+
   describe('rent', () => {
     let ownerParams: Omit<Rentals.OwnerRentParamsStruct, 'signature'>
     let userParams: Omit<Rentals.UserRentParamsStruct, 'signature'>
@@ -111,6 +123,7 @@ describe('Rentals', () => {
         pricePerDay: ether('100'),
         expiration: now() + 1000,
         contractNonce: 0,
+        signerNonce: 0
       }
 
       userParams = {
@@ -122,6 +135,7 @@ describe('Rentals', () => {
         pricePerDay: ether('100'),
         expiration: now() + 1000,
         contractNonce: 0,
+        signerNonce: 0
       }
 
       await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
@@ -345,6 +359,40 @@ describe('Rentals', () => {
           }
         )
       ).to.be.revertedWith('Rentals#rent: INVALID_USER_CONTRACT_NONCE')
+    })
+
+    it('should revert when owner signer nonce is not the same as the contract', async () => {
+      ownerParams = { ...ownerParams, signerNonce: 1 }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: INVALID_OWNER_SIGNER_NONCE')
+    })
+
+    it('should revert when user signer nonce is not the same as the contract', async () => {
+      userParams = { ...userParams, signerNonce: 1 }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: INVALID_USER_SIGNER_NONCE')
     })
 
     it('should revert when the provided contract address is not for a contract', async () => {

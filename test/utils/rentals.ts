@@ -62,6 +62,10 @@ export const getOwnerRentSignature = (
           type: 'uint256',
           name: 'contractNonce',
         },
+        {
+          type: 'uint256',
+          name: 'signerNonce',
+        },
       ],
     },
     params
@@ -112,6 +116,10 @@ export const getUserRentSignature = (
         {
           type: 'uint256',
           name: 'contractNonce',
+        },
+        {
+          type: 'uint256',
+          name: 'signerNonce',
         },
       ],
     },
