@@ -14,19 +14,22 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant OWNER_RENT_TYPE_HASH =
         keccak256(
             bytes(
-                "OwnerRent(address owner,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 maxDays,uint256 minDays,uint256 pricePerDay,uint256 expiration,uint256 rentalNonce)"
+                "OwnerRent(address owner,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 maxDays,uint256 minDays,uint256 pricePerDay,uint256 expiration,uint256 contractNonce)"
             )
         );
 
     bytes32 public constant USER_RENT_TYPE_HASH =
         keccak256(
             bytes(
-                "UserRent(address user,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 _days,uint256 pricePerDay,uint256 expiration,uint256 rentalNonce,uint256 offerNonce)"
+                "UserRent(address user,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 _days,uint256 pricePerDay,uint256 expiration,uint256 contractNonce)"
             )
         );
 
     // Token that will be transfered from the user to the owner when a rent starts.
     IERC20 public erc20Token;
+
+    // Value updated by the owner of the contract. Any signatures created with a different contractNonce are invalid.
+    uint256 public contractNonce;
 
     struct OwnerRentParams {
         // Address of the user that wants to rent the asset.
@@ -45,8 +48,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 pricePerDay;
         // Timestamp for when the signature will become invalidated.
         uint256 expiration;
-        // Rental nonce for this asset.
-        uint256 rentalNonce;
+        // Contract nonce, Invalid if it does not match the current nonce of the contract.
+        uint256 contractNonce;
         // Signature generated off-chain by the user.
         bytes signature;
     }
@@ -66,10 +69,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 pricePerDay;
         // Timestamp for when the signature will become invalidated
         uint256 expiration;
-        // Rental nonce for this asset
-        uint256 rentalNonce;
-        // Offer nonce for this asset
-        uint256 offerNonce;
+        // Contract nonce, Invalid if it does not match the current nonce of the contract.
+        uint256 contractNonce;
         // Signature generated off-chain by the user
         bytes signature;
     }
@@ -84,10 +85,16 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         _transferOwnership(_owner);
     }
 
-    /// @notice Set the token used by users to pay the rent
-    /// @param _erc20Token - Address of the token
+    /// @notice Set the token used by users to pay the rent.
+    /// @param _erc20Token - Address of the token.
     function setERC20Token(IERC20 _erc20Token) external onlyOwner {
         _setERC20Token(_erc20Token);
+    }
+
+    /// @notice Increase the contract nonce by 1.
+    /// @dev This can be used by the owner of the contract to invalidate any signature created with the previous nonce.
+    function bumpContractNonce() external onlyOwner {
+        contractNonce++;
     }
 
     function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external view {
@@ -126,6 +133,12 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             keccak256(_ownerRentParams.fingerprint) == keccak256(_userRentParams.fingerprint),
             "Rentals#rent: DIFFERENT_FINGERPRINT"
         );
+
+        // Validate the contract nonce provided by the owner has the same value as the contract
+        require(_ownerRentParams.contractNonce == contractNonce, "Rentals#rent: INVALID_OWNER_CONTRACT_NONCE");
+
+        // Validate the contract nonce provided by the user has the same value as the contract
+        require(_userRentParams.contractNonce == contractNonce, "Rentals#rent: INVALID_USER_CONTRACT_NONCE");
 
         // Validate that the address provided belongs to an ERC721
         Require.isERC721(_ownerRentParams.contractAddress);
@@ -220,7 +233,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _ownerRentParams.minDays,
                     _ownerRentParams.pricePerDay,
                     _ownerRentParams.expiration,
-                    _ownerRentParams.rentalNonce
+                    _ownerRentParams.contractNonce
                 )
             )
         );
@@ -243,8 +256,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _userRentParams._days,
                     _userRentParams.pricePerDay,
                     _userRentParams.expiration,
-                    _userRentParams.rentalNonce,
-                    _userRentParams.offerNonce
+                    _userRentParams.contractNonce
                 )
             )
         );

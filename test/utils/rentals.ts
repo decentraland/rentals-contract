@@ -60,7 +60,7 @@ export const getOwnerRentSignature = (
         },
         {
           type: 'uint256',
-          name: 'rentalNonce',
+          name: 'contractNonce',
         },
       ],
     },
@@ -111,11 +111,7 @@ export const getUserRentSignature = (
         },
         {
           type: 'uint256',
-          name: 'rentalNonce',
-        },
-        {
-          type: 'uint256',
-          name: 'offerNonce',
+          name: 'contractNonce',
         },
       ],
     },

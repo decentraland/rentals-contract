@@ -1,16 +1,13 @@
-import { Block } from '@ethersproject/abstract-provider'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, BigNumberish } from 'ethers'
-import { ethers, network } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
 import {
   ether,
   getOwnerRentSignature,
   getRandomBytes,
-  getRandomSalt,
-  getRandomSignature,
   getUserRentSignature,
   now,
 } from './utils/rentals'
@@ -83,6 +80,22 @@ describe('Rentals', () => {
     })
   })
 
+  describe('bumpContractNonce', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
+    })
+
+    it('should increase the contractNonce by 1', async () => {
+      expect(await rentals.connect(contractOwner).contractNonce()).to.equal(0)
+      await rentals.connect(contractOwner).bumpContractNonce()
+      expect(await rentals.connect(contractOwner).contractNonce()).to.equal(1)
+    })
+
+    it('should revert when the contract owner is not the caller', async () => {
+      await expect(rentals.connect(user).bumpContractNonce()).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+  })
+
   describe('rent', () => {
     let ownerParams: Omit<Rentals.OwnerRentParamsStruct, 'signature'>
     let userParams: Omit<Rentals.UserRentParamsStruct, 'signature'>
@@ -97,7 +110,7 @@ describe('Rentals', () => {
         minDays: 10,
         pricePerDay: ether('100'),
         expiration: now() + 1000,
-        rentalNonce: 0,
+        contractNonce: 0,
       }
 
       userParams = {
@@ -108,8 +121,7 @@ describe('Rentals', () => {
         _days: 15,
         pricePerDay: ether('100'),
         expiration: now() + 1000,
-        rentalNonce: 0,
-        offerNonce: 0,
+        contractNonce: 0,
       }
 
       await rentals.connect(deployer).initialize(contractOwner.address, deployer.address)
@@ -299,6 +311,40 @@ describe('Rentals', () => {
           }
         )
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
+    })
+
+    it('should revert when owner contract nonce is not the same as the contract', async () => {
+      ownerParams = { ...ownerParams, contractNonce: 1 }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: INVALID_OWNER_CONTRACT_NONCE')
+    })
+
+    it('should revert when user contract nonce is not the same as the contract', async () => {
+      userParams = { ...userParams, contractNonce: 1 }
+
+      await expect(
+        rentals.connect(assetOwner).rent(
+          {
+            ...ownerParams,
+            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+          },
+          {
+            ...userParams,
+            signature: await getUserRentSignature(user, rentals, userParams),
+          }
+        )
+      ).to.be.revertedWith('Rentals#rent: INVALID_USER_CONTRACT_NONCE')
     })
 
     it('should revert when the provided contract address is not for a contract', async () => {
