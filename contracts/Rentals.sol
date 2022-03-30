@@ -97,6 +97,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         require(_ownerRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_OWNER_SIGNATURE");
         require(_userRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_USER_SIGNATURE");
 
+        require(_ownerRentParams.maxDays >= _ownerRentParams.minDays, "Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS");
+
         require(
             _userRentParams._days >= _ownerRentParams.minDays && _userRentParams._days <= _ownerRentParams.maxDays,
             "Rentals#rent: DAYS_NOT_IN_RANGE"

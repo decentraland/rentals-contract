@@ -193,6 +193,27 @@ describe('Rentals', () => {
       })
     })
 
+    describe('when validating owner min and max days', () => {
+      describe('when min days is higher than max days', () => {
+        it('should revert with max days not greater or equal than min days', async () => {
+          ownerParams = { ...ownerParams, minDays: BigNumber.from(ownerParams.maxDays).add(1) }
+
+          await expect(
+            rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          ).to.be.revertedWith('Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS')
+        })
+      })
+    })
+
     describe('when validating user provided days', () => {
       describe('when provided days is lower than owner min days', () => {
         it('should revert with not in range error', async () => {
