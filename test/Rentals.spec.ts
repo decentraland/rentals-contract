@@ -8,6 +8,7 @@ import { Rentals } from '../typechain-types/Rentals'
 import {
   ether,
   getOwnerRentSignature,
+  getRandomBytes,
   getRandomSalt,
   getRandomSignature,
   getUserRentSignature,
@@ -91,7 +92,7 @@ describe('Rentals', () => {
         owner: assetOwner.address,
         contractAddress: erc721.address,
         tokenId: 100,
-        fingerprint: getRandomSalt(),
+        fingerprint: [],
         maxDays: 20,
         minDays: 10,
         pricePerDay: ether('100'),
@@ -103,7 +104,7 @@ describe('Rentals', () => {
         user: user.address,
         contractAddress: erc721.address,
         tokenId: 100,
-        fingerprint: getRandomSalt(),
+        fingerprint: [],
         _days: 15,
         pricePerDay: ether('100'),
         expiration: now() + 1000,
@@ -314,6 +315,57 @@ describe('Rentals', () => {
               }
             )
           ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_AN_ERC721')
+        })
+      })
+
+      describe('when `verifyFingerprint` returns false on the provided ComposableERC721', () => {
+        describe('when providing a fingerprint', () => {
+          it('should revert with not an invalid fingerprint error', async () => {
+            const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
+            const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
+
+            ownerParams = {
+              ...ownerParams,
+              contractAddress: falseVerifyFingerprint.address,
+              fingerprint: getRandomBytes(),
+            }
+
+            await expect(
+              rentals.connect(assetOwner).rent(
+                {
+                  ...ownerParams,
+                  signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+                },
+                {
+                  ...userParams,
+                  signature: await getUserRentSignature(user, rentals, userParams),
+                }
+              )
+            ).to.be.revertedWith('Require#isComposableERC721: INVALID_FINGERPRINT')
+          })
+        })
+
+        describe('when the fingerprint is empty', () => {
+          it('should not revert as the vaidation will not occur', async () => {
+            const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
+            const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
+
+            ownerParams = {
+              ...ownerParams,
+              contractAddress: falseVerifyFingerprint.address,
+            }
+
+            await rentals.connect(assetOwner).rent(
+              {
+                ...ownerParams,
+                signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
+              },
+              {
+                ...userParams,
+                signature: await getUserRentSignature(user, rentals, userParams),
+              }
+            )
+          })
         })
       })
     })

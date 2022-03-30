@@ -110,7 +110,14 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         // Validate that the address provided belongs to an ERC721
         Require.isERC721(_ownerRentParams.contractAddress);
 
-        // Require._composableERC721(_renterParams.tokenAddress, _renterParams.tokenId, _renterParams.fingerprint);
+        // Validate that the asset is a composable ERC721 if fingerprint is provided
+        if (_ownerRentParams.fingerprint.length > 0) {
+            Require.isComposableERC721(
+                _ownerRentParams.contractAddress,
+                _ownerRentParams.tokenId,
+                _ownerRentParams.fingerprint
+            );
+        }
     }
 
     // function rent(OwnerRentParams calldata _renterParams, uint256 _days) external {
