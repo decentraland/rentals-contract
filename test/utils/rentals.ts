@@ -8,39 +8,27 @@ export const getRandomSalt = () => ethers.utils.randomBytes(32)
 
 export const ether = (amount: string) => ethers.utils.parseUnits(amount, 'ether')
 
-export const getRenterSignature = (
-  renter: SignerWithAddress,
-  rentals: Rentals,
-  params: Omit<Rentals.RenterParamsStruct, 'sig'>
-) =>
-  renter._signTypedData(
+export const getOwnerRentSignature = (
+  signer: SignerWithAddress,
+  contract: Rentals,
+  params: Omit<Rentals.OwnerRentParamsStruct, 'signature'>
+): Promise<string> =>
+  signer._signTypedData(
     {
       chainId: 31337,
       name: 'Rentals',
-      verifyingContract: rentals.address,
+      verifyingContract: contract.address,
       version: '1',
     },
     {
-      RenterSignData: [
+      OwnerRent: [
         {
           type: 'address',
-          name: 'renter',
-        },
-        {
-          type: 'uint256',
-          name: 'maxDays',
-        },
-        {
-          type: 'uint256',
-          name: 'price',
-        },
-        {
-          type: 'uint256',
-          name: 'expiration',
+          name: 'owner',
         },
         {
           type: 'address',
-          name: 'tokenAddress',
+          name: 'contractAddress',
         },
         {
           type: 'uint256',
@@ -51,8 +39,79 @@ export const getRenterSignature = (
           name: 'fingerprint',
         },
         {
-          type: 'bytes32',
-          name: 'salt',
+          type: 'uint256',
+          name: 'maxDays',
+        },
+        {
+          type: 'uint256',
+          name: 'minDays',
+        },
+        {
+          type: 'uint256',
+          name: 'pricePerDay',
+        },
+        {
+          type: 'uint256',
+          name: 'expiration',
+        },
+        {
+          type: 'uint256',
+          name: 'rentalNonce',
+        },
+      ],
+    },
+    params
+  )
+
+export const getUserRentSignature = (
+  signer: SignerWithAddress,
+  contract: Rentals,
+  params: Omit<Rentals.UserRentParamsStruct, 'signature'>
+): Promise<string> =>
+  signer._signTypedData(
+    {
+      chainId: 31337,
+      name: 'Rentals',
+      verifyingContract: contract.address,
+      version: '1',
+    },
+    {
+      UserRent: [
+        {
+          type: 'address',
+          name: 'user',
+        },
+        {
+          type: 'address',
+          name: 'contractAddress',
+        },
+        {
+          type: 'uint256',
+          name: 'tokenId',
+        },
+        {
+          type: 'bytes',
+          name: 'fingerprint',
+        },
+        {
+          type: 'uint256',
+          name: '_days',
+        },
+        {
+          type: 'uint256',
+          name: 'pricePerDay',
+        },
+        {
+          type: 'uint256',
+          name: 'expiration',
+        },
+        {
+          type: 'uint256',
+          name: 'rentalNonce',
+        },
+        {
+          type: 'uint256',
+          name: 'offerNonce',
         },
       ],
     },
