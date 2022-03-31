@@ -123,6 +123,30 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         signerNonce[msg.sender]++;
     }
 
+    /// @notice Get the address of the original owner of the asset before it was transfered to the contract.
+    /// @param _contractAddress - Address of the asset contract.
+    /// @param _tokenId - Token id of the asset.
+    /// @return The address of the original owner of the asset.
+    function getOriginalOwner(address _contractAddress, uint256 _tokenId) external view returns (address) {
+        return _getOriginalOwner(_contractAddress, _tokenId);
+    }
+
+    /// @notice Get a timestamp of when the rental for a given asset will finish.
+    /// @param _contractAddress - Address of the asset contract.
+    /// @param _tokenId - Token id of the asset.
+    /// @return The timestamp for when the rental ends for an asset.
+    function getRentalEndTimestamp(address _contractAddress, uint256 _tokenId) external view returns (uint256) {
+        return _getRentalEndTimestamp(_contractAddress, _tokenId);
+    }
+
+    /// @notice Get if an asset is currently being rented or not
+    /// @param _contractAddress - Address of the asset contract.
+    /// @param _tokenId - Token id of the asset.
+    /// @return A bool indicating if the asset is being rented.
+    function getIsRentalActive(address _contractAddress, uint256 _tokenId) external view returns (bool) {
+        return _getIsRentalActive(_contractAddress, _tokenId);
+    }
+
     /// @notice Initiate a rental by provide parameters and signatures for the owner of the asset and the user that is interested in the asset.
     /// @param _ownerRentParams - Struct containing the signature of the owner of the asset and the different parameters used to create it.
     /// @param _userRentParams - Struct containing the signature of the user interested in the asset and the different parameters used to create it.
@@ -239,26 +263,34 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         // Validate that the asset is not currently being rented
         require(
-            ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] == 0 ||
-                // Not <= because if 2 rentals are sent in the same block the time will be the same an be valid for the require.
-                ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] < block.timestamp,
+            !_getIsRentalActive(_ownerRentParams.contractAddress, _ownerRentParams.tokenId),
             "Rentals#rent: CURRENTLY_RENTED"
         );
 
         IERC721 erc721 = IERC721(_ownerRentParams.contractAddress);
 
+        bool isOwnedByContract = erc721.ownerOf(_ownerRentParams.tokenId) == address(this);
+
         // Check if the rental contract already owns the asset the signer wants to rent.
-        if (erc721.ownerOf(_ownerRentParams.tokenId) == address(this)) {
+        if (isOwnedByContract) {
             // Validate that the provided owner is the original owner of the asset.
             require(
-                originalOwners[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] == _ownerRentParams.owner,
+                _getOriginalOwner(_ownerRentParams.contractAddress, _ownerRentParams.tokenId) == _ownerRentParams.owner,
                 "Rentals#rent: NOT_ORIGINAL_OWNER"
             );
-        }
-        // If the contract does not own the asset, transfer it from the original owner to it and keep track of it.
-        else {
+        } else {
+            // Track the original owner of the asset so they can interact
             originalOwners[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] = _ownerRentParams.owner;
-            // TODO: Reentrancy? Maybe call the transfer after all state changes were made.
+        }
+
+        // Update the ongoing rental end timestamp for this asset. Maybe move before the transfer for reentrancy safety
+        ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] =
+            block.timestamp +
+            _userRentParams._days *
+            86400; // 86400 seconds in 1 day
+
+        // If the contract does not already have the asset, transfer it from the original owner.
+        if (!isOwnedByContract) {
             erc721.safeTransferFrom(_ownerRentParams.owner, address(this), _ownerRentParams.tokenId);
         }
 
@@ -268,12 +300,6 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             _ownerRentParams.owner,
             _userRentParams.pricePerDay * _userRentParams._days
         );
-
-        // Update the ongoing rental end timestamp for this asset. Maybe move before the transfer for reentrancy safety
-        ongoingRentals[_ownerRentParams.contractAddress][_ownerRentParams.tokenId] =
-            block.timestamp +
-            _userRentParams._days *
-            86400; // 86400 seconds in 1 day
     }
 
     function onERC721Received(
@@ -290,5 +316,17 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     // Private functions
     function _setERC20Token(IERC20 _erc20Token) internal {
         erc20Token = _erc20Token;
+    }
+
+    function _getOriginalOwner(address _contractAddress, uint256 _tokenId) internal view returns (address) {
+        return originalOwners[_contractAddress][_tokenId];
+    }
+
+    function _getRentalEndTimestamp(address _contractAddress, uint256 _tokenId) internal view returns (uint256) {
+        return ongoingRentals[_contractAddress][_tokenId];
+    }
+
+    function _getIsRentalActive(address _contractAddress, uint256 _tokenId) internal view returns (bool) {
+        return block.timestamp < _getRentalEndTimestamp(_contractAddress, _tokenId);
     }
 }
