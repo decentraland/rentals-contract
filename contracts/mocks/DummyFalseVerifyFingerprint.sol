@@ -28,4 +28,6 @@ contract DummyFalseVerifyFingerprint is ERC721 {
     function supportsInterface(bytes4 _interfaceId) public pure override returns (bool) {
         return _interfaceId == ERC721Composable_ValidateFingerprint || _interfaceId == ERC721_Interface;
     }
+
+    function setUpdateOperator(uint256, address) external {}
 }

@@ -10,4 +10,6 @@ contract DummyERC721 is ERC721 {
     function mint(address _to, uint256 _id) external {
         _mint(_to, _id);
     }
+
+    function setUpdateOperator(uint256, address) external {}
 }

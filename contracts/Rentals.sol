@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "hardhat/console.sol";
 
 import "./libraries/Require.sol";
+import "./interfaces/IERC721Operable.sol";
 
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant OWNER_RENT_TYPE_HASH =
@@ -260,9 +261,6 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                 _ownerRentParams.fingerprint
             );
         }
-
-        // Validate that the asset has a function to assign operators
-        Require.isOperableERC721(_ownerRentParams.contractAddress);
 
         // Validate that the asset is not currently being rented
         require(

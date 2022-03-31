@@ -5,12 +5,10 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../interfaces/IERC721Verifiable.sol";
-import "../interfaces/IERC721Operable.sol";
 
 library Require {
     bytes4 public constant ERC721_Interface = 0x80ac58cd;
     bytes4 public constant ERC721Composable_ValidateFingerprint = 0x8f9f4b63;
-    bytes4 public constant ERC721Operable_SetUpdateOperator = 0xb0b02c60;
 
     /// @notice Check that the provided address belongs to an ERC721 contract.
     /// @param _tokenAddress - Address of the contract to be checked.
@@ -36,13 +34,5 @@ library Require {
                 "Require#isComposableERC721: INVALID_FINGERPRINT"
             );
         }
-    }
-
-    /// @notice Check that the provided address contains a function to set the operator.
-    /// @param _tokenAddress - Address of the contract to be checked.
-    function isOperableERC721(address _tokenAddress) internal view {
-        IERC721Operable operable = IERC721Operable(_tokenAddress);
-        bool supportsInterface = operable.supportsInterface(ERC721Operable_SetUpdateOperator);
-        require(supportsInterface, "Require#isOperableERC721: ADDRESS_NOT_OPERABLE");
     }
 }

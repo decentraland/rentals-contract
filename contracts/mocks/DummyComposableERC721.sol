@@ -52,4 +52,6 @@ contract DummyComposableERC721 is ERC721 {
         }
         return bidId;
     }
+
+    function setUpdateOperator(uint256, address) external {}
 }
