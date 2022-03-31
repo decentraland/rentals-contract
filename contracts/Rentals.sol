@@ -123,6 +123,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         signerNonce[msg.sender]++;
     }
 
+    /// @notice Initiate a rental by provide parameters and signatures for the owner of the asset and the user that is interested in the asset.
+    /// @param _ownerRentParams - Struct containing the signature of the owner of the asset and the different parameters used to create it.
+    /// @param _userRentParams - Struct containing the signature of the user interested in the asset and the different parameters used to create it.
     function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external {
         bytes32 ownerRentMessageHash = _hashTypedDataV4(
             keccak256(
