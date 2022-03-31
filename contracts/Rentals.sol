@@ -261,13 +261,16 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             );
         }
 
+        // Validate that the asset has a function to assign operators
+        Require.isOperableERC721(_ownerRentParams.contractAddress);
+
         // Validate that the asset is not currently being rented
         require(
             !_getIsRentalActive(_ownerRentParams.contractAddress, _ownerRentParams.tokenId),
             "Rentals#rent: CURRENTLY_RENTED"
         );
 
-        IERC721 erc721 = IERC721(_ownerRentParams.contractAddress);
+        IERC721Operable erc721 = IERC721Operable(_ownerRentParams.contractAddress);
 
         bool isOwnedByContract = erc721.ownerOf(_ownerRentParams.tokenId) == address(this);
 
@@ -293,6 +296,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         if (!isOwnedByContract) {
             erc721.safeTransferFrom(_ownerRentParams.owner, address(this), _ownerRentParams.tokenId);
         }
+
+        // Set the interested user as the operator of the asset.
+        erc721.setUpdateOperator(_ownerRentParams.tokenId, _userRentParams.user);
 
         // Transfer the tokens from the user to the owner of the asset.
         erc20Token.transferFrom(
