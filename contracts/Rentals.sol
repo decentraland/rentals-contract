@@ -28,8 +28,6 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             )
         );
 
-    bytes4 public constant ERC721Verifiable_ValidateFingerprint = 0x8f9f4b63;
-
     // Token that will be transfered from the user to the owner when a rent starts.
     IERC20 public erc20Token;
 
