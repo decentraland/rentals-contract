@@ -491,9 +491,12 @@ describe('Rentals', () => {
     // Skipped because the DummyFalseVerifyFingerprint does not implement any ERC721 functions needed for the rest of the
     // rent function to work.
     // TODO: Find an alternative to test this.
-    it.skip("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
+    it("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
+
+      await falseVerifyFingerprint.connect(assetOwner).mint(assetOwner.address, 1)
+      await falseVerifyFingerprint.connect(assetOwner).approve(rentals.address, 1)
 
       ownerParams = {
         ...ownerParams,
