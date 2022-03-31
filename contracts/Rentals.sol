@@ -154,52 +154,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     /// @param _ownerRentParams - Struct containing the signature of the owner of the asset and the different parameters used to create it.
     /// @param _userRentParams - Struct containing the signature of the user interested in the asset and the different parameters used to create it.
     function rent(OwnerRentParams calldata _ownerRentParams, UserRentParams calldata _userRentParams) external {
-        bytes32 ownerRentMessageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    OWNER_RENT_TYPE_HASH,
-                    _ownerRentParams.owner,
-                    _ownerRentParams.contractAddress,
-                    _ownerRentParams.tokenId,
-                    keccak256(_ownerRentParams.fingerprint),
-                    _ownerRentParams.maxDays,
-                    _ownerRentParams.minDays,
-                    _ownerRentParams.pricePerDay,
-                    _ownerRentParams.expiration,
-                    _ownerRentParams.contractNonce,
-                    _ownerRentParams.signerNonce
-                )
-            )
-        );
-
-        bytes32 userRentMessageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    USER_RENT_TYPE_HASH,
-                    _userRentParams.user,
-                    _userRentParams.contractAddress,
-                    _userRentParams.tokenId,
-                    keccak256(_userRentParams.fingerprint),
-                    _userRentParams._days,
-                    _userRentParams.pricePerDay,
-                    _userRentParams.expiration,
-                    _userRentParams.contractNonce,
-                    _userRentParams.signerNonce
-                )
-            )
-        );
-
-        // Validate that the owner signature was created by the same owner provided in the params
-        require(
-            ECDSAUpgradeable.recover(ownerRentMessageHash, _ownerRentParams.signature) == _ownerRentParams.owner,
-            "Rentals#rent: INVALID_OWNER_RENT_SIGNATURE"
-        );
-
-        // Validate that the user signature was created by the same user provided in the params
-        require(
-            ECDSAUpgradeable.recover(userRentMessageHash, _userRentParams.signature) == _userRentParams.user,
-            "Rentals#rent: INVALID_USER_RENT_SIGNATURE"
-        );
+        _verifyOwnerSignature(_ownerRentParams);
+        _verifyUserSignature(_userRentParams);
 
         // Validate owner signature expiration
         require(_ownerRentParams.expiration > block.timestamp, "Rentals#rent: EXPIRED_OWNER_SIGNATURE");
@@ -334,5 +290,52 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
     function _getIsRentalActive(address _contractAddress, uint256 _tokenId) internal view returns (bool) {
         return block.timestamp < _getRentalEndTimestamp(_contractAddress, _tokenId);
+    }
+
+    function _verifyOwnerSignature(OwnerRentParams calldata _params) internal view {
+        bytes32 messageHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    OWNER_RENT_TYPE_HASH,
+                    _params.owner,
+                    _params.contractAddress,
+                    _params.tokenId,
+                    keccak256(_params.fingerprint),
+                    _params.maxDays,
+                    _params.minDays,
+                    _params.pricePerDay,
+                    _params.expiration,
+                    _params.contractNonce,
+                    _params.signerNonce
+                )
+            )
+        );
+
+        address signer = ECDSAUpgradeable.recover(messageHash, _params.signature);
+
+        require(signer == _params.owner, "Rentals#rent: INVALID_OWNER_RENT_SIGNATURE");
+    }
+
+    function _verifyUserSignature(UserRentParams calldata _params) internal view {
+        bytes32 messageHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    USER_RENT_TYPE_HASH,
+                    _params.user,
+                    _params.contractAddress,
+                    _params.tokenId,
+                    keccak256(_params.fingerprint),
+                    _params._days,
+                    _params.pricePerDay,
+                    _params.expiration,
+                    _params.contractNonce,
+                    _params.signerNonce
+                )
+            )
+        );
+
+        address signer = ECDSAUpgradeable.recover(messageHash, _params.signature);
+
+        require(signer == _params.user, "Rentals#rent: INVALID_USER_RENT_SIGNATURE");
     }
 }
