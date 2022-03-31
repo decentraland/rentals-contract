@@ -12,10 +12,10 @@ export const ether = (amount: string) => ethers.utils.parseUnits(amount, 'ether'
 
 export const now = () => Math.trunc(Date.now() / 1000)
 
-export const getOwnerRentSignature = (
+export const getLessorSignature = (
   signer: SignerWithAddress,
   contract: Rentals,
-  params: Omit<Rentals.OwnerRentParamsStruct, 'signature'>
+  params: Omit<Rentals.LessorStruct, 'signature'>
 ): Promise<string> =>
   signer._signTypedData(
     {
@@ -25,10 +25,10 @@ export const getOwnerRentSignature = (
       version: '1',
     },
     {
-      OwnerRent: [
+      Lessor: [
         {
           type: 'address',
-          name: 'owner',
+          name: 'signer',
         },
         {
           type: 'address',
@@ -41,6 +41,22 @@ export const getOwnerRentSignature = (
         {
           type: 'bytes',
           name: 'fingerprint',
+        },
+        {
+          type: 'uint256',
+          name: 'pricePerDay',
+        },
+        {
+          type: 'uint256',
+          name: 'expiration',
+        },
+        {
+          type: 'uint256',
+          name: 'contractNonce',
+        },
+        {
+          type: 'uint256',
+          name: 'signerNonce',
         },
         {
           type: 'uint256',
@@ -50,31 +66,15 @@ export const getOwnerRentSignature = (
           type: 'uint256',
           name: 'minDays',
         },
-        {
-          type: 'uint256',
-          name: 'pricePerDay',
-        },
-        {
-          type: 'uint256',
-          name: 'expiration',
-        },
-        {
-          type: 'uint256',
-          name: 'contractNonce',
-        },
-        {
-          type: 'uint256',
-          name: 'signerNonce',
-        },
       ],
     },
     params
   )
 
-export const getUserRentSignature = (
+export const getTenantSignature = (
   signer: SignerWithAddress,
   contract: Rentals,
-  params: Omit<Rentals.UserRentParamsStruct, 'signature'>
+  params: Omit<Rentals.TenantStruct, 'signature'>
 ): Promise<string> =>
   signer._signTypedData(
     {
@@ -84,10 +84,10 @@ export const getUserRentSignature = (
       version: '1',
     },
     {
-      UserRent: [
+      Tenant: [
         {
           type: 'address',
-          name: 'user',
+          name: 'signer',
         },
         {
           type: 'address',
@@ -103,10 +103,6 @@ export const getUserRentSignature = (
         },
         {
           type: 'uint256',
-          name: '_days',
-        },
-        {
-          type: 'uint256',
           name: 'pricePerDay',
         },
         {
@@ -120,6 +116,10 @@ export const getUserRentSignature = (
         {
           type: 'uint256',
           name: 'signerNonce',
+        },
+        {
+          type: 'uint256',
+          name: '_days',
         },
       ],
     },
