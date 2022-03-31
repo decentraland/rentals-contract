@@ -145,7 +145,7 @@ describe('Rentals', () => {
       await erc20.connect(tenant).approve(rentals.address, maxUint256)
     })
 
-    it('should revert when the owner signer does not match the owner in params', async () => {
+    it('should revert when the lessor signer does not match the signer in params', async () => {
       await expect(
         rentals.connect(lessor).rent(
           {
@@ -163,7 +163,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNATURE')
     })
 
-    it('should revert when the user signer does not match the user provided in params', async () => {
+    it('should revert when the tenant signer does not match the signer provided in params', async () => {
       await expect(
         rentals.connect(lessor).rent(
           {
@@ -178,7 +178,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNATURE')
     })
 
-    it('should revert when the block timestamp is higher than the provided owner signature expiration', async () => {
+    it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
       lessorParams = { ...lessorParams, expiration: now() - 1000 }
 
       await expect(
@@ -195,7 +195,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: EXPIRED_LESSOR_SIGNATURE')
     })
 
-    it('should revert when the block timestamp is higher than the provided user signature expiration', async () => {
+    it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
       tenantParams = { ...tenantParams, expiration: now() - 1000 }
 
       await expect(
@@ -229,7 +229,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS')
     })
 
-    it('should revert when user days is lower than owner min days', async () => {
+    it('should revert when tenant days is lower than lessor min days', async () => {
       tenantParams = { ...tenantParams, _days: BigNumber.from(lessorParams.minDays).sub(1) }
 
       await expect(
@@ -246,7 +246,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
     })
 
-    it('should revert when user days is higher than owner max days', async () => {
+    it('should revert when tenant days is higher than lessor max days', async () => {
       tenantParams = { ...tenantParams, _days: BigNumber.from(lessorParams.maxDays).add(1) }
 
       await expect(
@@ -263,7 +263,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
     })
 
-    it('should revert when owner and user provide different price per day', async () => {
+    it('should revert when lessor and tenant provide different price per day', async () => {
       tenantParams = { ...tenantParams, pricePerDay: BigNumber.from(lessorParams.pricePerDay).add(1) }
 
       await expect(
@@ -280,7 +280,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_PRICE')
     })
 
-    it('should revert when owner and user provide different contract addresses', async () => {
+    it('should revert when lessor and tenant provide different contract addresses', async () => {
       tenantParams = { ...tenantParams, contractAddress: lessor.address }
 
       await expect(
@@ -297,7 +297,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_CONTRACT_ADDRESS')
     })
 
-    it('should revert when owner and user provide different token ids', async () => {
+    it('should revert when lessor and tenant provide different token ids', async () => {
       tenantParams = { ...tenantParams, tokenId: 200 }
 
       await expect(
@@ -314,7 +314,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_TOKEN_ID')
     })
 
-    it('should revert when owner and user provide different fingerprints', async () => {
+    it('should revert when lessor and tenant provide different fingerprints', async () => {
       tenantParams = { ...tenantParams, fingerprint: getRandomBytes() }
 
       await expect(
@@ -331,7 +331,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
     })
 
-    it('should revert when owner contract nonce is not the same as the contract', async () => {
+    it('should revert when lessor contract nonce is not the same as the contract', async () => {
       lessorParams = { ...lessorParams, contractNonce: 1 }
 
       await expect(
@@ -348,7 +348,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE')
     })
 
-    it('should revert when user contract nonce is not the same as the contract', async () => {
+    it('should revert when tenant contract nonce is not the same as the contract', async () => {
       tenantParams = { ...tenantParams, contractNonce: 1 }
 
       await expect(
@@ -365,7 +365,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_CONTRACT_NONCE')
     })
 
-    it('should revert when owner signer nonce is not the same as the contract', async () => {
+    it('should revert when lessor signer nonce is not the same as the contract', async () => {
       lessorParams = { ...lessorParams, signerNonce: 1 }
 
       await expect(
@@ -382,7 +382,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNER_NONCE')
     })
 
-    it('should revert when user signer nonce is not the same as the contract', async () => {
+    it('should revert when tenant signer nonce is not the same as the contract', async () => {
       tenantParams = { ...tenantParams, signerNonce: 1 }
 
       await expect(
