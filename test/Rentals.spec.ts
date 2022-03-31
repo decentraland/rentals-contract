@@ -399,65 +399,6 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_USER_SIGNER_NONCE')
     })
 
-    it('should revert when the provided contract address is not for a contract', async () => {
-      ownerParams = { ...ownerParams, contractAddress: assetOwner.address }
-      userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
-
-      await expect(
-        rentals.connect(assetOwner).rent(
-          {
-            ...ownerParams,
-            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-          },
-          {
-            ...userParams,
-            signature: await getUserRentSignature(user, rentals, userParams),
-          }
-        )
-      ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_A_CONTRACT')
-    })
-
-    it('should revert when the provided contract address does not implement `supportsInterface`', async () => {
-      ownerParams = { ...ownerParams, contractAddress: erc20.address }
-      userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
-
-      await expect(
-        rentals.connect(assetOwner).rent(
-          {
-            ...ownerParams,
-            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-          },
-          {
-            ...userParams,
-            signature: await getUserRentSignature(user, rentals, userParams),
-          }
-        )
-      ).to.be.revertedWith(
-        "Transaction reverted: function selector was not recognized and there's no fallback function"
-      )
-    })
-
-    it("should revert when the provided contract address's `supportsInterface` returns false", async () => {
-      const DummyFalseSupportsInterfaceFactory = await ethers.getContractFactory('DummyFalseSupportsInterface')
-      const falseSupportsInterface = await DummyFalseSupportsInterfaceFactory.connect(deployer).deploy()
-
-      ownerParams = { ...ownerParams, contractAddress: falseSupportsInterface.address }
-      userParams = { ...userParams, contractAddress: ownerParams.contractAddress }
-
-      await expect(
-        rentals.connect(assetOwner).rent(
-          {
-            ...ownerParams,
-            signature: await getOwnerRentSignature(assetOwner, rentals, ownerParams),
-          },
-          {
-            ...userParams,
-            signature: await getUserRentSignature(user, rentals, userParams),
-          }
-        )
-      ).to.be.revertedWith('Require#isERC721: ADDRESS_NOT_AN_ERC721')
-    })
-
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
@@ -485,7 +426,7 @@ describe('Rentals', () => {
             signature: await getUserRentSignature(user, rentals, userParams),
           }
         )
-      ).to.be.revertedWith('Require#isComposableERC721: INVALID_FINGERPRINT')
+      ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
     })
 
     // Skipped because the DummyFalseVerifyFingerprint does not implement any ERC721 functions needed for the rest of the

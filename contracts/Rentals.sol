@@ -6,10 +6,12 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "hardhat/console.sol";
 
 import "./libraries/Require.sol";
 import "./interfaces/IERC721Operable.sol";
+import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant OWNER_RENT_TYPE_HASH =
@@ -25,6 +27,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                 "UserRent(address user,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 _days,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce)"
             )
         );
+
+    bytes4 public constant ERC721Verifiable_ValidateFingerprint = 0x8f9f4b63;
 
     // Token that will be transfered from the user to the owner when a rent starts.
     IERC20 public erc20Token;
@@ -250,16 +254,16 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             "Rentals#rent: INVALID_USER_SIGNER_NONCE"
         );
 
-        // Validate that the address provided belongs to an ERC721
-        Require.isERC721(_ownerRentParams.contractAddress);
-
-        // Validate that the asset is a composable ERC721 if fingerprint is provided and that the fingerprint is valid
+        // If a fingerprint is provided, check that
         if (_ownerRentParams.fingerprint.length > 0) {
-            Require.isComposableERC721(
-                _ownerRentParams.contractAddress,
+            IERC721Verifiable verifiable = IERC721Verifiable(_ownerRentParams.contractAddress);
+
+            bool isValidFingerprint = verifiable.verifyFingerprint(
                 _ownerRentParams.tokenId,
                 _ownerRentParams.fingerprint
             );
+
+            require(isValidFingerprint, "Rentals#rent: INVALID_FINGERPRINT");
         }
 
         // Validate that the asset is not currently being rented
