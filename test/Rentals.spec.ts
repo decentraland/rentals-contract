@@ -287,7 +287,20 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS')
+      ).to.be.revertedWith('Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS')
+    })
+
+    it('should revert when min days is 0', async () => {
+      lessorParams = { ...lessorParams, minDays: 0 }
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#rent: MIN_DAYS_0')
     })
 
     it('should revert when tenant days is lower than lessor min days', async () => {
