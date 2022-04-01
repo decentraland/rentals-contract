@@ -272,6 +272,34 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
     })
 
+    it('should update original owners with lessor when the contract does not own the asset already', async () => {
+      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+
+    it('should bump both the lessor and tenant asset nonces', async () => {
+      expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, tenant.address)).to.equal(0)
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+      expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
+    })
+
     it('should revert when the lessor signer does not match the signer in params', async () => {
       await expect(
         rentals
