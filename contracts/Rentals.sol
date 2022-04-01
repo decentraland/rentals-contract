@@ -158,6 +158,15 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         asset.safeTransferFrom(address(this), msg.sender, _tokenId);
     }
 
+    function setUpdateOperator(address _contractAddress, uint256 _tokenId, address _operator) external {
+        require(!_isRented(_contractAddress, _tokenId), "Rentals#setUpdateOperator: CURRENTLY_RENTED");
+        require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER");
+
+        IERC721Operable asset = IERC721Operable(_contractAddress);
+
+        asset.setUpdateOperator(_tokenId, _operator);
+    }
+
     function onERC721Received(
         address _operator,
         address, // _from,

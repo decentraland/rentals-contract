@@ -676,6 +676,48 @@ describe('Rentals', () => {
     })
   })
 
+  describe('setUpdateOperator', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should allow the original owner to set the operator of an asset owned by the contract if it is not rented', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
+
+      await rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)
+    })
+
+    it('should revert if the contract does not have the asset', async () => {
+      await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
+        'Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER'
+      )
+    })
+
+    it('should revert the caller is not the original owner of the asset', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
+
+      await expect(rentals.connect(tenant).setUpdateOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
+        'Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER'
+      )
+    })
+  })
+
   describe('onERC721Received', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
