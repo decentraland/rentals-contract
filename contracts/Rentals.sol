@@ -159,13 +159,12 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function onERC721Received(
-        address, // operator,
-        address, // from,
-        uint256, // tokenId,
-        bytes calldata // data
-    ) external pure override returns (bytes4) {
-        // This is supposed to be used so no nfts are locked within the contract in an unnatural way.
-        // Maybe reverting here would be the correct way to use it.
+        address _operator,
+        address, // _from,
+        uint256, // _tokenId,
+        bytes calldata // _data
+    ) external view override returns (bytes4) {
+        require(_operator == address(this), "Rentals#rent: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
         return 0x150b7a02;
     }
 

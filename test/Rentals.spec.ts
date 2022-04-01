@@ -628,4 +628,28 @@ describe('Rentals', () => {
       await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
     })
   })
+
+  describe('onERC721Received', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should allow the asset transfer from a rent', async () => {
+      expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
+    })
+
+    it('should revert when the contract receives an asset not transfered via rent', async () => {
+      const transfer = erc721.connect(lessor)['safeTransferFrom(address,address,uint256)'](lessor.address, rentals.address, tokenId)
+      await expect(transfer).to.be.revertedWith('Rentals#rent: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT')
+    })
+  })
 })
