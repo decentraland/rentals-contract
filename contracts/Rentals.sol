@@ -82,8 +82,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         signerNonce[msg.sender]++;
     }
 
-    function bumpSignerAssetNonce(address _contractAddress, uint256 _tokenId) external {
-        _bumpSignerAssetNonce(_contractAddress, _tokenId, msg.sender);
+    function bumpAssetNonce(address _contractAddress, uint256 _tokenId) external {
+        _bumpAssetNonce(_contractAddress, _tokenId, msg.sender);
     }
 
     function getAssetNonce(
@@ -136,8 +136,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         ongoingRentals[contractAddress][tokenId] = block.timestamp + _tenant._days * SECONDS_PER_DAY;
 
-        _bumpSignerAssetNonce(contractAddress, tokenId, lessor);
-        _bumpSignerAssetNonce(contractAddress, tokenId, tenant);
+        _bumpAssetNonce(contractAddress, tokenId, lessor);
+        _bumpAssetNonce(contractAddress, tokenId, tenant);
 
         if (!isAssetOwnedByContract) {
             asset.safeTransferFrom(lessor, address(this), tokenId);
@@ -159,12 +159,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         return 0x150b7a02;
     }
 
-    // Private functions
     function _setERC20Token(IERC20 _erc20Token) internal {
         erc20Token = _erc20Token;
     }
 
-    function _bumpSignerAssetNonce(
+    function _bumpAssetNonce(
         address _contractAddress,
         uint256 _tokenId,
         address _signer
