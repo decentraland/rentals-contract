@@ -526,15 +526,8 @@ describe('Rentals', () => {
       await falseVerifyFingerprint.connect(lessor).mint(lessor.address, tokenId)
       await falseVerifyFingerprint.connect(lessor).approve(rentals.address, tokenId)
 
-      lessorParams = {
-        ...lessorParams,
-        contractAddress: falseVerifyFingerprint.address,
-      }
-
-      tenantParams = {
-        ...tenantParams,
-        contractAddress: lessorParams.contractAddress,
-      }
+      lessorParams = { ...lessorParams, contractAddress: falseVerifyFingerprint.address }
+      tenantParams = { ...tenantParams, contractAddress: lessorParams.contractAddress }
 
       await rentals
         .connect(lessor)
