@@ -52,28 +52,59 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 _days;
     }
 
+    /**
+    @notice Initialize the contract.
+    @dev Can only be initialized once, This method should be called by an upgradable proxy.
+    @param _owner The address of the owner of the contract.
+    @param _token The address of the ERC20 token used by tenants to pay rent.
+     */
     function initialize(address _owner, IERC20 _token) external initializer {
         __EIP712_init("Rentals", "1");
         _setToken(_token);
         _transferOwnership(_owner);
     }
 
+    /**
+    @notice Set the ERC20 token used by tenants to pay rent.
+    @param _token The address of the token
+     */
     function setToken(IERC20 _token) external onlyOwner {
         _setToken(_token);
     }
 
+    /**
+    @notice Increase by 1 the contract nonce
+    @dev This can be used to invalidate all signatures created with the previous nonce.
+     */
     function bumpContractNonce() external onlyOwner {
         contractNonce++;
     }
 
+    /**
+    @notice Increase by 1 the signer nonce
+    @dev This can be used to invalidate all signatures created by the caller with the previous nonce.
+     */
     function bumpSignerNonce() external {
         signerNonce[msg.sender]++;
     }
 
+    /**
+    @notice Increase by 1 the asset nonce
+    @dev This can be used to invalidate all signatures created by the caller for a given asset with the previous nonce.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+     */
     function bumpAssetNonce(address _contractAddress, uint256 _tokenId) external {
         _bumpAssetNonce(_contractAddress, _tokenId, msg.sender);
     }
 
+    /**
+    @notice Get the asset nonce for a signer.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+    @param _signer The address of the user.
+    @return The asset nonce.
+     */
     function getAssetNonce(
         address _contractAddress,
         uint256 _tokenId,
@@ -82,18 +113,41 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         return _getAssetNonce(_contractAddress, _tokenId, _signer);
     }
 
+    /**
+    @notice Get the original owner address of an asset before it was transfered to this contract.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+    @return The original owner address or address(0) if there is none.
+     */
     function getOriginalOwner(address _contractAddress, uint256 _tokenId) external view returns (address) {
         return _getOriginalOwner(_contractAddress, _tokenId);
     }
 
+    /**
+    @notice Get the timestamp of when a rental will end.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+    @return The timestamp for when a rental ends or 0 if the asset has not been rented yet.
+     */
     function getRentalEnd(address _contractAddress, uint256 _tokenId) external view returns (uint256) {
         return _getRentalEnd(_contractAddress, _tokenId);
     }
 
+    /**
+    @notice Get if and asset is currently being rented.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+    @return true or false depending if the asset is currently rented
+     */
     function isRented(address _contractAddress, uint256 _tokenId) external view returns (bool) {
         return _isRented(_contractAddress, _tokenId);
     }
 
+    /**
+    @notice Rent an asset providing the signature of both the lessor and the tenant and a set of matching parameters.
+    @param _lessor Data corresponding to the lessor.
+    @param _tenant Data corresponding to the tenant.
+     */
     function rent(Lessor calldata _lessor, Tenant calldata _tenant) external {
         _verify(_lessor, _tenant);
 
@@ -136,6 +190,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         token.transferFrom(tenant, lessor, pricePerDay * _days);
     }
 
+    /**
+    @notice The original owner of the asset can claim it back if said asset is not being rented.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+     */
     function claim(address _contractAddress, uint256 _tokenId) external {
         require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
         require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#claim: NOT_ORIGINAL_OWNER");
@@ -147,6 +206,13 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         asset.safeTransferFrom(address(this), msg.sender, _tokenId);
     }
 
+    /**
+    @notice The original owner of the asset change the operator of said asset if it is not currently rented.
+    @dev As the operator permission cannot be removed automatically from the tenant after the rent ends, the lessor has to do it manually afterwards.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+    @param _operator The address that will have operator privileges over the asset.
+     */
     function setUpdateOperator(
         address _contractAddress,
         uint256 _tokenId,
@@ -160,6 +226,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         asset.setUpdateOperator(_tokenId, _operator);
     }
 
+    /**
+    @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
+    @dev The contract only allows safe transfers by itself made by the rent function.
+    @param _operator Caller of the safe transfer function.
+    */
     function onERC721Received(
         address _operator,
         address, // _from,
