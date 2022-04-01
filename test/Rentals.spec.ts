@@ -7,6 +7,7 @@ import { Rentals } from '../typechain-types/Rentals'
 import { ether, getLessorSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
 
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+const tokenId = 1
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -37,6 +38,12 @@ describe('Rentals', () => {
     // Deploy ERC20
     const ERC20Factory = await ethers.getContractFactory('DummyERC20')
     erc20 = await ERC20Factory.connect(deployer).deploy()
+
+    await erc721.connect(lessor).mint(lessor.address, tokenId)
+    await erc721.connect(lessor).approve(rentals.address, tokenId)
+
+    await erc20.connect(tenant).mint(tenant.address, ether('100000'))
+    await erc20.connect(tenant).approve(rentals.address, maxUint256)
   })
 
   describe('initialize', () => {
@@ -70,9 +77,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when sender is not owner', async () => {
-      await expect(rentals.connect(tenant).setERC20Token(erc20.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      await expect(rentals.connect(tenant).setERC20Token(erc20.address)).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
 
@@ -104,6 +109,18 @@ describe('Rentals', () => {
     })
   })
 
+  // describe('getOriginalOwner', () => {
+  //   beforeEach(async () => {
+  //     await rentals.connect(deployer).initialize(owner.address, erc20.address)
+  //   })
+
+  //   it('should increase the signerNonce for the sender by 1', async () => {
+  //     expect(await rentals.connect(lessor).getOriginalOwner(lessor.address)).to.equal(0)
+  //     await rentals.connect(lessor).bumpSignerNonce()
+  //     expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(1)
+  //   })
+  // })
+
   describe('rent', () => {
     let lessorParams: Omit<Rentals.LessorStruct, 'signature'>
     let tenantParams: Omit<Rentals.TenantStruct, 'signature'>
@@ -112,7 +129,7 @@ describe('Rentals', () => {
       lessorParams = {
         signer: lessor.address,
         contractAddress: erc721.address,
-        tokenId: 1,
+        tokenId,
         fingerprint: [],
         pricePerDay: ether('100'),
         expiration: now() + 1000,
@@ -125,7 +142,7 @@ describe('Rentals', () => {
       tenantParams = {
         signer: tenant.address,
         contractAddress: erc721.address,
-        tokenId: 1,
+        tokenId,
         fingerprint: [],
         pricePerDay: ether('100'),
         expiration: now() + 1000,
@@ -135,14 +152,6 @@ describe('Rentals', () => {
       }
 
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
-
-      await erc721.connect(deployer).mint(lessor.address, 1)
-
-      await erc721.connect(lessor).approve(rentals.address, 1)
-
-      await erc20.connect(deployer).mint(tenant.address, ether('100000'))
-
-      await erc20.connect(tenant).approve(rentals.address, maxUint256)
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
@@ -436,8 +445,8 @@ describe('Rentals', () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
 
-      await falseVerifyFingerprint.connect(lessor).mint(lessor.address, 1)
-      await falseVerifyFingerprint.connect(lessor).approve(rentals.address, 1)
+      await falseVerifyFingerprint.connect(lessor).mint(lessor.address, tokenId)
+      await falseVerifyFingerprint.connect(lessor).approve(rentals.address, tokenId)
 
       lessorParams = {
         ...lessorParams,
