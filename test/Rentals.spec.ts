@@ -60,6 +60,7 @@ describe('Rentals', () => {
       expiration: now() + 1000,
       contractNonce: 0,
       signerNonce: 0,
+      assetNonce: 0,
       maxDays: 20,
       minDays: 10,
     }
@@ -73,6 +74,7 @@ describe('Rentals', () => {
       expiration: now() + 1000,
       contractNonce: 0,
       signerNonce: 0,
+      assetNonce: 0,
       _days: 15,
     }
   })
@@ -486,6 +488,9 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
+      lessorParams = { ...lessorParams, assetNonce: 1 }
+      tenantParams = { ...tenantParams, assetNonce: 1 }
+
       await expect(
         rentals
           .connect(lessor)
@@ -507,8 +512,8 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
       await network.provider.send('evm_mine')
 
-      lessorParams = { ...lessorParams, signer: tenant.address, expiration: maxUint256 }
-      tenantParams = { ...tenantParams, signer: lessor.address, expiration: maxUint256 }
+      lessorParams = { ...lessorParams, signer: tenant.address, expiration: maxUint256, assetNonce: 1 }
+      tenantParams = { ...tenantParams, signer: lessor.address, expiration: maxUint256, assetNonce: 1 }
 
       await expect(
         rentals

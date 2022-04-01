@@ -59,6 +59,10 @@ export const getLessorSignature = (signer: SignerWithAddress, contract: Rentals,
         },
         {
           type: 'uint256',
+          name: 'assetNonce',
+        },
+        {
+          type: 'uint256',
           name: 'maxDays',
         },
         {
@@ -111,6 +115,10 @@ export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals,
         {
           type: 'uint256',
           name: 'signerNonce',
+        },
+        {
+          type: 'uint256',
+          name: 'assetNonce',
         },
         {
           type: 'uint256',

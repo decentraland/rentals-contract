@@ -15,14 +15,14 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant LESSOR_TYPE_HASH =
         keccak256(
             bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce,uint256 maxDays,uint256 minDays)"
+                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce,uint256 assetNonce,uint256 maxDays,uint256 minDays)"
             )
         );
 
     bytes32 public constant TENANT_TYPE_HASH =
         keccak256(
             bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce,uint256 _days)"
+                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce,uint256 assetNonce,uint256 _days)"
             )
         );
 
@@ -31,6 +31,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     IERC20 public erc20Token;
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
+    mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
     mapping(address => mapping(uint256 => address)) originalOwners;
     mapping(address => mapping(uint256 => uint256)) ongoingRentals;
 
@@ -43,6 +44,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 expiration;
         uint256 contractNonce;
         uint256 signerNonce;
+        uint256 assetNonce;
         bytes signature;
         uint256 maxDays;
         uint256 minDays;
@@ -57,6 +59,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 expiration;
         uint256 contractNonce;
         uint256 signerNonce;
+        uint256 assetNonce;
         bytes signature;
         uint256 _days;
     }
@@ -77,6 +80,18 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
     function bumpSignerNonce() external {
         signerNonce[msg.sender]++;
+    }
+
+    function bumpSignerAssetNonce(address _contractAddress, uint256 _tokenId) external {
+        _bumpSignerAssetNonce(_contractAddress, _tokenId, msg.sender);
+    }
+
+    function getAssetNonce(
+        address _contractAddress,
+        uint256 _tokenId,
+        address _signer
+    ) external view returns (uint256) {
+        return _getAssetNonce(_contractAddress, _tokenId, _signer);
     }
 
     function getOriginalOwner(address _contractAddress, uint256 _tokenId) external view returns (address) {
@@ -121,6 +136,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         ongoingRentals[contractAddress][tokenId] = block.timestamp + _tenant._days * SECONDS_PER_DAY;
 
+        _bumpSignerAssetNonce(contractAddress, tokenId, lessor);
+        _bumpSignerAssetNonce(contractAddress, tokenId, tenant);
+
         if (!isAssetOwnedByContract) {
             asset.safeTransferFrom(lessor, address(this), tokenId);
         }
@@ -144,6 +162,22 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     // Private functions
     function _setERC20Token(IERC20 _erc20Token) internal {
         erc20Token = _erc20Token;
+    }
+
+    function _bumpSignerAssetNonce(
+        address _contractAddress,
+        uint256 _tokenId,
+        address _signer
+    ) internal {
+        assetNonce[_contractAddress][_tokenId][_signer]++;
+    }
+
+    function _getAssetNonce(
+        address _contractAddress,
+        uint256 _tokenId,
+        address _signer
+    ) internal view returns (uint256) {
+        return assetNonce[_contractAddress][_tokenId][_signer];
     }
 
     function _getOriginalOwner(address _contractAddress, uint256 _tokenId) internal view returns (address) {
@@ -174,6 +208,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         require(_tenant.contractNonce == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
         require(_lessor.signerNonce == signerNonce[_lessor.signer], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
         require(_tenant.signerNonce == signerNonce[_tenant.signer], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
+
+        _verifyAssetNonces(_lessor, _tenant);
     }
 
     function _verifySignatures(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
@@ -189,6 +225,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _lessor.expiration,
                     _lessor.contractNonce,
                     _lessor.signerNonce,
+                    _lessor.assetNonce,
                     _lessor.maxDays,
                     _lessor.minDays
                 )
@@ -207,6 +244,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _tenant.expiration,
                     _tenant.contractNonce,
                     _tenant.signerNonce,
+                    _tenant.assetNonce,
                     _tenant._days
                 )
             )
@@ -217,5 +255,16 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         require(tenant == _tenant.signer, "Rentals#rent: INVALID_TENANT_SIGNATURE");
         require(lessor == _lessor.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
+    }
+
+    function _verifyAssetNonces(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
+        address contractAddress = _lessor.contractAddress;
+        uint256 tokenId = _lessor.tokenId;
+
+        uint256 lessorAssetNonce = _getAssetNonce(contractAddress, tokenId, _lessor.signer);
+        uint256 tenantAssetNonce = _getAssetNonce(contractAddress, tokenId, _tenant.signer);
+
+        require(_lessor.assetNonce == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
+        require(_tenant.assetNonce == tenantAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
     }
 }
