@@ -122,7 +122,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             originalOwners[contractAddress][tokenId] = lessor;
         }
 
-        ongoingRentals[contractAddress][tokenId] = block.timestamp + _tenant._days * SECONDS_PER_DAY;
+        ongoingRentals[contractAddress][tokenId] = block.timestamp + _days * SECONDS_PER_DAY;
 
         _bumpAssetNonce(contractAddress, tokenId, lessor);
         _bumpAssetNonce(contractAddress, tokenId, tenant);
