@@ -300,6 +300,22 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
     })
 
+    it('should update the ongoin rentals mapping for the rented asset', async () => {
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(0)
+
+      const latestBlock = await ethers.provider.getBlock('latest')
+      const latestBlockTime = latestBlock.timestamp
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams._days) + 1)
+    })
+
     it('should revert when the lessor signer does not match the signer in params', async () => {
       await expect(
         rentals
