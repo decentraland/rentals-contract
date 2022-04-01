@@ -189,34 +189,23 @@ describe('Rentals', () => {
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, {
-              ...lessorParams,
-              signer: tenant.address,
-            }),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, { ...lessorParams, signer: tenant.address }) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNATURE')
     })
 
     it('should revert when the tenant signer does not match the signer provided in params', async () => {
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, { ...tenantParams, signer: lessor.address }),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, { ...tenantParams, signer: lessor.address }) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNATURE')
     })
 
@@ -224,16 +213,12 @@ describe('Rentals', () => {
       lessorParams = { ...lessorParams, expiration: now() - 1000 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: EXPIRED_LESSOR_SIGNATURE')
     })
 
@@ -241,16 +226,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, expiration: now() - 1000 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: EXPIRED_TENANT_SIGNATURE')
     })
 
@@ -258,16 +239,12 @@ describe('Rentals', () => {
       lessorParams = { ...lessorParams, minDays: BigNumber.from(lessorParams.maxDays).add(1) }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: MAX_DAYS_NOT_GE_THAN_MIN_DAYS')
     })
 
@@ -275,16 +252,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, _days: BigNumber.from(lessorParams.minDays).sub(1) }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
     })
 
@@ -292,16 +265,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, _days: BigNumber.from(lessorParams.maxDays).add(1) }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
     })
 
@@ -309,16 +278,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, pricePerDay: BigNumber.from(lessorParams.pricePerDay).add(1) }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_PRICE')
     })
 
@@ -326,16 +291,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, contractAddress: lessor.address }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_CONTRACT_ADDRESS')
     })
 
@@ -343,16 +304,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, tokenId: 200 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_TOKEN_ID')
     })
 
@@ -360,16 +317,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, fingerprint: getRandomBytes() }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
     })
 
@@ -377,16 +330,12 @@ describe('Rentals', () => {
       lessorParams = { ...lessorParams, contractNonce: 1 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE')
     })
 
@@ -394,16 +343,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, contractNonce: 1 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_CONTRACT_NONCE')
     })
 
@@ -411,16 +356,12 @@ describe('Rentals', () => {
       lessorParams = { ...lessorParams, signerNonce: 1 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNER_NONCE')
     })
 
@@ -428,16 +369,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, signerNonce: 1 }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNER_NONCE')
     })
 
@@ -445,29 +382,16 @@ describe('Rentals', () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
 
-      lessorParams = {
-        ...lessorParams,
-        contractAddress: falseVerifyFingerprint.address,
-        fingerprint: getRandomBytes(),
-      }
-
-      tenantParams = {
-        ...tenantParams,
-        contractAddress: lessorParams.contractAddress,
-        fingerprint: lessorParams.fingerprint,
-      }
+      lessorParams = { ...lessorParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes() }
+      tenantParams = { ...tenantParams, contractAddress: lessorParams.contractAddress, fingerprint: lessorParams.fingerprint }
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
     })
 
@@ -491,41 +415,29 @@ describe('Rentals', () => {
         contractAddress: lessorParams.contractAddress,
       }
 
-      await rentals.connect(lessor).rent(
-        {
-          ...lessorParams,
-          signature: await getLessorSignature(lessor, rentals, lessorParams),
-        },
-        {
-          ...tenantParams,
-          signature: await getTenantSignature(tenant, rentals, tenantParams),
-        }
-      )
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
     })
 
     it('should revert if an asset is already being rented', async () => {
-      rentals.connect(lessor).rent(
-        {
-          ...lessorParams,
-          signature: await getLessorSignature(lessor, rentals, lessorParams),
-        },
-        {
-          ...tenantParams,
-          signature: await getTenantSignature(tenant, rentals, tenantParams),
-        }
-      )
+      rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
 
       await expect(
-        rentals.connect(lessor).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(lessor, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(tenant, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
     })
 
