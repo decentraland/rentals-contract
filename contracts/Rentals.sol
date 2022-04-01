@@ -216,8 +216,4 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         require(tenant == _tenant.signer, "Rentals#rent: INVALID_TENANT_SIGNATURE");
         require(lessor == _lessor.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
     }
-
-    function _verifySignatureExpiration(uint256 _expiration, string memory _message) internal view {
-        require(_expiration > block.timestamp, _message);
-    }
 }
