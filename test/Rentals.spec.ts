@@ -6,6 +6,7 @@ import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-typ
 import { Rentals } from '../typechain-types/Rentals'
 import { ether, getLessorSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
 
+const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const tokenId = 1
 
@@ -18,6 +19,8 @@ describe('Rentals', () => {
   let erc721: DummyERC721
   let composableErc721: DummyComposableERC721
   let erc20: DummyERC20
+  let lessorParams: Omit<Rentals.LessorStruct, 'signature'>
+  let tenantParams: Omit<Rentals.TenantStruct, 'signature'>
 
   beforeEach(async () => {
     // Store addresses
@@ -44,6 +47,31 @@ describe('Rentals', () => {
 
     await erc20.connect(tenant).mint(tenant.address, ether('100000'))
     await erc20.connect(tenant).approve(rentals.address, maxUint256)
+
+    lessorParams = {
+      signer: lessor.address,
+      contractAddress: erc721.address,
+      tokenId,
+      fingerprint: [],
+      pricePerDay: ether('100'),
+      expiration: now() + 1000,
+      contractNonce: 0,
+      signerNonce: 0,
+      maxDays: 20,
+      minDays: 10,
+    }
+
+    tenantParams = {
+      signer: tenant.address,
+      contractAddress: erc721.address,
+      tokenId,
+      fingerprint: [],
+      pricePerDay: ether('100'),
+      expiration: now() + 1000,
+      contractNonce: 0,
+      signerNonce: 0,
+      _days: 15,
+    }
   })
 
   describe('initialize', () => {
@@ -109,48 +137,29 @@ describe('Rentals', () => {
     })
   })
 
-  // describe('getOriginalOwner', () => {
-  //   beforeEach(async () => {
-  //     await rentals.connect(deployer).initialize(owner.address, erc20.address)
-  //   })
+  describe('getOriginalOwner', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
 
-  //   it('should increase the signerNonce for the sender by 1', async () => {
-  //     expect(await rentals.connect(lessor).getOriginalOwner(lessor.address)).to.equal(0)
-  //     await rentals.connect(lessor).bumpSignerNonce()
-  //     expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(1)
-  //   })
-  // })
+    it('should return address(0) when nothing is set', async () => {
+      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
+    })
+
+    it('should return the address of the original asset owner after a rent', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+  })
 
   describe('rent', () => {
-    let lessorParams: Omit<Rentals.LessorStruct, 'signature'>
-    let tenantParams: Omit<Rentals.TenantStruct, 'signature'>
-
     beforeEach(async () => {
-      lessorParams = {
-        signer: lessor.address,
-        contractAddress: erc721.address,
-        tokenId,
-        fingerprint: [],
-        pricePerDay: ether('100'),
-        expiration: now() + 1000,
-        contractNonce: 0,
-        signerNonce: 0,
-        maxDays: 20,
-        minDays: 10,
-      }
-
-      tenantParams = {
-        signer: tenant.address,
-        contractAddress: erc721.address,
-        tokenId,
-        fingerprint: [],
-        pricePerDay: ether('100'),
-        expiration: now() + 1000,
-        contractNonce: 0,
-        signerNonce: 0,
-        _days: 15,
-      }
-
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
     })
 
