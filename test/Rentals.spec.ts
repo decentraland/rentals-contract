@@ -280,7 +280,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, { ...lessorParams, signer: tenant.address }) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNATURE')
+      ).to.be.revertedWith('Rentals#_verifySignatures: INVALID_LESSOR_SIGNATURE')
     })
 
     it('should revert when the tenant signer does not match the signer provided in params', async () => {
@@ -291,7 +291,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, { ...tenantParams, signer: lessor.address }) }
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNATURE')
+      ).to.be.revertedWith('Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE')
     })
 
     it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
@@ -304,7 +304,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: EXPIRED_LESSOR_SIGNATURE')
+      ).to.be.revertedWith('Rentals#_verify: EXPIRED_LESSOR_SIGNATURE')
     })
 
     it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
@@ -317,7 +317,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: EXPIRED_TENANT_SIGNATURE')
+      ).to.be.revertedWith('Rentals#_verify: EXPIRED_TENANT_SIGNATURE')
     })
 
     it('should revert when max days is lower than min days', async () => {
@@ -330,7 +330,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS')
+      ).to.be.revertedWith('Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS')
     })
 
     it('should revert when min days is 0', async () => {
@@ -343,7 +343,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: MIN_DAYS_0')
+      ).to.be.revertedWith('Rentals#_verify: MIN_DAYS_0')
     })
 
     it('should revert when tenant days is lower than lessor min days', async () => {
@@ -356,7 +356,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+      ).to.be.revertedWith('Rentals#_verify: DAYS_NOT_IN_RANGE')
     })
 
     it('should revert when tenant days is higher than lessor max days', async () => {
@@ -369,7 +369,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+      ).to.be.revertedWith('Rentals#_verify: DAYS_NOT_IN_RANGE')
     })
 
     it('should revert when lessor and tenant provide different price per day', async () => {
@@ -382,7 +382,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: DIFFERENT_PRICE')
+      ).to.be.revertedWith('Rentals#_verify: DIFFERENT_PRICE')
     })
 
     it('should revert when lessor and tenant provide different contract addresses', async () => {
@@ -395,7 +395,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: DIFFERENT_CONTRACT_ADDRESS')
+      ).to.be.revertedWith('Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS')
     })
 
     it('should revert when lessor and tenant provide different token ids', async () => {
@@ -408,7 +408,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: DIFFERENT_TOKEN_ID')
+      ).to.be.revertedWith('Rentals#_verify: DIFFERENT_TOKEN_ID')
     })
 
     it('should revert when lessor and tenant provide different fingerprints', async () => {
@@ -421,7 +421,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: DIFFERENT_FINGERPRINT')
+      ).to.be.revertedWith('Rentals#_verify: DIFFERENT_FINGERPRINT')
     })
 
     it('should revert when lessor contract nonce is not the same as the contract', async () => {
@@ -434,7 +434,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE')
+      ).to.be.revertedWith('Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE')
     })
 
     it('should revert when tenant contract nonce is not the same as the contract', async () => {
@@ -447,7 +447,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_CONTRACT_NONCE')
+      ).to.be.revertedWith('Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE')
     })
 
     it('should revert when lessor signer nonce is not the same as the contract', async () => {
@@ -460,7 +460,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNER_NONCE')
+      ).to.be.revertedWith('Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE')
     })
 
     it('should revert when tenant signer nonce is not the same as the contract', async () => {
@@ -473,7 +473,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNER_NONCE')
+      ).to.be.revertedWith('Rentals#_verify: INVALID_TENANT_SIGNER_NONCE')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
@@ -611,7 +611,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await expect(rentals.connect(lessor).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
+      await expect(rentals.connect(lessor).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
     it('should revert when the caller is not the original owner of the asset', async () => {
@@ -625,7 +625,7 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
       await network.provider.send('evm_mine')
 
-      await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
+      await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_ORIGINAL_OWNER')
     })
   })
 
@@ -649,7 +649,7 @@ describe('Rentals', () => {
 
     it('should revert when the contract receives an asset not transfered via rent', async () => {
       const transfer = erc721.connect(lessor)['safeTransferFrom(address,address,uint256)'](lessor.address, rentals.address, tokenId)
-      await expect(transfer).to.be.revertedWith('Rentals#rent: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT')
+      await expect(transfer).to.be.revertedWith('Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT')
     })
   })
 })

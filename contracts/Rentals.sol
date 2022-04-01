@@ -148,8 +148,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function claim(address _contractAddress, uint256 _tokenId) external {
-        require(!_isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
-        require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#rent: NOT_ORIGINAL_OWNER");
+        require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
+        require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#claim: NOT_ORIGINAL_OWNER");
 
         originalOwners[_contractAddress][_tokenId] = address(0);
 
@@ -164,7 +164,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256, // _tokenId,
         bytes calldata // _data
     ) external view override returns (bytes4) {
-        require(_operator == address(this), "Rentals#rent: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
+        require(_operator == address(this), "Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
         return 0x150b7a02;
     }
 
@@ -203,19 +203,19 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     function _verify(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
         _verifySignatures(_lessor, _tenant);
 
-        require(_lessor.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
-        require(_tenant.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
-        require(_lessor.minDays <= _lessor.maxDays, "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_lessor.minDays > 0, "Rentals#rent: MIN_DAYS_0");
-        require(_tenant._days >= _lessor.minDays && _tenant._days <= _lessor.maxDays, "Rentals#rent: DAYS_NOT_IN_RANGE");
-        require(_lessor.pricePerDay == _tenant.pricePerDay, "Rentals#rent: DIFFERENT_PRICE_PER_DAY");
-        require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#rent: DIFFERENT_CONTRACT_ADDRESS");
-        require(_lessor.tokenId == _tenant.tokenId, "Rentals#rent: DIFFERENT_TOKEN_ID");
-        require(keccak256(_lessor.fingerprint) == keccak256(_tenant.fingerprint), "Rentals#rent: DIFFERENT_FINGERPRINT");
-        require(_lessor.contractNonce == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
-        require(_tenant.contractNonce == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
-        require(_lessor.signerNonce == signerNonce[_lessor.signer], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
-        require(_tenant.signerNonce == signerNonce[_tenant.signer], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
+        require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
+        require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
+        require(_lessor.minDays <= _lessor.maxDays, "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_lessor.minDays > 0, "Rentals#_verify: MIN_DAYS_0");
+        require(_tenant._days >= _lessor.minDays && _tenant._days <= _lessor.maxDays, "Rentals#_verify: DAYS_NOT_IN_RANGE");
+        require(_lessor.pricePerDay == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
+        require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
+        require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
+        require(keccak256(_lessor.fingerprint) == keccak256(_tenant.fingerprint), "Rentals#_verify: DIFFERENT_FINGERPRINT");
+        require(_lessor.contractNonce == contractNonce, "Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE");
+        require(_tenant.contractNonce == contractNonce, "Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE");
+        require(_lessor.signerNonce == signerNonce[_lessor.signer], "Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE");
+        require(_tenant.signerNonce == signerNonce[_tenant.signer], "Rentals#_verify: INVALID_TENANT_SIGNER_NONCE");
 
         _verifyAssetNonces(_lessor, _tenant);
     }
@@ -261,8 +261,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _lessor.signature);
         address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _tenant.signature);
 
-        require(tenant == _tenant.signer, "Rentals#rent: INVALID_TENANT_SIGNATURE");
-        require(lessor == _lessor.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
+        require(tenant == _tenant.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
+        require(lessor == _lessor.signer, "Rentals#_verifySignatures: INVALID_LESSOR_SIGNATURE");
     }
 
     function _verifyAssetNonces(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
@@ -272,7 +272,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 lessorAssetNonce = _getAssetNonce(contractAddress, tokenId, _lessor.signer);
         uint256 tenantAssetNonce = _getAssetNonce(contractAddress, tokenId, _tenant.signer);
 
-        require(_lessor.assetNonce == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
-        require(_tenant.assetNonce == tenantAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
+        require(_lessor.assetNonce == lessorAssetNonce, "Rentals#_verifyAssetNonces: INVALID_LESSOR_ASSET_NONCE");
+        require(_tenant.assetNonce == tenantAssetNonce, "Rentals#_verifyAssetNonces: INVALID_TENANT_ASSET_NONCE");
     }
 }
