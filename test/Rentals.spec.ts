@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers'
 import { ethers, network } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
-import { ether, getLessorSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
+import { daysToSeconds, ether, getLessorSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -155,6 +155,30 @@ describe('Rentals', () => {
         )
 
       expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+  })
+
+  describe('getRentalEnd', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should return address(0) when nothing is set', async () => {
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(0)
+    })
+
+    it('should return the address of the original asset owner after a rent', async () => {
+      const latestBlock = await ethers.provider.getBlock('latest')
+      const latestBlockTime = latestBlock.timestamp
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams._days) + 1)
     })
   })
 
@@ -513,7 +537,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      const skip = BigNumber.from(tenantParams._days).mul(86400).toNumber() + 1000
+      const skip = daysToSeconds(tenantParams._days) + 1000
 
       // Skip for a little more than the required amount of time to finish the previous rent
       await network.provider.send('evm_increaseTime', [skip])

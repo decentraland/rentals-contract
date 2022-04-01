@@ -1,4 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { BigNumber, BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
 import { Rentals } from '../../typechain-types'
 
@@ -12,11 +13,9 @@ export const ether = (amount: string) => ethers.utils.parseUnits(amount, 'ether'
 
 export const now = () => Math.trunc(Date.now() / 1000)
 
-export const getLessorSignature = (
-  signer: SignerWithAddress,
-  contract: Rentals,
-  params: Omit<Rentals.LessorStruct, 'signature'>
-): Promise<string> =>
+export const daysToSeconds = (days: BigNumberish) => BigNumber.from(days).mul(86400).toNumber()
+
+export const getLessorSignature = (signer: SignerWithAddress, contract: Rentals, params: Omit<Rentals.LessorStruct, 'signature'>): Promise<string> =>
   signer._signTypedData(
     {
       chainId: 31337,
@@ -71,11 +70,7 @@ export const getLessorSignature = (
     params
   )
 
-export const getTenantSignature = (
-  signer: SignerWithAddress,
-  contract: Rentals,
-  params: Omit<Rentals.TenantStruct, 'signature'>
-): Promise<string> =>
+export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals, params: Omit<Rentals.TenantStruct, 'signature'>): Promise<string> =>
   signer._signTypedData(
     {
       chainId: 31337,
