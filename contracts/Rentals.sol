@@ -109,9 +109,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         IERC721Operable asset = IERC721Operable(contractAddress);
 
-        bool isAssetOwnerByContract = asset.ownerOf(tokenId) == address(this);
+        bool isAssetOwnedByContract = asset.ownerOf(tokenId) == address(this);
 
-        if (isAssetOwnerByContract) {
+        if (isAssetOwnedByContract) {
             require(_getOriginalOwner(contractAddress, tokenId) == lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
         } else {
             originalOwners[contractAddress][tokenId] = lessor;
@@ -119,7 +119,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         ongoingRentals[contractAddress][tokenId] = block.timestamp + _tenant._days * 86400; // 86400 seconds in 1 day
 
-        if (!isAssetOwnerByContract) {
+        if (!isAssetOwnedByContract) {
             asset.safeTransferFrom(lessor, address(this), tokenId);
         }
 
