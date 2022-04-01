@@ -26,6 +26,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             )
         );
 
+    uint256 public constant SECONDS_PER_DAY = 86400;
+
     IERC20 public erc20Token;
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
@@ -117,7 +119,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             originalOwners[contractAddress][tokenId] = lessor;
         }
 
-        ongoingRentals[contractAddress][tokenId] = block.timestamp + _tenant._days * 86400; // 86400 seconds in 1 day
+        ongoingRentals[contractAddress][tokenId] = block.timestamp + _tenant._days * SECONDS_PER_DAY;
 
         if (!isAssetOwnedByContract) {
             asset.safeTransferFrom(lessor, address(this), tokenId);
