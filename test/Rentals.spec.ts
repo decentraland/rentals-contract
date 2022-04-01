@@ -146,6 +146,47 @@ describe('Rentals', () => {
     })
   })
 
+  describe('bumpAssetNonce', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should increase the assetNonce for the sender by 1', async () => {
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
+      await rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId)
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+    })
+  })
+
+  describe('getAssetNonce', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should return 0 when it is never bumped', async () => {
+      expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
+      await rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId)
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+    })
+
+    it('should return 1 when it is bumped', async () => {
+      await rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId)
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+    })
+
+    it('should return 1 for both lessor and tenant after a rent', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
+    })
+  })
+
   describe('getOriginalOwner', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
@@ -452,9 +493,6 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
     })
 
-    // Skipped because the DummyFalseVerifyFingerprint does not implement any ERC721 functions needed for the rest of the
-    // rent function to work.
-    // TODO: Find an alternative to test this.
     it("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()

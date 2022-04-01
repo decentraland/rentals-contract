@@ -31,8 +31,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
-    mapping(address => mapping(uint256 => address)) originalOwners;
-    mapping(address => mapping(uint256 => uint256)) ongoingRentals;
+    mapping(address => mapping(uint256 => address)) public originalOwners;
+    mapping(address => mapping(uint256 => uint256)) public ongoingRentals;
 
     struct Lessor {
         address signer;
