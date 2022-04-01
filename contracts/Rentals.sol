@@ -11,19 +11,8 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
-    bytes32 public constant LESSOR_TYPE_HASH =
-        keccak256(
-            bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce,uint256 assetNonce,uint256 maxDays,uint256 minDays)"
-            )
-        );
-
-    bytes32 public constant TENANT_TYPE_HASH =
-        keccak256(
-            bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 pricePerDay,uint256 expiration,uint256 contractNonce,uint256 signerNonce,uint256 assetNonce,uint256 _days)"
-            )
-        );
+    bytes32 public constant LESSOR_TYPE_HASH = 0x94cd8ac6d98067bd9a95107df44b7de06006812e32b3fe2a7ee99c42542d3342;
+    bytes32 public constant TENANT_TYPE_HASH = 0x397a65bf420b7775b4c1124dfb4bef955ae58c2e5040df6d14561252db30022f;
 
     uint256 public constant SECONDS_PER_DAY = 86400;
 
@@ -158,7 +147,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         asset.safeTransferFrom(address(this), msg.sender, _tokenId);
     }
 
-    function setUpdateOperator(address _contractAddress, uint256 _tokenId, address _operator) external {
+    function setUpdateOperator(
+        address _contractAddress,
+        uint256 _tokenId,
+        address _operator
+    ) external {
         require(!_isRented(_contractAddress, _tokenId), "Rentals#setUpdateOperator: CURRENTLY_RENTED");
         require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER");
 
