@@ -476,6 +476,32 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verify: INVALID_TENANT_SIGNER_NONCE')
     })
 
+    it('should revert when lessor asset nonce is not the same as the contract', async () => {
+      lessorParams = { ...lessorParams, assetNonce: 1 }
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verifyAssetNonces: INVALID_LESSOR_ASSET_NONCE')
+    })
+
+    it('should revert when tenant asset nonce is not the same as the contract', async () => {
+      tenantParams = { ...tenantParams, assetNonce: 1 }
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verifyAssetNonces: INVALID_TENANT_ASSET_NONCE')
+    })
+
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
