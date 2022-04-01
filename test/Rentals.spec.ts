@@ -563,4 +563,69 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
     })
   })
+
+  describe('claim', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should set the original owner to address(0)', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
+
+      await rentals.connect(lessor).claim(erc721.address, tokenId)
+
+      expect(await rentals.getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
+    })
+
+    it('should transfer the asset to the original owner', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
+
+      expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
+
+      await rentals.connect(lessor).claim(erc721.address, tokenId)
+
+      expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
+    })
+
+    it('should revert when the asset is currently being rented', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await expect(rentals.connect(lessor).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert when the caller is not the original owner of the asset', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
+
+      await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
+    })
+  })
 })

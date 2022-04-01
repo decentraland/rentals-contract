@@ -147,6 +147,17 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         erc20Token.transferFrom(tenant, lessor, pricePerDay * _days);
     }
 
+    function claim(address _contractAddress, uint256 _tokenId) external {
+        require(!_isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
+        require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#rent: NOT_ORIGINAL_OWNER");
+
+        originalOwners[_contractAddress][_tokenId] = address(0);
+
+        IERC721 asset = IERC721(_contractAddress);
+
+        asset.safeTransferFrom(address(this), msg.sender, _tokenId);
+    }
+
     function onERC721Received(
         address, // operator,
         address, // from,
