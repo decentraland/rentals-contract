@@ -21,8 +21,11 @@ describe('Rentals', () => {
   let erc20: DummyERC20
   let lessorParams: Omit<Rentals.LessorStruct, 'signature'>
   let tenantParams: Omit<Rentals.TenantStruct, 'signature'>
+  let snapshotId: any
 
   beforeEach(async () => {
+    snapshotId = await network.provider.send('evm_snapshot')
+
     // Store addresses
     ;[deployer, owner, tenant, lessor] = await ethers.getSigners()
 
@@ -72,6 +75,10 @@ describe('Rentals', () => {
       signerNonce: 0,
       _days: 15,
     }
+  })
+
+  afterEach(async () => {
+    await network.provider.send('evm_revert', [snapshotId])
   })
 
   describe('initialize', () => {
@@ -163,11 +170,11 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
     })
 
-    it('should return address(0) when nothing is set', async () => {
+    it('should return 0 when the asset was never rented', async () => {
       expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(0)
     })
 
-    it('should return the address of the original asset owner after a rent', async () => {
+    it('should return the timestamp of when the rend will finish after being rented', async () => {
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
@@ -179,6 +186,41 @@ describe('Rentals', () => {
         )
 
       expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams._days) + 1)
+    })
+  })
+
+  describe('isRented', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+    })
+
+    it('should return false when the asset was never rented', async () => {
+      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
+    })
+
+    it('should return true after an asset is rented', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
+    })
+
+    it('should return false after and asset is rented and enough time passes to surpass the rental end time', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
+
+      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
     })
   })
 
@@ -449,25 +491,19 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      const skip = daysToSeconds(tenantParams._days) + 1000
-
-      // Skip for a little more than the required amount of time to finish the previous rent
-      await network.provider.send('evm_increaseTime', [skip])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_mine')
 
       lessorParams = { ...lessorParams, signer: tenant.address, expiration: maxUint256 }
       tenantParams = { ...tenantParams, signer: lessor.address, expiration: maxUint256 }
 
       await expect(
-        rentals.connect(tenant).rent(
-          {
-            ...lessorParams,
-            signature: await getLessorSignature(tenant, rentals, lessorParams),
-          },
-          {
-            ...tenantParams,
-            signature: await getTenantSignature(lessor, rentals, tenantParams),
-          }
-        )
+        rentals
+          .connect(tenant)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(tenant, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(lessor, rentals, tenantParams) }
+          )
       ).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
     })
   })
