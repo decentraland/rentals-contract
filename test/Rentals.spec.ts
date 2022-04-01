@@ -93,7 +93,7 @@ describe('Rentals', () => {
     })
 
     it('should set the erc20 token', async () => {
-      expect(await rentals.erc20Token()).to.be.equal(erc20.address)
+      expect(await rentals.token()).to.be.equal(erc20.address)
     })
 
     it('should revert when initialized more than once', async () => {
@@ -103,18 +103,18 @@ describe('Rentals', () => {
     })
   })
 
-  describe('setERC20Token', () => {
+  describe('setToken', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, deployer.address)
     })
 
     it('should update the erc20 token variable', async () => {
-      await rentals.connect(owner).setERC20Token(erc20.address)
-      expect(await rentals.erc20Token()).to.be.equal(erc20.address)
+      await rentals.connect(owner).setToken(erc20.address)
+      expect(await rentals.token()).to.be.equal(erc20.address)
     })
 
     it('should revert when sender is not owner', async () => {
-      await expect(rentals.connect(tenant).setERC20Token(erc20.address)).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(rentals.connect(tenant).setToken(erc20.address)).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
 

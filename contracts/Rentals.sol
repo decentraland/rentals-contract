@@ -27,7 +27,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
     uint256 public constant SECONDS_PER_DAY = 86400;
 
-    IERC20 public erc20Token;
+    IERC20 public token;
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
@@ -63,14 +63,14 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 _days;
     }
 
-    function initialize(address _owner, IERC20 _erc20Token) external initializer {
+    function initialize(address _owner, IERC20 _token) external initializer {
         __EIP712_init("Rentals", "1");
-        _setERC20Token(_erc20Token);
+        _setToken(_token);
         _transferOwnership(_owner);
     }
 
-    function setERC20Token(IERC20 _erc20Token) external onlyOwner {
-        _setERC20Token(_erc20Token);
+    function setToken(IERC20 _token) external onlyOwner {
+        _setToken(_token);
     }
 
     function bumpContractNonce() external onlyOwner {
@@ -144,7 +144,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         asset.setUpdateOperator(tokenId, tenant);
 
-        erc20Token.transferFrom(tenant, lessor, pricePerDay * _days);
+        token.transferFrom(tenant, lessor, pricePerDay * _days);
     }
 
     function claim(address _contractAddress, uint256 _tokenId) external {
@@ -168,8 +168,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         return 0x150b7a02;
     }
 
-    function _setERC20Token(IERC20 _erc20Token) internal {
-        erc20Token = _erc20Token;
+    function _setToken(IERC20 _token) internal {
+        token = _token;
     }
 
     function _bumpAssetNonce(
