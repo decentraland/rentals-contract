@@ -563,24 +563,6 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
     })
 
-    it("should NOT revert when an empty fingerprint is provided and the provided contract address's `verifyFingerprint` returns false", async () => {
-      const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
-      const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
-
-      await falseVerifyFingerprint.connect(lessor).mint(lessor.address, tokenId)
-      await falseVerifyFingerprint.connect(lessor).approve(rentals.address, tokenId)
-
-      lessorParams = { ...lessorParams, contractAddress: falseVerifyFingerprint.address }
-      tenantParams = { ...tenantParams, contractAddress: lessorParams.contractAddress }
-
-      await rentals
-        .connect(lessor)
-        .rent(
-          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
-          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
-        )
-    })
-
     it('should revert if an asset is already being rented', async () => {
       rentals
         .connect(lessor)

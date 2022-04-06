@@ -14,6 +14,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant LESSOR_TYPE_HASH = 0x94cd8ac6d98067bd9a95107df44b7de06006812e32b3fe2a7ee99c42542d3342;
     bytes32 public constant TENANT_TYPE_HASH = 0x397a65bf420b7775b4c1124dfb4bef955ae58c2e5040df6d14561252db30022f;
 
+    bytes4 public constant IERC721Verifiable_ValidateFingerprint = 0x8f9f4b63;
+
     uint256 public constant SECONDS_PER_DAY = 86400;
 
     IERC20 public token;
@@ -159,8 +161,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 pricePerDay = _lessor.pricePerDay;
         uint256 _days = _tenant._days;
 
-        if (fingerprint.length > 0) {
-            IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
+        IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
+
+        if (verifiable.supportsInterface(IERC721Verifiable_ValidateFingerprint)) {
             require(verifiable.verifyFingerprint(tokenId, fingerprint), "Rentals#rent: INVALID_FINGERPRINT");
         }
 
