@@ -770,6 +770,22 @@ describe('Rentals', () => {
       await rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)
     })
 
+    it('should emit an UpdateOperatorSet event', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress))
+        .to.emit(rentals, 'UpdateOperatorSet')
+        .withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
+    })
+
     it('should revert if the contract does not have the asset', async () => {
       await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
         'Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER'
