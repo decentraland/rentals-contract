@@ -135,6 +135,10 @@ describe('Rentals', () => {
       expect(await rentals.connect(owner).contractNonce()).to.equal(1)
     })
 
+    it('should emit a UpdatedContractNonce event', async () => {
+      await expect(rentals.connect(owner).bumpContractNonce()).to.emit(rentals, 'UpdatedContractNonce').withArgs(0, 1, owner.address)
+    })
+
     it('should revert when the contract owner is not the caller', async () => {
       await expect(rentals.connect(tenant).bumpContractNonce()).to.be.revertedWith('Ownable: caller is not the owner')
     })

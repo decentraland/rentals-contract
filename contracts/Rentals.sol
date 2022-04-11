@@ -56,6 +56,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     event TokenSet(IERC20 _token, address _sender);
+    event UpdatedContractNonce(uint256 _from, uint256 _to, address _sender);
 
     /**
     @notice Initialize the contract.
@@ -82,7 +83,10 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     @dev This can be used to invalidate all signatures created with the previous nonce.
      */
     function bumpContractNonce() external onlyOwner {
+        uint256 previous = contractNonce;
         contractNonce++;
+
+        emit UpdatedContractNonce(previous, contractNonce, msg.sender);
     }
 
     /**
@@ -250,7 +254,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
     function _setToken(IERC20 _token) internal {
         token = _token;
-        
+
         emit TokenSet(_token, msg.sender);
     }
 
