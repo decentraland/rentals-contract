@@ -161,6 +161,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         bytes memory fingerprint = _lessor.fingerprint;
         uint256 pricePerDay = _lessor.pricePerDay;
         uint256 rentalDays = _tenant.rentalDays;
+        address operator = _tenant.operator;
 
         IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
 
@@ -189,7 +190,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             asset.safeTransferFrom(lessor, address(this), tokenId);
         }
 
-        asset.setUpdateOperator(tokenId, tenant);
+        asset.setUpdateOperator(tokenId, operator);
 
         token.transferFrom(tenant, lessor, pricePerDay * rentalDays);
     }
