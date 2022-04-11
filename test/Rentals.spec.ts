@@ -15,6 +15,7 @@ describe('Rentals', () => {
   let owner: SignerWithAddress
   let tenant: SignerWithAddress
   let lessor: SignerWithAddress
+  let operator: SignerWithAddress
   let rentals: Rentals
   let erc721: DummyERC721
   let composableErc721: DummyComposableERC721
@@ -27,7 +28,7 @@ describe('Rentals', () => {
     snapshotId = await network.provider.send('evm_snapshot')
 
     // Store addresses
-    ;[deployer, owner, tenant, lessor] = await ethers.getSigners()
+    ;[deployer, owner, tenant, lessor, operator] = await ethers.getSigners()
 
     // Deploy Rentals contract
     const RentalsFactory = await ethers.getContractFactory('Rentals')
@@ -76,7 +77,7 @@ describe('Rentals', () => {
       signerNonce: 0,
       assetNonce: 0,
       rentalDays: 15,
-      operator: tenant.address
+      operator: operator.address,
     }
   })
 
@@ -229,7 +230,9 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(
+        latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1
+      )
     })
   })
 
@@ -314,7 +317,9 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(
+        latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1
+      )
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
