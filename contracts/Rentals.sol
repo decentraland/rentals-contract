@@ -12,7 +12,7 @@ import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant LESSOR_TYPE_HASH = 0x94cd8ac6d98067bd9a95107df44b7de06006812e32b3fe2a7ee99c42542d3342;
-    bytes32 public constant TENANT_TYPE_HASH = 0x397a65bf420b7775b4c1124dfb4bef955ae58c2e5040df6d14561252db30022f;
+    bytes32 public constant TENANT_TYPE_HASH = 0x0d0b47fba9a245a5961cbb36d53564602f1a196311baa5012e2712eefcd4062e;
 
     bytes4 public constant IERC721Verifiable_ValidateFingerprint = 0x8f9f4b63;
 
@@ -51,7 +51,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 signerNonce;
         uint256 assetNonce;
         bytes signature;
-        uint256 _days;
+        uint256 rentalDays;
+        address operator;
     }
 
     /**
@@ -159,7 +160,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 tokenId = _lessor.tokenId;
         bytes memory fingerprint = _lessor.fingerprint;
         uint256 pricePerDay = _lessor.pricePerDay;
-        uint256 _days = _tenant._days;
+        uint256 rentalDays = _tenant.rentalDays;
 
         IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
 
@@ -179,7 +180,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             originalOwners[contractAddress][tokenId] = lessor;
         }
 
-        ongoingRentals[contractAddress][tokenId] = block.timestamp + _days * SECONDS_PER_DAY;
+        ongoingRentals[contractAddress][tokenId] = block.timestamp + rentalDays * SECONDS_PER_DAY;
 
         _bumpAssetNonce(contractAddress, tokenId, lessor);
         _bumpAssetNonce(contractAddress, tokenId, tenant);
@@ -190,7 +191,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         asset.setUpdateOperator(tokenId, tenant);
 
-        token.transferFrom(tenant, lessor, pricePerDay * _days);
+        token.transferFrom(tenant, lessor, pricePerDay * rentalDays);
     }
 
     /**
@@ -283,7 +284,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
         require(_lessor.minDays <= _lessor.maxDays, "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
         require(_lessor.minDays > 0, "Rentals#_verify: MIN_DAYS_0");
-        require(_tenant._days >= _lessor.minDays && _tenant._days <= _lessor.maxDays, "Rentals#_verify: DAYS_NOT_IN_RANGE");
+        require(_tenant.rentalDays >= _lessor.minDays && _tenant.rentalDays <= _lessor.maxDays, "Rentals#_verify: DAYS_NOT_IN_RANGE");
         require(_lessor.pricePerDay == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
         require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
         require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
@@ -329,7 +330,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _tenant.contractNonce,
                     _tenant.signerNonce,
                     _tenant.assetNonce,
-                    _tenant._days
+                    _tenant.rentalDays,
+                    _tenant.operator
                 )
             )
         );

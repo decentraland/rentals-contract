@@ -75,7 +75,8 @@ describe('Rentals', () => {
       contractNonce: 0,
       signerNonce: 0,
       assetNonce: 0,
-      _days: 15,
+      rentalDays: 15,
+      operator: tenant.address
     }
   })
 
@@ -228,7 +229,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams._days) + 1)
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1)
     })
   })
 
@@ -260,7 +261,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
@@ -313,7 +314,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams._days) + 1)
+      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1)
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
@@ -391,7 +392,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant days is lower than lessor min days', async () => {
-      tenantParams = { ...tenantParams, _days: BigNumber.from(lessorParams.minDays).sub(1) }
+      tenantParams = { ...tenantParams, rentalDays: BigNumber.from(lessorParams.minDays).sub(1) }
 
       await expect(
         rentals
@@ -404,7 +405,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant days is higher than lessor max days', async () => {
-      tenantParams = { ...tenantParams, _days: BigNumber.from(lessorParams.maxDays).add(1) }
+      tenantParams = { ...tenantParams, rentalDays: BigNumber.from(lessorParams.maxDays).add(1) }
 
       await expect(
         rentals
@@ -592,7 +593,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       lessorParams = { ...lessorParams, signer: tenant.address, expiration: maxUint256, assetNonce: 1 }
@@ -622,7 +623,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
@@ -638,7 +639,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
@@ -667,7 +668,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_ORIGINAL_OWNER')
@@ -687,7 +688,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)
@@ -707,7 +708,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams._days)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await expect(rentals.connect(tenant).setUpdateOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(

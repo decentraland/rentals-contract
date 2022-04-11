@@ -122,7 +122,11 @@ export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals,
         },
         {
           type: 'uint256',
-          name: '_days',
+          name: 'rentalDays',
+        },
+        {
+          type: 'address',
+          name: 'operator',
         },
       ],
     },
