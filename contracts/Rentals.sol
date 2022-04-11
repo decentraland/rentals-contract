@@ -55,6 +55,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address operator;
     }
 
+    event TokenSet(IERC20 _token, address _sender);
+
     /**
     @notice Initialize the contract.
     @dev Can only be initialized once, This method should be called by an upgradable proxy.
@@ -248,6 +250,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
     function _setToken(IERC20 _token) internal {
         token = _token;
+        
+        emit TokenSet(_token, msg.sender);
     }
 
     function _bumpAssetNonce(

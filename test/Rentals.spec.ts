@@ -115,6 +115,10 @@ describe('Rentals', () => {
       expect(await rentals.token()).to.be.equal(erc20.address)
     })
 
+    it('should emit a TokenSet event', async () => {
+      await expect(rentals.connect(owner).setToken(erc20.address)).to.emit(rentals, 'TokenSet').withArgs(erc20.address, owner.address)
+    })
+
     it('should revert when sender is not owner', async () => {
       await expect(rentals.connect(tenant).setToken(erc20.address)).to.be.revertedWith('Ownable: caller is not the owner')
     })
