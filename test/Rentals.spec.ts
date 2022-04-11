@@ -170,6 +170,12 @@ describe('Rentals', () => {
       await rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId)
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
     })
+
+    it('should emit an UpdatedAssetNonce event', async () => {
+      await expect(rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId))
+        .to.emit(rentals, 'UpdatedAssetNonce')
+        .withArgs(0, 1, erc721.address, tokenId, lessor.address, lessor.address)
+    })
   })
 
   describe('getAssetNonce', () => {
