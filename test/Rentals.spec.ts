@@ -154,6 +154,10 @@ describe('Rentals', () => {
       await rentals.connect(lessor).bumpSignerNonce()
       expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(1)
     })
+
+    it('should emit an UpdatedSignerNonce event', async () => {
+      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'UpdatedSignerNonce').withArgs(0, 1, lessor.address)
+    })
   })
 
   describe('bumpAssetNonce', () => {
