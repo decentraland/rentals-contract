@@ -59,6 +59,16 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     event UpdatedContractNonce(uint256 _from, uint256 _to, address _sender);
     event UpdatedSignerNonce(uint256 _from, uint256 _to, address _sender);
     event UpdatedAssetNonce(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
+    event RentalStarted(
+        address _contractAddress,
+        uint256 _tokenId,
+        address _lessor,
+        address _tenant,
+        address _operator,
+        uint256 _rentalDays,
+        uint256 _pricePerDay,
+        address _sender
+    );
 
     /**
     @notice Initialize the contract.
@@ -204,6 +214,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         asset.setUpdateOperator(tokenId, operator);
 
         token.transferFrom(tenant, lessor, pricePerDay * rentalDays);
+
+        emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, msg.sender);
     }
 
     /**

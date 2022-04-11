@@ -294,6 +294,43 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address)
     })
 
+    it('should emit a RentalStarted event', async () => {
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      )
+        .to.emit(rentals, 'RentalStarted')
+        .withArgs(
+          tenantParams.contractAddress,
+          tenantParams.tokenId,
+          lessorParams.signer,
+          tenantParams.signer,
+          tenantParams.operator,
+          tenantParams.rentalDays,
+          tenantParams.pricePerDay,
+          lessor.address
+        )
+    })
+
+    it('should emit an UpdatedAssetNonce event for the lessor and the tenant', async () => {
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      )
+        .to.emit(rentals, 'UpdatedAssetNonce')
+        .withArgs(0, 1, lessorParams.contractAddress, lessorParams.tokenId, lessorParams.signer, lessor.address)
+        .to.emit(rentals, 'UpdatedAssetNonce')
+        .withArgs(0, 1, tenantParams.contractAddress, tenantParams.tokenId, tenantParams.signer, lessor.address)
+    })
+
     it('should update original owners with lessor when the contract does not own the asset already', async () => {
       expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
 
