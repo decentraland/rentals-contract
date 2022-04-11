@@ -709,6 +709,22 @@ describe('Rentals', () => {
       expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
     })
 
+    it('should emit an AssetClaimed event', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      await expect(rentals.connect(lessor).claim(erc721.address, tokenId))
+        .to.emit(rentals, 'AssetClaimed')
+        .withArgs(erc721.address, tokenId, lessor.address)
+    })
+
     it('should revert when the asset is currently being rented', async () => {
       await rentals
         .connect(lessor)

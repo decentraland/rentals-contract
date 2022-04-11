@@ -69,6 +69,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 _pricePerDay,
         address _sender
     );
+    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
 
     /**
     @notice Initialize the contract.
@@ -232,6 +233,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         IERC721 asset = IERC721(_contractAddress);
 
         asset.safeTransferFrom(address(this), msg.sender, _tokenId);
+
+        emit AssetClaimed(_contractAddress, _tokenId, msg.sender);
     }
 
     /**
