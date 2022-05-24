@@ -9,7 +9,7 @@ import { daysToSeconds, ether, getLessorSignature, getRandomBytes, getTenantSign
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const tokenId = 1
-const fee = '1000000'
+const fee = '10000'
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -100,6 +100,14 @@ describe('Rentals', () => {
       expect(await rentals.token()).to.be.equal(erc20.address)
     })
 
+    it('should set the fee collector', async () => {
+      expect(await rentals.feeCollector()).to.be.equal(collector.address)
+    })
+
+    it('should set the fee', async () => {
+      expect(await rentals.fee()).to.be.equal(fee)
+    })
+
     it('should revert when initialized more than once', async () => {
       await expect(rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
@@ -108,21 +116,69 @@ describe('Rentals', () => {
   })
 
   describe('setToken', () => {
+    let newToken: string
+
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      newToken = deployer.address
+    })
+
+    it('should update the erc20 token variable', async () => {
+      await rentals.connect(owner).setToken(newToken)
+      expect(await rentals.token()).to.be.equal(newToken)
+    })
+
+    it('should emit a TokenSet event', async () => {
+      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'TokenSet').withArgs(newToken, owner.address)
+    })
+
+    it('should revert when sender is not owner', async () => {
+      await expect(rentals.connect(tenant).setToken(newToken)).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+  })
+
+  describe('setFeeCollector', () => {
+    let newFeeCollector: string
+
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, fee)
+      newFeeCollector = deployer.address
+    })
+
+    it('should update the feeCollector variable', async () => {
+      await rentals.connect(owner).setFeeCollector(newFeeCollector)
+      expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
+    })
+
+    it('should emit a FeeCollectorSet event', async () => {
+      await expect(rentals.connect(owner).setFeeCollector(newFeeCollector))
+        .to.emit(rentals, 'FeeCollectorSet')
+        .withArgs(newFeeCollector, owner.address)
+    })
+
+    it('should revert when sender is not owner', async () => {
+      await expect(rentals.connect(tenant).setFeeCollector(newFeeCollector)).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+  })
+
+  describe('setFee', () => {
+    const newFee = '20000'
+
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, fee)
     })
 
-    it('should update the erc20 token variable', async () => {
-      await rentals.connect(owner).setToken(erc20.address)
-      expect(await rentals.token()).to.be.equal(erc20.address)
+    it('should update the fee variable', async () => {
+      await rentals.connect(owner).setFee(newFee)
+      expect(await rentals.fee()).to.be.equal(newFee)
     })
 
-    it('should emit a TokenSet event', async () => {
-      await expect(rentals.connect(owner).setToken(erc20.address)).to.emit(rentals, 'TokenSet').withArgs(erc20.address, owner.address)
+    it('should emit a FeeSet event', async () => {
+      await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'FeeSet').withArgs(newFee, owner.address)
     })
 
     it('should revert when sender is not owner', async () => {
-      await expect(rentals.connect(tenant).setToken(erc20.address)).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(rentals.connect(tenant).setFee(newFee)).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
 
