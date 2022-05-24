@@ -177,8 +177,19 @@ describe('Rentals', () => {
       await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'FeeSet').withArgs(newFee, owner.address)
     })
 
+    it('should accept the maximum fee of 1_000_000', async () => {
+      const maximumFee = '1000000'
+      await rentals.connect(owner).setFee(maximumFee)
+      expect(await rentals.fee()).to.be.equal(maximumFee)
+    })
+
     it('should revert when sender is not owner', async () => {
       await expect(rentals.connect(tenant).setFee(newFee)).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+
+    it('should revert when fee is higher than 1_000_000', async () => {
+      const invalidFee = '1000001'
+      await expect(rentals.connect(owner).setFee(invalidFee)).to.be.revertedWith('Rentals#_setFee: HIGHER_THAN_1000000')
     })
   })
 
@@ -433,6 +444,89 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(
         latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1
       )
+    })
+
+    it('should not transfer erc20 when price per day is 0', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      lessorParams.pricePerDay = '0'
+      tenantParams.pricePerDay = '0'
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+    })
+
+    it('should transfer erc20 from the tenant to the lessor and collector', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
+      const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
+      const forLessor = total.sub(forCollector)
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(forLessor))
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(forCollector))
+    })
+
+    it('should not transfer erc20 to collector when fee is 0', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      await rentals.connect(owner).setFee('0')
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+    })
+
+    it('should not transfer erc20 to lessor when fee is 1_000_000', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      await rentals.connect(owner).setFee('1000000')
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {

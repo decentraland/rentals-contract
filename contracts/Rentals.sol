@@ -239,17 +239,19 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         _bumpAssetNonce(contractAddress, tokenId, lessor);
         _bumpAssetNonce(contractAddress, tokenId, tenant);
 
+        if (pricePerDay > 0) {
+            uint256 totalPrice = pricePerDay * rentalDays;
+            uint256 forCollector = (totalPrice * fee) / 1_000_000;
+
+            token.transferFrom(tenant, lessor, totalPrice - forCollector);
+            token.transferFrom(tenant, feeCollector, forCollector);
+        }
+
         if (!isAssetOwnedByContract) {
             asset.safeTransferFrom(lessor, address(this), tokenId);
         }
 
         asset.setUpdateOperator(tokenId, operator);
-        
-        uint256 totalPrice = pricePerDay * rentalDays;
-        uint256 forCollector = (totalPrice * fee) / 1000000;
-
-        token.transferFrom(tenant, lessor, totalPrice - forCollector);
-        token.transferFrom(tenant, feeCollector, forCollector);
 
         emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, msg.sender);
     }
@@ -322,6 +324,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function _setFee(uint256 _fee) internal {
+        require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
+
         fee = _fee;
 
         emit FeeSet(_fee, msg.sender);
