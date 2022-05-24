@@ -9,6 +9,7 @@ import { daysToSeconds, ether, getLessorSignature, getRandomBytes, getTenantSign
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const tokenId = 1
+const fee = '100000' // 10% fee
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -16,6 +17,7 @@ describe('Rentals', () => {
   let tenant: SignerWithAddress
   let lessor: SignerWithAddress
   let operator: SignerWithAddress
+  let collector: SignerWithAddress
   let rentals: Rentals
   let erc721: DummyERC721
   let composableErc721: DummyComposableERC721
@@ -28,7 +30,7 @@ describe('Rentals', () => {
     snapshotId = await network.provider.send('evm_snapshot')
 
     // Store addresses
-    ;[deployer, owner, tenant, lessor, operator] = await ethers.getSigners()
+    ;[deployer, owner, tenant, lessor, operator, collector] = await ethers.getSigners()
 
     // Deploy Rentals contract
     const RentalsFactory = await ethers.getContractFactory('Rentals')
@@ -87,7 +89,7 @@ describe('Rentals', () => {
 
   describe('initialize', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should set the owner', async () => {
@@ -98,35 +100,109 @@ describe('Rentals', () => {
       expect(await rentals.token()).to.be.equal(erc20.address)
     })
 
+    it('should set the fee collector', async () => {
+      expect(await rentals.feeCollector()).to.be.equal(collector.address)
+    })
+
+    it('should set the fee', async () => {
+      expect(await rentals.fee()).to.be.equal(fee)
+    })
+
     it('should revert when initialized more than once', async () => {
-      await expect(rentals.connect(deployer).initialize(owner.address, erc20.address)).to.be.revertedWith(
+      await expect(rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
   })
 
   describe('setToken', () => {
+    let oldToken: string
+    let newToken: string
+
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, deployer.address)
+      oldToken = erc20.address
+      newToken = deployer.address
+
+      await rentals.connect(deployer).initialize(owner.address, oldToken, collector.address, fee)
     })
 
     it('should update the erc20 token variable', async () => {
-      await rentals.connect(owner).setToken(erc20.address)
-      expect(await rentals.token()).to.be.equal(erc20.address)
+      await rentals.connect(owner).setToken(newToken)
+      expect(await rentals.token()).to.be.equal(newToken)
     })
 
-    it('should emit a TokenSet event', async () => {
-      await expect(rentals.connect(owner).setToken(erc20.address)).to.emit(rentals, 'TokenSet').withArgs(erc20.address, owner.address)
+    it('should emit a UpdateToken event', async () => {
+      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'UpdateToken').withArgs(oldToken, newToken, owner.address)
     })
 
     it('should revert when sender is not owner', async () => {
-      await expect(rentals.connect(tenant).setToken(erc20.address)).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(rentals.connect(tenant).setToken(newToken)).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+  })
+
+  describe('setFeeCollector', () => {
+    let oldFeeCollector: string
+    let newFeeCollector: string
+
+    beforeEach(async () => {
+      oldFeeCollector = collector.address
+      newFeeCollector = deployer.address
+
+      await rentals.connect(deployer).initialize(owner.address, deployer.address, oldFeeCollector, fee)
+    })
+
+    it('should update the feeCollector variable', async () => {
+      await rentals.connect(owner).setFeeCollector(newFeeCollector)
+      expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
+    })
+
+    it('should emit a UpdateFeeCollector event', async () => {
+      await expect(rentals.connect(owner).setFeeCollector(newFeeCollector))
+        .to.emit(rentals, 'UpdateFeeCollector')
+        .withArgs(oldFeeCollector, newFeeCollector, owner.address)
+    })
+
+    it('should revert when sender is not owner', async () => {
+      await expect(rentals.connect(tenant).setFeeCollector(newFeeCollector)).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+  })
+
+  describe('setFee', () => {
+    const oldFee = fee
+    const newFee = '20000' // 20% fee
+
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, oldFee)
+    })
+
+    it('should update the fee variable', async () => {
+      await rentals.connect(owner).setFee(newFee)
+      expect(await rentals.fee()).to.be.equal(newFee)
+    })
+
+    it('should emit a UpdateFee event', async () => {
+      await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'UpdateFee').withArgs(oldFee, newFee, owner.address)
+    })
+
+    it('should accept the maximum fee of 1_000_000', async () => {
+      const maximumFee = '1000000'
+      await rentals.connect(owner).setFee(maximumFee)
+      expect(await rentals.fee()).to.be.equal(maximumFee)
+    })
+
+    it('should revert when sender is not owner', async () => {
+      await expect(rentals.connect(tenant).setFee(newFee)).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+
+    it('should revert when fee is higher than 1_000_000', async () => {
+      const invalidFee = '1000001'
+      await expect(rentals.connect(owner).setFee(invalidFee)).to.be.revertedWith('Rentals#_setFee: HIGHER_THAN_1000000')
     })
   })
 
   describe('bumpContractNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should increase the contractNonce by 1', async () => {
@@ -146,7 +222,7 @@ describe('Rentals', () => {
 
   describe('bumpSignerNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should increase the signerNonce for the sender by 1', async () => {
@@ -162,7 +238,7 @@ describe('Rentals', () => {
 
   describe('bumpAssetNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should increase the assetNonce for the sender by 1', async () => {
@@ -180,7 +256,7 @@ describe('Rentals', () => {
 
   describe('getAssetNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should return 0 when it is never bumped', async () => {
@@ -209,7 +285,7 @@ describe('Rentals', () => {
 
   describe('getOriginalOwner', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should return address(0) when nothing is set', async () => {
@@ -230,7 +306,7 @@ describe('Rentals', () => {
 
   describe('getRentalEnd', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should return 0 when the asset was never rented', async () => {
@@ -256,7 +332,7 @@ describe('Rentals', () => {
 
   describe('isRented', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should return false when the asset was never rented', async () => {
@@ -291,7 +367,7 @@ describe('Rentals', () => {
 
   describe('rent', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should emit a RentalStarted event', async () => {
@@ -375,6 +451,89 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(
         latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1
       )
+    })
+
+    it('should not transfer erc20 when price per day is 0', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      lessorParams.pricePerDay = '0'
+      tenantParams.pricePerDay = '0'
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+    })
+
+    it('should transfer erc20 from the tenant to the lessor and collector', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
+      const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
+      const forLessor = total.sub(forCollector)
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(forLessor))
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(forCollector))
+    })
+
+    it('should not transfer erc20 to collector when fee is 0', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      await rentals.connect(owner).setFee('0')
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+    })
+
+    it('should not transfer erc20 to lessor when fee is 1_000_000', async () => {
+      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
+      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
+      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+
+      await rentals.connect(owner).setFee('1000000')
+
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
+
+      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
@@ -672,7 +831,7 @@ describe('Rentals', () => {
 
   describe('claim', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should set the original owner to address(0)', async () => {
@@ -753,7 +912,7 @@ describe('Rentals', () => {
 
   describe('setUpdateOperator', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should allow the original owner to set the operator of an asset owned by the contract if it is not rented', async () => {
@@ -811,7 +970,7 @@ describe('Rentals', () => {
 
   describe('onERC721Received', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address)
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should allow the asset transfer from a rent', async () => {
