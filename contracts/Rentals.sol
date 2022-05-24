@@ -58,9 +58,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address operator;
     }
 
-    event TokenSet(IERC20 _token, address _sender);
-    event FeeCollectorSet(address _feeCollector, address _sender);
-    event FeeSet(uint256 _fee, address _sender);
+    event UpdateToken(IERC20 _from, IERC20 _to, address _sender);
+    event UpdateFeeCollector(address _from, address _to, address _sender);
+    event UpdateFee(uint256 _from, uint256 _to, address _sender);
     event UpdatedContractNonce(uint256 _from, uint256 _to, address _sender);
     event UpdatedSignerNonce(uint256 _from, uint256 _to, address _sender);
     event UpdatedAssetNonce(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
@@ -312,23 +312,23 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function _setToken(IERC20 _token) internal {
-        token = _token;
+        emit UpdateToken(token, _token, msg.sender);
 
-        emit TokenSet(_token, msg.sender);
+        token = _token;
     }
 
     function _setFeeCollector(address _feeCollector) internal {
-        feeCollector = _feeCollector;
+        emit UpdateFeeCollector(feeCollector, _feeCollector, msg.sender);
 
-        emit FeeCollectorSet(_feeCollector, msg.sender);
+        feeCollector = _feeCollector;
     }
 
     function _setFee(uint256 _fee) internal {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
-        fee = _fee;
+        emit UpdateFee(fee, _fee, msg.sender);
 
-        emit FeeSet(_fee, msg.sender);
+        fee = _fee;
     }
 
     function _bumpAssetNonce(

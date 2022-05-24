@@ -116,11 +116,14 @@ describe('Rentals', () => {
   })
 
   describe('setToken', () => {
+    let oldToken: string
     let newToken: string
 
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      oldToken = erc20.address
       newToken = deployer.address
+
+      await rentals.connect(deployer).initialize(owner.address, oldToken, collector.address, fee)
     })
 
     it('should update the erc20 token variable', async () => {
@@ -128,8 +131,8 @@ describe('Rentals', () => {
       expect(await rentals.token()).to.be.equal(newToken)
     })
 
-    it('should emit a TokenSet event', async () => {
-      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'TokenSet').withArgs(newToken, owner.address)
+    it('should emit a UpdateToken event', async () => {
+      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'UpdateToken').withArgs(oldToken, newToken, owner.address)
     })
 
     it('should revert when sender is not owner', async () => {
@@ -138,11 +141,14 @@ describe('Rentals', () => {
   })
 
   describe('setFeeCollector', () => {
+    let oldFeeCollector: string
     let newFeeCollector: string
 
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, fee)
+      oldFeeCollector = collector.address
       newFeeCollector = deployer.address
+
+      await rentals.connect(deployer).initialize(owner.address, deployer.address, oldFeeCollector, fee)
     })
 
     it('should update the feeCollector variable', async () => {
@@ -150,10 +156,10 @@ describe('Rentals', () => {
       expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
     })
 
-    it('should emit a FeeCollectorSet event', async () => {
+    it('should emit a UpdateFeeCollector event', async () => {
       await expect(rentals.connect(owner).setFeeCollector(newFeeCollector))
-        .to.emit(rentals, 'FeeCollectorSet')
-        .withArgs(newFeeCollector, owner.address)
+        .to.emit(rentals, 'UpdateFeeCollector')
+        .withArgs(oldFeeCollector, newFeeCollector, owner.address)
     })
 
     it('should revert when sender is not owner', async () => {
@@ -162,10 +168,11 @@ describe('Rentals', () => {
   })
 
   describe('setFee', () => {
+    const oldFee = fee
     const newFee = '20000' // 20% fee
 
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, oldFee)
     })
 
     it('should update the fee variable', async () => {
@@ -173,8 +180,8 @@ describe('Rentals', () => {
       expect(await rentals.fee()).to.be.equal(newFee)
     })
 
-    it('should emit a FeeSet event', async () => {
-      await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'FeeSet').withArgs(newFee, owner.address)
+    it('should emit a UpdateFee event', async () => {
+      await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'UpdateFee').withArgs(oldFee, newFee, owner.address)
     })
 
     it('should accept the maximum fee of 1_000_000', async () => {
