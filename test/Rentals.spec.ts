@@ -9,7 +9,7 @@ import { daysToSeconds, ether, getLessorSignature, getRandomBytes, getTenantSign
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const tokenId = 1
-const fee = '10000'
+const fee = '100000' // 10% fee
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -162,7 +162,7 @@ describe('Rentals', () => {
   })
 
   describe('setFee', () => {
-    const newFee = '20000'
+    const newFee = '20000' // 20% fee
 
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, deployer.address, collector.address, fee)

@@ -244,8 +244,12 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         }
 
         asset.setUpdateOperator(tokenId, operator);
+        
+        uint256 totalPrice = pricePerDay * rentalDays;
+        uint256 forCollector = (totalPrice * fee) / 1000000;
 
-        token.transferFrom(tenant, lessor, pricePerDay * rentalDays);
+        token.transferFrom(tenant, lessor, totalPrice - forCollector);
+        token.transferFrom(tenant, feeCollector, forCollector);
 
         emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, msg.sender);
     }
