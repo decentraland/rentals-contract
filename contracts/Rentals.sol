@@ -25,6 +25,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     mapping(address => mapping(uint256 => address)) public originalOwners;
     mapping(address => mapping(uint256 => uint256)) public ongoingRentals;
 
+    address public feeCollector;
+    uint256 public fee;
+
     struct Lessor {
         address signer;
         address contractAddress;
@@ -56,6 +59,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     event TokenSet(IERC20 _token, address _sender);
+    event FeeCollectorSet(address _feeCollector, address _sender);
+    event FeeSet(uint256 _fee, address _sender);
     event UpdatedContractNonce(uint256 _from, uint256 _to, address _sender);
     event UpdatedSignerNonce(uint256 _from, uint256 _to, address _sender);
     event UpdatedAssetNonce(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
@@ -77,11 +82,20 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     @dev Can only be initialized once, This method should be called by an upgradable proxy.
     @param _owner The address of the owner of the contract.
     @param _token The address of the ERC20 token used by tenants to pay rent.
+    @param _feeCollector Address that will receive rental fees
+    @param _fee Fee (per million wei) that will be transfered from the rental price to the fee collector.
      */
-    function initialize(address _owner, IERC20 _token) external initializer {
+    function initialize(
+        address _owner,
+        IERC20 _token,
+        address _feeCollector,
+        uint256 _fee
+    ) external initializer {
         __EIP712_init("Rentals", "1");
         _setToken(_token);
         _transferOwnership(_owner);
+        _setFeeCollector(_feeCollector);
+        _setFee(_fee);
     }
 
     /**
@@ -90,6 +104,22 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
      */
     function setToken(IERC20 _token) external onlyOwner {
         _setToken(_token);
+    }
+
+    /**
+    @notice Set the address of the fee collector.
+    @param _feeCollector The address of the fee collector.
+     */
+    function setFeeCollector(address _feeCollector) external onlyOwner {
+        _setFeeCollector(_feeCollector);
+    }
+
+    /**
+    @notice Set the fee (per million wei) for rentals.
+    @param _fee The value for the fee.
+     */
+    function setFee(uint256 _fee) external onlyOwner {
+        _setFee(_fee);
     }
 
     /**
@@ -279,6 +309,18 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         token = _token;
 
         emit TokenSet(_token, msg.sender);
+    }
+
+    function _setFeeCollector(address _feeCollector) internal {
+        feeCollector = _feeCollector;
+
+        emit FeeCollectorSet(_feeCollector, msg.sender);
+    }
+
+    function _setFee(uint256 _fee) internal {
+        fee = _fee;
+
+        emit FeeSet(_fee, msg.sender);
     }
 
     function _bumpAssetNonce(
