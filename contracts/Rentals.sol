@@ -6,12 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./external/OwnableUpgradeable.sol";
-import "./external/EIP712Upgradeable.sol";
+
+import "./commons/NativeMetaTransaction.sol";
 
 import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
-contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
+contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     bytes32 public constant LESSOR_TYPE_HASH = 0xc051b116252f94829974cd91d68dd970ccc3e78b22bcaa50ea8b15e76dfdc1fb;
     bytes32 public constant TENANT_TYPE_HASH = 0x61d73ea8cac070a687225b3c47827c383d42eb1fcc213dcf09f3fabc51d04db0;
 
@@ -126,7 +127,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 previous = contractNonce;
         contractNonce++;
 
-        emit UpdatedContractNonce(previous, contractNonce, msg.sender);
+        emit UpdatedContractNonce(previous, contractNonce, _msgSender());
     }
 
     /**
@@ -134,10 +135,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     @dev This can be used to invalidate all signatures created by the caller with the previous nonce.
      */
     function bumpSignerNonce() external {
-        uint256 previous = signerNonce[msg.sender];
-        signerNonce[msg.sender]++;
+        address sender = _msgSender();
+        uint256 previous = signerNonce[sender];
+        signerNonce[sender]++;
 
-        emit UpdatedSignerNonce(previous, signerNonce[msg.sender], msg.sender);
+        emit UpdatedSignerNonce(previous, signerNonce[sender], sender);
     }
 
     /**
@@ -147,7 +149,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     @param _tokenId The token id of the asset.
      */
     function bumpAssetNonce(address _contractAddress, uint256 _tokenId) external {
-        _bumpAssetNonce(_contractAddress, _tokenId, msg.sender);
+        _bumpAssetNonce(_contractAddress, _tokenId, _msgSender());
     }
 
     /**
@@ -248,7 +250,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         asset.setUpdateOperator(tokenId, operator);
 
-        emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, msg.sender);
+        emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, _msgSender());
     }
 
     /**
@@ -257,16 +259,18 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     @param _tokenId The token id of the asset.
      */
     function claim(address _contractAddress, uint256 _tokenId) external {
+        address sender = _msgSender();
+
         require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
-        require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#claim: NOT_ORIGINAL_OWNER");
+        require(_getOriginalOwner(_contractAddress, _tokenId) == sender, "Rentals#claim: NOT_ORIGINAL_OWNER");
 
         originalOwners[_contractAddress][_tokenId] = address(0);
 
         IERC721 asset = IERC721(_contractAddress);
 
-        asset.safeTransferFrom(address(this), msg.sender, _tokenId);
+        asset.safeTransferFrom(address(this), sender, _tokenId);
 
-        emit AssetClaimed(_contractAddress, _tokenId, msg.sender);
+        emit AssetClaimed(_contractAddress, _tokenId, sender);
     }
 
     /**
@@ -281,14 +285,16 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 _tokenId,
         address _operator
     ) external {
+        address sender = _msgSender();
+
         require(!_isRented(_contractAddress, _tokenId), "Rentals#setUpdateOperator: CURRENTLY_RENTED");
-        require(_getOriginalOwner(_contractAddress, _tokenId) == msg.sender, "Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER");
+        require(_getOriginalOwner(_contractAddress, _tokenId) == sender, "Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER");
 
         IERC721Operable asset = IERC721Operable(_contractAddress);
 
         asset.setUpdateOperator(_tokenId, _operator);
 
-        emit UpdateOperatorSet(_contractAddress, _tokenId, _operator, msg.sender);
+        emit UpdateOperatorSet(_contractAddress, _tokenId, _operator, sender);
     }
 
     /**
@@ -307,13 +313,13 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     }
 
     function _setToken(IERC20 _token) internal {
-        emit UpdateToken(token, _token, msg.sender);
+        emit UpdateToken(token, _token, _msgSender());
 
         token = _token;
     }
 
     function _setFeeCollector(address _feeCollector) internal {
-        emit UpdateFeeCollector(feeCollector, _feeCollector, msg.sender);
+        emit UpdateFeeCollector(feeCollector, _feeCollector, _msgSender());
 
         feeCollector = _feeCollector;
     }
@@ -321,7 +327,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     function _setFee(uint256 _fee) internal {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
-        emit UpdateFee(fee, _fee, msg.sender);
+        emit UpdateFee(fee, _fee, _msgSender());
 
         fee = _fee;
     }
@@ -334,7 +340,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 previous = _getAssetNonce(_contractAddress, _tokenId, _signer);
         assetNonce[_contractAddress][_tokenId][_signer]++;
 
-        emit UpdatedAssetNonce(previous, _getAssetNonce(_contractAddress, _tokenId, _signer), _contractAddress, _tokenId, _signer, msg.sender);
+        emit UpdatedAssetNonce(previous, _getAssetNonce(_contractAddress, _tokenId, _signer), _contractAddress, _tokenId, _signer, _msgSender());
     }
 
     function _getAssetNonce(
