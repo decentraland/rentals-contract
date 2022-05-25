@@ -29,7 +29,7 @@ abstract contract EIP712Upgradeable is Initializable {
     /* solhint-disable var-name-mixedcase */
     bytes32 private _HASHED_NAME;
     bytes32 private _HASHED_VERSION;
-    bytes32 private constant _TYPE_HASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant _TYPE_HASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
     /* solhint-enable var-name-mixedcase */
 
