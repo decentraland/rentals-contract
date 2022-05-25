@@ -2,10 +2,11 @@
 
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
+import "./external/OwnableUpgradeable.sol";
+import "./external/EIP712Upgradeable.sol";
 
 import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
