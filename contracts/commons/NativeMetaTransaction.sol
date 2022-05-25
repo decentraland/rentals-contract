@@ -47,7 +47,7 @@ contract NativeMetaTransaction is EIP712Upgradeable {
         address _signer,
         MetaTransaction memory _metaTx,
         bytes memory _signature
-    ) internal view returns (bool) {
+    ) private view returns (bool) {
         require(_signer != address(0), "NMT#verify: INVALID_SIGNER");
 
         bytes32 msgHash = _hashTypedDataV4(_hashMetaTransaction(_metaTx));
@@ -55,7 +55,7 @@ contract NativeMetaTransaction is EIP712Upgradeable {
         return _signer == ECDSAUpgradeable.recover(msgHash, _signature);
     }
 
-    function _hashMetaTransaction(MetaTransaction memory metaTx) internal pure returns (bytes32) {
+    function _hashMetaTransaction(MetaTransaction memory metaTx) private pure returns (bytes32) {
         return keccak256(abi.encode(META_TRANSACTION_TYPEHASH, metaTx.nonce, metaTx.from, keccak256(metaTx.functionSignature)));
     }
 }
