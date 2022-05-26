@@ -11,8 +11,19 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
-    bytes32 public constant LESSOR_TYPE_HASH = 0x94cd8ac6d98067bd9a95107df44b7de06006812e32b3fe2a7ee99c42542d3342;
-    bytes32 public constant TENANT_TYPE_HASH = 0x0d0b47fba9a245a5961cbb36d53564602f1a196311baa5012e2712eefcd4062e;
+    bytes32 public constant LESSOR_TYPE_HASH =
+        keccak256(
+            bytes(
+                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+            )
+        );
+
+    bytes32 public constant TENANT_TYPE_HASH =
+        keccak256(
+            bytes(
+                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator)"
+            )
+        );
 
     bytes4 public constant IERC721Verifiable_ValidateFingerprint = 0x8f9f4b63;
 
@@ -33,14 +44,12 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address contractAddress;
         uint256 tokenId;
         bytes fingerprint;
-        uint256 pricePerDay;
         uint256 expiration;
-        uint256 contractNonce;
-        uint256 signerNonce;
-        uint256 assetNonce;
+        uint256[3] nonces;
+        uint256[] pricePerDay;
+        uint256[] maxDays;
+        uint256[] minDays;
         bytes signature;
-        uint256 maxDays;
-        uint256 minDays;
     }
 
     struct Tenant {
@@ -48,14 +57,12 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address contractAddress;
         uint256 tokenId;
         bytes fingerprint;
-        uint256 pricePerDay;
         uint256 expiration;
-        uint256 contractNonce;
-        uint256 signerNonce;
-        uint256 assetNonce;
-        bytes signature;
+        uint256[3] nonces;
+        uint256 pricePerDay;
         uint256 rentalDays;
         address operator;
+        bytes signature;
     }
 
     event UpdateToken(IERC20 _from, IERC20 _to, address _sender);
@@ -212,7 +219,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address contractAddress = _lessor.contractAddress;
         uint256 tokenId = _lessor.tokenId;
         bytes memory fingerprint = _lessor.fingerprint;
-        uint256 pricePerDay = _lessor.pricePerDay;
+        uint256 pricePerDay = _lessor.pricePerDay[0];
         uint256 rentalDays = _tenant.rentalDays;
         address operator = _tenant.operator;
 
@@ -367,17 +374,17 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
         require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
-        require(_lessor.minDays <= _lessor.maxDays, "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_lessor.minDays > 0, "Rentals#_verify: MIN_DAYS_0");
-        require(_tenant.rentalDays >= _lessor.minDays && _tenant.rentalDays <= _lessor.maxDays, "Rentals#_verify: DAYS_NOT_IN_RANGE");
-        require(_lessor.pricePerDay == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
+        require(_lessor.minDays[0] <= _lessor.maxDays[0], "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_lessor.minDays[0] > 0, "Rentals#_verify: MIN_DAYS_0");
+        require(_tenant.rentalDays >= _lessor.minDays[0] && _tenant.rentalDays <= _lessor.maxDays[0], "Rentals#_verify: DAYS_NOT_IN_RANGE");
+        require(_lessor.pricePerDay[0] == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
         require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
         require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
         require(keccak256(_lessor.fingerprint) == keccak256(_tenant.fingerprint), "Rentals#_verify: DIFFERENT_FINGERPRINT");
-        require(_lessor.contractNonce == contractNonce, "Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE");
-        require(_tenant.contractNonce == contractNonce, "Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE");
-        require(_lessor.signerNonce == signerNonce[_lessor.signer], "Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE");
-        require(_tenant.signerNonce == signerNonce[_tenant.signer], "Rentals#_verify: INVALID_TENANT_SIGNER_NONCE");
+        require(_lessor.nonces[0] == contractNonce, "Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE");
+        require(_tenant.nonces[0] == contractNonce, "Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE");
+        require(_lessor.nonces[1] == signerNonce[_lessor.signer], "Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE");
+        require(_tenant.nonces[1] == signerNonce[_tenant.signer], "Rentals#_verify: INVALID_TENANT_SIGNER_NONCE");
 
         _verifyAssetNonces(_lessor, _tenant);
     }
@@ -391,13 +398,11 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _lessor.contractAddress,
                     _lessor.tokenId,
                     keccak256(_lessor.fingerprint),
-                    _lessor.pricePerDay,
                     _lessor.expiration,
-                    _lessor.contractNonce,
-                    _lessor.signerNonce,
-                    _lessor.assetNonce,
-                    _lessor.maxDays,
-                    _lessor.minDays
+                    keccak256(abi.encodePacked(_lessor.nonces)),
+                    keccak256(abi.encodePacked(_lessor.pricePerDay)),
+                    keccak256(abi.encodePacked(_lessor.maxDays)),
+                    keccak256(abi.encodePacked(_lessor.minDays))
                 )
             )
         );
@@ -410,11 +415,9 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     _tenant.contractAddress,
                     _tenant.tokenId,
                     keccak256(_tenant.fingerprint),
-                    _tenant.pricePerDay,
                     _tenant.expiration,
-                    _tenant.contractNonce,
-                    _tenant.signerNonce,
-                    _tenant.assetNonce,
+                    keccak256(abi.encodePacked(_tenant.nonces)),
+                    _tenant.pricePerDay,
                     _tenant.rentalDays,
                     _tenant.operator
                 )
@@ -435,7 +438,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 lessorAssetNonce = _getAssetNonce(contractAddress, tokenId, _lessor.signer);
         uint256 tenantAssetNonce = _getAssetNonce(contractAddress, tokenId, _tenant.signer);
 
-        require(_lessor.assetNonce == lessorAssetNonce, "Rentals#_verifyAssetNonces: INVALID_LESSOR_ASSET_NONCE");
-        require(_tenant.assetNonce == tenantAssetNonce, "Rentals#_verifyAssetNonces: INVALID_TENANT_ASSET_NONCE");
+        require(_lessor.nonces[2] == lessorAssetNonce, "Rentals#_verifyAssetNonces: INVALID_LESSOR_ASSET_NONCE");
+        require(_tenant.nonces[2] == tenantAssetNonce, "Rentals#_verifyAssetNonces: INVALID_TENANT_ASSET_NONCE");
     }
 }
