@@ -372,6 +372,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     function _verify(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
         _verifySignatures(_lessor, _tenant);
 
+        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#_verify: INVALID_MAX_DAYS_LENGTH");
+        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#_verify: INVALID_MIN_DAYS_LENGTH");
         require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
         require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
         require(_lessor.minDays[0] <= _lessor.maxDays[0], "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");

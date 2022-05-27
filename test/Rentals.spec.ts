@@ -554,6 +554,32 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE')
     })
 
+    it('should revert when maxDays length is different than pricePerDay length', async () => {
+      lessorParams.maxDays = [10, 20]
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verify: INVALID_MAX_DAYS_LENGTH')
+    })
+
+    it('should revert when minDays length is different than pricePerDay length', async () => {
+      lessorParams.minDays = [10, 20]
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verify: INVALID_MIN_DAYS_LENGTH')
+    })
+
     it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
       lessorParams = { ...lessorParams, expiration: now() - 1000 }
 
