@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers'
 import { ethers, network } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
-import { daysToSeconds, ether, getLessorSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
+import { daysToSeconds, ether, getLessorSignature, getMetaTxSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -132,6 +132,17 @@ describe('Rentals', () => {
       await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'UpdateToken').withArgs(oldToken, newToken, owner.address)
     })
 
+    it('should accept a meta tx', async () => {
+      const abi = ['function setToken(address _token)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('setToken', [newToken])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+
+      expect(await rentals.token()).to.be.equal(newToken)
+    })
+
     it('should revert when sender is not owner', async () => {
       await expect(rentals.connect(tenant).setToken(newToken)).to.be.revertedWith('Ownable: caller is not the owner')
     })
@@ -157,6 +168,17 @@ describe('Rentals', () => {
       await expect(rentals.connect(owner).setFeeCollector(newFeeCollector))
         .to.emit(rentals, 'UpdateFeeCollector')
         .withArgs(oldFeeCollector, newFeeCollector, owner.address)
+    })
+
+    it('should accept a meta tx', async () => {
+      const abi = ['function setFeeCollector(address _feeCollector)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('setFeeCollector', [newFeeCollector])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+
+      expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
     })
 
     it('should revert when sender is not owner', async () => {
@@ -187,6 +209,17 @@ describe('Rentals', () => {
       expect(await rentals.fee()).to.be.equal(maximumFee)
     })
 
+    it('should accept a meta tx', async () => {
+      const abi = ['function setFee(uint256 _fee)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('setFee', [newFee])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+
+      expect(await rentals.fee()).to.be.equal(newFee)
+    })
+
     it('should revert when sender is not owner', async () => {
       await expect(rentals.connect(tenant).setFee(newFee)).to.be.revertedWith('Ownable: caller is not the owner')
     })
@@ -212,6 +245,17 @@ describe('Rentals', () => {
       await expect(rentals.connect(owner).bumpContractNonce()).to.emit(rentals, 'UpdatedContractNonce').withArgs(0, 1, owner.address)
     })
 
+    it('should accept a meta tx', async () => {
+      const abi = ['function bumpContractNonce()']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('bumpContractNonce', [])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+
+      expect(await rentals.connect(owner).contractNonce()).to.equal(0)
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+      expect(await rentals.connect(owner).contractNonce()).to.equal(1)
+    })
+
     it('should revert when the contract owner is not the caller', async () => {
       await expect(rentals.connect(tenant).bumpContractNonce()).to.be.revertedWith('Ownable: caller is not the owner')
     })
@@ -231,6 +275,17 @@ describe('Rentals', () => {
     it('should emit an UpdatedSignerNonce event', async () => {
       await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'UpdatedSignerNonce').withArgs(0, 1, lessor.address)
     })
+
+    it('should accept a meta tx', async () => {
+      const abi = ['function bumpSignerNonce()']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('bumpSignerNonce', [])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+
+      expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(0)
+      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(1)
+    })
   })
 
   describe('bumpAssetNonce', () => {
@@ -248,6 +303,17 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId))
         .to.emit(rentals, 'UpdatedAssetNonce')
         .withArgs(0, 1, erc721.address, tokenId, lessor.address, lessor.address)
+    })
+
+    it('should accept a meta tx', async () => {
+      const abi = ['function bumpAssetNonce(address _contractAddress, uint256 _tokenId)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('bumpAssetNonce', [erc721.address, tokenId])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
+      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
     })
   })
 
@@ -561,6 +627,160 @@ describe('Rentals', () => {
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
       expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
+    })
+
+    it('should accept a meta tx', async () => {
+      const abi = [
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: 'address',
+                  name: 'signer',
+                  type: 'address',
+                },
+                {
+                  internalType: 'address',
+                  name: 'contractAddress',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'tokenId',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'bytes',
+                  name: 'fingerprint',
+                  type: 'bytes',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'expiration',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'uint256[3]',
+                  name: 'nonces',
+                  type: 'uint256[3]',
+                },
+                {
+                  internalType: 'uint256[]',
+                  name: 'pricePerDay',
+                  type: 'uint256[]',
+                },
+                {
+                  internalType: 'uint256[]',
+                  name: 'maxDays',
+                  type: 'uint256[]',
+                },
+                {
+                  internalType: 'uint256[]',
+                  name: 'minDays',
+                  type: 'uint256[]',
+                },
+                {
+                  internalType: 'bytes',
+                  name: 'signature',
+                  type: 'bytes',
+                },
+              ],
+              internalType: 'struct Rentals.Lessor',
+              name: '_lessor',
+              type: 'tuple',
+            },
+            {
+              components: [
+                {
+                  internalType: 'address',
+                  name: 'signer',
+                  type: 'address',
+                },
+                {
+                  internalType: 'address',
+                  name: 'contractAddress',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'tokenId',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'bytes',
+                  name: 'fingerprint',
+                  type: 'bytes',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'expiration',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'uint256[3]',
+                  name: 'nonces',
+                  type: 'uint256[3]',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'pricePerDay',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'rentalDays',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'address',
+                  name: 'operator',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'index',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'bytes',
+                  name: 'signature',
+                  type: 'bytes',
+                },
+              ],
+              internalType: 'struct Rentals.Tenant',
+              name: '_tenant',
+              type: 'tuple',
+            },
+          ],
+          name: 'rent',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+      ]
+
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('rent', [
+        { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+        { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) },
+      ])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+
+      const rent = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+
+      await expect(rent)
+        .to.emit(rentals, 'RentalStarted')
+        .withArgs(
+          tenantParams.contractAddress,
+          tenantParams.tokenId,
+          lessorParams.signer,
+          tenantParams.signer,
+          tenantParams.operator,
+          tenantParams.rentalDays,
+          tenantParams.pricePerDay,
+          lessor.address
+        )
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
@@ -950,6 +1170,27 @@ describe('Rentals', () => {
         .withArgs(erc721.address, tokenId, lessor.address)
     })
 
+    it('should accept a meta tx', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('claim', [erc721.address, tokenId])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+
+      expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
+      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
+    })
+
     it('should revert when the asset is currently being rented', async () => {
       await rentals
         .connect(lessor)
@@ -1009,6 +1250,26 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress))
         .to.emit(rentals, 'UpdateOperatorSet')
         .withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
+    })
+
+    it('should accept a meta tx', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      const abi = ['function setUpdateOperator(address _contractAddress,uint256 _tokenId,address _operator)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionSignature = iface.encodeFunctionData('setUpdateOperator', [erc721.address, tokenId, zeroAddress])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+
+      const setUpdateOperator = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      await expect(setUpdateOperator).to.emit(rentals, 'UpdateOperatorSet').withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
     })
 
     it('should revert if the contract does not have the asset', async () => {

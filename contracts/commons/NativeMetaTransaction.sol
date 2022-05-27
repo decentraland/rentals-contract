@@ -4,7 +4,7 @@ pragma solidity ^0.8.7;
 
 import "../external/EIP712Upgradeable.sol";
 
-contract NativeMetaTransaction is EIP712Upgradeable {
+abstract contract NativeMetaTransaction is EIP712Upgradeable {
     bytes32 private constant META_TRANSACTION_TYPEHASH = 0x23d10def3caacba2e4042e0c75d44a42d2558aabcf5ce951d0642a8032e1e653;
 
     event MetaTransactionExecuted(address _userAddress, address _relayerAddress, bytes _functionSignature);

@@ -61,7 +61,7 @@ export const getLessorSignature = (signer: SignerWithAddress, contract: Rentals,
           type: 'uint256[]',
           name: 'minDays',
         },
-      ]
+      ],
     },
     params
   )
@@ -120,3 +120,37 @@ export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals,
     },
     params
   )
+
+export const getMetaTxSignature = async (signer: SignerWithAddress, contract: Rentals, functionSignature: string): Promise<string> => {
+  const params = {
+    nonce: await contract.getNonce(signer.address),
+    from: signer.address,
+    functionSignature,
+  }
+
+  return signer._signTypedData(
+    {
+      chainId: 31337,
+      name: 'Rentals',
+      verifyingContract: contract.address,
+      version: '1',
+    },
+    {
+      MetaTransaction: [
+        {
+          type: 'uint256',
+          name: 'nonce',
+        },
+        {
+          type: 'address',
+          name: 'from',
+        },
+        {
+          type: 'bytes',
+          name: 'functionSignature',
+        },
+      ],
+    },
+    params
+  )
+}
