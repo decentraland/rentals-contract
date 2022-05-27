@@ -11,28 +11,15 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
-    bytes32 public constant LESSOR_TYPE_HASH =
-        keccak256(
-            bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
-            )
-        );
+    bytes32 public constant LESSOR_TYPE_HASH = 0xc051b116252f94829974cd91d68dd970ccc3e78b22bcaa50ea8b15e76dfdc1fb;
+    bytes32 public constant TENANT_TYPE_HASH = 0x61d73ea8cac070a687225b3c47827c383d42eb1fcc213dcf09f3fabc51d04db0;
 
-    bytes32 public constant TENANT_TYPE_HASH =
-        keccak256(
-            bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
-            )
-        );
-
-    bytes4 public constant IERC721Verifiable_ValidateFingerprint = 0x8f9f4b63;
-
-    uint256 public constant SECONDS_PER_DAY = 86400;
-
-    IERC20 public token;
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
+    
+    IERC20 public token;
+
     mapping(address => mapping(uint256 => address)) public originalOwners;
     mapping(address => mapping(uint256 => uint256)) public ongoingRentals;
 
@@ -225,7 +212,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
 
         IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
 
-        if (verifiable.supportsInterface(IERC721Verifiable_ValidateFingerprint)) {
+        if (verifiable.supportsInterface(0x8f9f4b63)) {
             require(verifiable.verifyFingerprint(tokenId, _lessor.fingerprint), "Rentals#rent: INVALID_FINGERPRINT");
         }
 
@@ -241,7 +228,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
             originalOwners[contractAddress][tokenId] = lessor;
         }
 
-        ongoingRentals[contractAddress][tokenId] = block.timestamp + rentalDays * SECONDS_PER_DAY;
+        ongoingRentals[contractAddress][tokenId] = block.timestamp + rentalDays * 86400; // 86400 = seconds in a day
 
         _bumpAssetNonce(contractAddress, tokenId, lessor);
         _bumpAssetNonce(contractAddress, tokenId, tenant);
