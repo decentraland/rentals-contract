@@ -59,13 +59,11 @@ describe('Rentals', () => {
       contractAddress: erc721.address,
       tokenId,
       fingerprint: [],
-      pricePerDay: ether('100'),
       expiration: now() + 1000,
-      contractNonce: 0,
-      signerNonce: 0,
-      assetNonce: 0,
-      maxDays: 20,
-      minDays: 10,
+      nonces: [0, 0, 0],
+      pricePerDay: [ether('100')],
+      maxDays: [20],
+      minDays: [10],
     }
 
     tenantParams = {
@@ -75,11 +73,10 @@ describe('Rentals', () => {
       fingerprint: [],
       pricePerDay: ether('100'),
       expiration: now() + 1000,
-      contractNonce: 0,
-      signerNonce: 0,
-      assetNonce: 0,
+      nonces: [0, 0, 0],
       rentalDays: 15,
       operator: operator.address,
+      index: 0,
     }
   })
 
@@ -407,6 +404,36 @@ describe('Rentals', () => {
         .withArgs(0, 1, tenantParams.contractAddress, tenantParams.tokenId, tenantParams.signer, lessor.address)
     })
 
+    it('should allow the tenant to select a different option included in the tenant signature by providing a different index', async () => {
+      lessorParams.pricePerDay = [...lessorParams.pricePerDay, ether('20')]
+      lessorParams.maxDays = [...lessorParams.maxDays, 30]
+      lessorParams.minDays = [...lessorParams.minDays, 20]
+
+      tenantParams.pricePerDay = ether('20')
+      tenantParams.rentalDays = 25
+      tenantParams.index = 1
+
+      const rent = rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await expect(rent)
+        .to.emit(rentals, 'RentalStarted')
+        .withArgs(
+          tenantParams.contractAddress,
+          tenantParams.tokenId,
+          lessorParams.signer,
+          tenantParams.signer,
+          tenantParams.operator,
+          tenantParams.rentalDays,
+          tenantParams.pricePerDay,
+          lessor.address
+        )
+    })
+
     it('should update original owners with lessor when the contract does not own the asset already', async () => {
       expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
 
@@ -458,7 +485,7 @@ describe('Rentals', () => {
       const originalBalanceLessor = await erc20.balanceOf(lessor.address)
       const originalBalanceCollector = await erc20.balanceOf(collector.address)
 
-      lessorParams.pricePerDay = '0'
+      lessorParams.pricePerDay = ['0']
       tenantParams.pricePerDay = '0'
 
       await rentals
@@ -558,6 +585,45 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE')
     })
 
+    it('should revert when maxDays length is different than pricePerDay length', async () => {
+      lessorParams.maxDays = [10, 20]
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verify: INVALID_MAX_DAYS_LENGTH')
+    })
+
+    it('should revert when minDays length is different than pricePerDay length', async () => {
+      lessorParams.minDays = [10, 20]
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verify: INVALID_MIN_DAYS_LENGTH')
+    })
+
+    it('should revert when tenant index is outside the pricePerDay length', async () => {
+      tenantParams.index = 1
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verify: INVALID_INDEX')
+    })
+
     it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
       lessorParams = { ...lessorParams, expiration: now() - 1000 }
 
@@ -585,7 +651,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when max days is lower than min days', async () => {
-      lessorParams = { ...lessorParams, minDays: BigNumber.from(lessorParams.maxDays).add(1) }
+      lessorParams = { ...lessorParams, minDays: [BigNumber.from(lessorParams.maxDays[0]).add(1)] }
 
       await expect(
         rentals
@@ -598,7 +664,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when min days is 0', async () => {
-      lessorParams = { ...lessorParams, minDays: 0 }
+      lessorParams = { ...lessorParams, minDays: [0] }
 
       await expect(
         rentals
@@ -611,7 +677,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant days is lower than lessor min days', async () => {
-      tenantParams = { ...tenantParams, rentalDays: BigNumber.from(lessorParams.minDays).sub(1) }
+      tenantParams = { ...tenantParams, rentalDays: BigNumber.from(lessorParams.minDays[0]).sub(1) }
 
       await expect(
         rentals
@@ -624,7 +690,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant days is higher than lessor max days', async () => {
-      tenantParams = { ...tenantParams, rentalDays: BigNumber.from(lessorParams.maxDays).add(1) }
+      tenantParams = { ...tenantParams, rentalDays: BigNumber.from(lessorParams.maxDays[0]).add(1) }
 
       await expect(
         rentals
@@ -637,7 +703,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when lessor and tenant provide different price per day', async () => {
-      tenantParams = { ...tenantParams, pricePerDay: BigNumber.from(lessorParams.pricePerDay).add(1) }
+      tenantParams = { ...tenantParams, pricePerDay: BigNumber.from(lessorParams.pricePerDay[0]).add(1) }
 
       await expect(
         rentals
@@ -689,7 +755,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when lessor contract nonce is not the same as the contract', async () => {
-      lessorParams = { ...lessorParams, contractNonce: 1 }
+      lessorParams = { ...lessorParams, nonces: [1, 0, 0] }
 
       await expect(
         rentals
@@ -702,7 +768,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant contract nonce is not the same as the contract', async () => {
-      tenantParams = { ...tenantParams, contractNonce: 1 }
+      tenantParams = { ...tenantParams, nonces: [1, 0, 0] }
 
       await expect(
         rentals
@@ -715,7 +781,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when lessor signer nonce is not the same as the contract', async () => {
-      lessorParams = { ...lessorParams, signerNonce: 1 }
+      lessorParams = { ...lessorParams, nonces: [0, 1, 0] }
 
       await expect(
         rentals
@@ -728,7 +794,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant signer nonce is not the same as the contract', async () => {
-      tenantParams = { ...tenantParams, signerNonce: 1 }
+      tenantParams = { ...tenantParams, nonces: [0, 1, 0] }
 
       await expect(
         rentals
@@ -741,7 +807,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when lessor asset nonce is not the same as the contract', async () => {
-      lessorParams = { ...lessorParams, assetNonce: 1 }
+      lessorParams = { ...lessorParams, nonces: [0, 0, 1] }
 
       await expect(
         rentals
@@ -754,7 +820,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant asset nonce is not the same as the contract', async () => {
-      tenantParams = { ...tenantParams, assetNonce: 1 }
+      tenantParams = { ...tenantParams, nonces: [0, 0, 1] }
 
       await expect(
         rentals
@@ -791,8 +857,8 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      lessorParams = { ...lessorParams, assetNonce: 1 }
-      tenantParams = { ...tenantParams, assetNonce: 1 }
+      lessorParams = { ...lessorParams, nonces: [0, 0, 1] }
+      tenantParams = { ...tenantParams, nonces: [0, 0, 1] }
 
       await expect(
         rentals
@@ -815,8 +881,8 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      lessorParams = { ...lessorParams, signer: tenant.address, expiration: maxUint256, assetNonce: 1 }
-      tenantParams = { ...tenantParams, signer: lessor.address, expiration: maxUint256, assetNonce: 1 }
+      lessorParams = { ...lessorParams, signer: tenant.address, expiration: maxUint256, nonces: [0, 0, 1] }
+      tenantParams = { ...tenantParams, signer: lessor.address, expiration: maxUint256, nonces: [0, 0, 1] }
 
       await expect(
         rentals

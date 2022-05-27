@@ -43,33 +43,25 @@ export const getLessorSignature = (signer: SignerWithAddress, contract: Rentals,
         },
         {
           type: 'uint256',
-          name: 'pricePerDay',
-        },
-        {
-          type: 'uint256',
           name: 'expiration',
         },
         {
-          type: 'uint256',
-          name: 'contractNonce',
+          type: 'uint256[3]',
+          name: 'nonces',
         },
         {
-          type: 'uint256',
-          name: 'signerNonce',
+          type: 'uint256[]',
+          name: 'pricePerDay',
         },
         {
-          type: 'uint256',
-          name: 'assetNonce',
-        },
-        {
-          type: 'uint256',
+          type: 'uint256[]',
           name: 'maxDays',
         },
         {
-          type: 'uint256',
+          type: 'uint256[]',
           name: 'minDays',
         },
-      ],
+      ]
     },
     params
   )
@@ -102,23 +94,15 @@ export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals,
         },
         {
           type: 'uint256',
-          name: 'pricePerDay',
-        },
-        {
-          type: 'uint256',
           name: 'expiration',
         },
         {
-          type: 'uint256',
-          name: 'contractNonce',
+          type: 'uint256[3]',
+          name: 'nonces',
         },
         {
           type: 'uint256',
-          name: 'signerNonce',
-        },
-        {
-          type: 'uint256',
-          name: 'assetNonce',
+          name: 'pricePerDay',
         },
         {
           type: 'uint256',
@@ -127,6 +111,10 @@ export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals,
         {
           type: 'address',
           name: 'operator',
+        },
+        {
+          type: 'uint256',
+          name: 'index',
         },
       ],
     },
