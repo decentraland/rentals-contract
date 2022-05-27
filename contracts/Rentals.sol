@@ -21,7 +21,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     bytes32 public constant TENANT_TYPE_HASH =
         keccak256(
             bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator)"
+                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
             )
         );
 
@@ -62,6 +62,7 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         uint256 pricePerDay;
         uint256 rentalDays;
         address operator;
+        uint256 index;
         bytes signature;
     }
 
@@ -218,15 +219,14 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
         address tenant = _tenant.signer;
         address contractAddress = _lessor.contractAddress;
         uint256 tokenId = _lessor.tokenId;
-        bytes memory fingerprint = _lessor.fingerprint;
-        uint256 pricePerDay = _lessor.pricePerDay[0];
+        uint256 pricePerDay = _lessor.pricePerDay[_tenant.index];
         uint256 rentalDays = _tenant.rentalDays;
         address operator = _tenant.operator;
 
         IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
 
         if (verifiable.supportsInterface(IERC721Verifiable_ValidateFingerprint)) {
-            require(verifiable.verifyFingerprint(tokenId, fingerprint), "Rentals#rent: INVALID_FINGERPRINT");
+            require(verifiable.verifyFingerprint(tokenId, _lessor.fingerprint), "Rentals#rent: INVALID_FINGERPRINT");
         }
 
         require(!_isRented(contractAddress, tokenId), "Rentals#rent: CURRENTLY_RENTED");
@@ -372,14 +372,17 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
     function _verify(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
         _verifySignatures(_lessor, _tenant);
 
+        uint256 i = _tenant.index;
+
         require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#_verify: INVALID_MAX_DAYS_LENGTH");
         require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#_verify: INVALID_MIN_DAYS_LENGTH");
+        require(_tenant.index < _lessor.pricePerDay.length, "Rentals#_verify: INVALID_INDEX");
         require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
         require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
-        require(_lessor.minDays[0] <= _lessor.maxDays[0], "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_lessor.minDays[0] > 0, "Rentals#_verify: MIN_DAYS_0");
-        require(_tenant.rentalDays >= _lessor.minDays[0] && _tenant.rentalDays <= _lessor.maxDays[0], "Rentals#_verify: DAYS_NOT_IN_RANGE");
-        require(_lessor.pricePerDay[0] == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
+        require(_lessor.minDays[i] <= _lessor.maxDays[i], "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_lessor.minDays[i] > 0, "Rentals#_verify: MIN_DAYS_0");
+        require(_tenant.rentalDays >= _lessor.minDays[i] && _tenant.rentalDays <= _lessor.maxDays[i], "Rentals#_verify: DAYS_NOT_IN_RANGE");
+        require(_lessor.pricePerDay[i] == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
         require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
         require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
         require(keccak256(_lessor.fingerprint) == keccak256(_tenant.fingerprint), "Rentals#_verify: DIFFERENT_FINGERPRINT");
@@ -421,7 +424,8 @@ contract Rentals is OwnableUpgradeable, EIP712Upgradeable, IERC721Receiver {
                     keccak256(abi.encodePacked(_tenant.nonces)),
                     _tenant.pricePerDay,
                     _tenant.rentalDays,
-                    _tenant.operator
+                    _tenant.operator,
+                    _tenant.index
                 )
             )
         );

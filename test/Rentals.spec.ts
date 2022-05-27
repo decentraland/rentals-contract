@@ -76,6 +76,7 @@ describe('Rentals', () => {
       nonces: [0, 0, 0],
       rentalDays: 15,
       operator: operator.address,
+      index: 0,
     }
   })
 
@@ -403,6 +404,36 @@ describe('Rentals', () => {
         .withArgs(0, 1, tenantParams.contractAddress, tenantParams.tokenId, tenantParams.signer, lessor.address)
     })
 
+    it('should allow the tenant to select a different option included in the tenant signature by providing a different index', async () => {
+      lessorParams.pricePerDay = [...lessorParams.pricePerDay, ether('20')]
+      lessorParams.maxDays = [...lessorParams.maxDays, 30]
+      lessorParams.minDays = [...lessorParams.minDays, 20]
+
+      tenantParams.pricePerDay = ether('20')
+      tenantParams.rentalDays = 25
+      tenantParams.index = 1
+
+      const rent = rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await expect(rent)
+        .to.emit(rentals, 'RentalStarted')
+        .withArgs(
+          tenantParams.contractAddress,
+          tenantParams.tokenId,
+          lessorParams.signer,
+          tenantParams.signer,
+          tenantParams.operator,
+          tenantParams.rentalDays,
+          tenantParams.pricePerDay,
+          lessor.address
+        )
+    })
+
     it('should update original owners with lessor when the contract does not own the asset already', async () => {
       expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
 
@@ -578,6 +609,19 @@ describe('Rentals', () => {
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
       ).to.be.revertedWith('Rentals#_verify: INVALID_MIN_DAYS_LENGTH')
+    })
+
+    it('should revert when tenant index is outside the pricePerDay length', async () => {
+      tenantParams.index = 1
+
+      await expect(
+        rentals
+          .connect(lessor)
+          .rent(
+            { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+            { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+          )
+      ).to.be.revertedWith('Rentals#_verify: INVALID_INDEX')
     })
 
     it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
