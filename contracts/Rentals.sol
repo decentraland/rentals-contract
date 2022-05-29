@@ -133,10 +133,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
      */
     function bumpSignerNonce() external {
         address sender = _msgSender();
-        uint256 previous = signerNonce[sender];
-        signerNonce[sender]++;
-
-        emit SignerNonceUpdated(previous, signerNonce[sender], sender);
+        
+        emit SignerNonceUpdated(signerNonce[sender], ++signerNonce[sender], sender);
     }
 
     /**
