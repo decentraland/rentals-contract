@@ -19,7 +19,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
-    
+
     IERC20 public token;
 
     mapping(address => mapping(uint256 => address)) public originalOwners;
@@ -133,7 +133,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
      */
     function bumpSignerNonce() external {
         address sender = _msgSender();
-        
+
         emit SignerNonceUpdated(signerNonce[sender], ++signerNonce[sender], sender);
     }
 
@@ -332,10 +332,14 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _tokenId,
         address _signer
     ) internal {
-        uint256 previous = _getAssetNonce(_contractAddress, _tokenId, _signer);
-        assetNonce[_contractAddress][_tokenId][_signer]++;
-
-        emit AssetNonceUpdated(previous, _getAssetNonce(_contractAddress, _tokenId, _signer), _contractAddress, _tokenId, _signer, _msgSender());
+        emit AssetNonceUpdated(
+            assetNonce[_contractAddress][_tokenId][_signer],
+            ++assetNonce[_contractAddress][_tokenId][_signer],
+            _contractAddress,
+            _tokenId,
+            _signer,
+            _msgSender()
+        );
     }
 
     function _getAssetNonce(
