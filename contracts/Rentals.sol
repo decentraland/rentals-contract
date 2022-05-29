@@ -124,10 +124,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     @dev This can be used to invalidate all signatures created with the previous nonce.
      */
     function bumpContractNonce() external onlyOwner {
-        uint256 previous = contractNonce;
-        contractNonce++;
-
-        emit ContractNonceUpdated(previous, contractNonce, _msgSender());
+        emit ContractNonceUpdated(contractNonce, ++contractNonce, _msgSender());
     }
 
     /**
