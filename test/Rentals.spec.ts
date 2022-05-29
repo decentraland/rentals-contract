@@ -128,8 +128,8 @@ describe('Rentals', () => {
       expect(await rentals.token()).to.be.equal(newToken)
     })
 
-    it('should emit a UpdateToken event', async () => {
-      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'UpdateToken').withArgs(oldToken, newToken, owner.address)
+    it('should emit a TokenUpdated event', async () => {
+      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'TokenUpdated').withArgs(oldToken, newToken, owner.address)
     })
 
     it('should accept a meta tx', async () => {
@@ -164,9 +164,9 @@ describe('Rentals', () => {
       expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
     })
 
-    it('should emit a UpdateFeeCollector event', async () => {
+    it('should emit a FeeCollectorUpdated event', async () => {
       await expect(rentals.connect(owner).setFeeCollector(newFeeCollector))
-        .to.emit(rentals, 'UpdateFeeCollector')
+        .to.emit(rentals, 'FeeCollectorUpdated')
         .withArgs(oldFeeCollector, newFeeCollector, owner.address)
     })
 
@@ -199,8 +199,8 @@ describe('Rentals', () => {
       expect(await rentals.fee()).to.be.equal(newFee)
     })
 
-    it('should emit a UpdateFee event', async () => {
-      await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'UpdateFee').withArgs(oldFee, newFee, owner.address)
+    it('should emit a FeeUpdated event', async () => {
+      await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'FeeUpdated').withArgs(oldFee, newFee, owner.address)
     })
 
     it('should accept the maximum fee of 1_000_000', async () => {
@@ -241,8 +241,8 @@ describe('Rentals', () => {
       expect(await rentals.connect(owner).contractNonce()).to.equal(1)
     })
 
-    it('should emit a UpdatedContractNonce event', async () => {
-      await expect(rentals.connect(owner).bumpContractNonce()).to.emit(rentals, 'UpdatedContractNonce').withArgs(0, 1, owner.address)
+    it('should emit a ContractNonceUpdated event', async () => {
+      await expect(rentals.connect(owner).bumpContractNonce()).to.emit(rentals, 'ContractNonceUpdated').withArgs(0, 1, owner.address)
     })
 
     it('should accept a meta tx', async () => {
@@ -272,8 +272,8 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(1)
     })
 
-    it('should emit an UpdatedSignerNonce event', async () => {
-      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'UpdatedSignerNonce').withArgs(0, 1, lessor.address)
+    it('should emit an SignerNonceUpdated event', async () => {
+      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'SignerNonceUpdated').withArgs(0, 1, lessor.address)
     })
 
     it('should accept a meta tx', async () => {
@@ -299,9 +299,9 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
     })
 
-    it('should emit an UpdatedAssetNonce event', async () => {
+    it('should emit an AssetNonceUpdated event', async () => {
       await expect(rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId))
-        .to.emit(rentals, 'UpdatedAssetNonce')
+        .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, erc721.address, tokenId, lessor.address, lessor.address)
     })
 
@@ -455,7 +455,7 @@ describe('Rentals', () => {
         )
     })
 
-    it('should emit an UpdatedAssetNonce event for the lessor and the tenant', async () => {
+    it('should emit an AssetNonceUpdated event for the lessor and the tenant', async () => {
       await expect(
         rentals
           .connect(lessor)
@@ -464,9 +464,9 @@ describe('Rentals', () => {
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
       )
-        .to.emit(rentals, 'UpdatedAssetNonce')
+        .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, lessorParams.contractAddress, lessorParams.tokenId, lessorParams.signer, lessor.address)
-        .to.emit(rentals, 'UpdatedAssetNonce')
+        .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, tenantParams.contractAddress, tenantParams.tokenId, tenantParams.signer, lessor.address)
     })
 
@@ -1236,7 +1236,7 @@ describe('Rentals', () => {
       await rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)
     })
 
-    it('should emit an UpdateOperatorSet event', async () => {
+    it('should emit an OperatorUpdated event', async () => {
       await rentals
         .connect(lessor)
         .rent(
@@ -1248,7 +1248,7 @@ describe('Rentals', () => {
       await network.provider.send('evm_mine')
 
       await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress))
-        .to.emit(rentals, 'UpdateOperatorSet')
+        .to.emit(rentals, 'OperatorUpdated')
         .withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
     })
 
@@ -1269,7 +1269,7 @@ describe('Rentals', () => {
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
 
       const setUpdateOperator = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
-      await expect(setUpdateOperator).to.emit(rentals, 'UpdateOperatorSet').withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
+      await expect(setUpdateOperator).to.emit(rentals, 'OperatorUpdated').withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
     })
 
     it('should revert if the contract does not have the asset', async () => {

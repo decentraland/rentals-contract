@@ -55,12 +55,12 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bytes signature;
     }
 
-    event UpdateToken(IERC20 _from, IERC20 _to, address _sender);
-    event UpdateFeeCollector(address _from, address _to, address _sender);
-    event UpdateFee(uint256 _from, uint256 _to, address _sender);
-    event UpdatedContractNonce(uint256 _from, uint256 _to, address _sender);
-    event UpdatedSignerNonce(uint256 _from, uint256 _to, address _sender);
-    event UpdatedAssetNonce(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
+    event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
+    event FeeCollectorUpdated(address _from, address _to, address _sender);
+    event FeeUpdated(uint256 _from, uint256 _to, address _sender);
+    event ContractNonceUpdated(uint256 _from, uint256 _to, address _sender);
+    event SignerNonceUpdated(uint256 _from, uint256 _to, address _sender);
+    event AssetNonceUpdated(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
     event RentalStarted(
         address _contractAddress,
         uint256 _tokenId,
@@ -72,7 +72,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address _sender
     );
     event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
-    event UpdateOperatorSet(address _contractAddress, uint256 _tokenId, address _to, address _sender);
+    event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
 
     /**
     @notice Initialize the contract.
@@ -127,7 +127,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 previous = contractNonce;
         contractNonce++;
 
-        emit UpdatedContractNonce(previous, contractNonce, _msgSender());
+        emit ContractNonceUpdated(previous, contractNonce, _msgSender());
     }
 
     /**
@@ -139,7 +139,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 previous = signerNonce[sender];
         signerNonce[sender]++;
 
-        emit UpdatedSignerNonce(previous, signerNonce[sender], sender);
+        emit SignerNonceUpdated(previous, signerNonce[sender], sender);
     }
 
     /**
@@ -294,7 +294,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         asset.setUpdateOperator(_tokenId, _operator);
 
-        emit UpdateOperatorSet(_contractAddress, _tokenId, _operator, sender);
+        emit OperatorUpdated(_contractAddress, _tokenId, _operator, sender);
     }
 
     /**
@@ -313,13 +313,13 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     function _setToken(IERC20 _token) internal {
-        emit UpdateToken(token, _token, _msgSender());
+        emit TokenUpdated(token, _token, _msgSender());
 
         token = _token;
     }
 
     function _setFeeCollector(address _feeCollector) internal {
-        emit UpdateFeeCollector(feeCollector, _feeCollector, _msgSender());
+        emit FeeCollectorUpdated(feeCollector, _feeCollector, _msgSender());
 
         feeCollector = _feeCollector;
     }
@@ -327,7 +327,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     function _setFee(uint256 _fee) internal {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
-        emit UpdateFee(fee, _fee, _msgSender());
+        emit FeeUpdated(fee, _fee, _msgSender());
 
         fee = _fee;
     }
@@ -340,7 +340,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 previous = _getAssetNonce(_contractAddress, _tokenId, _signer);
         assetNonce[_contractAddress][_tokenId][_signer]++;
 
-        emit UpdatedAssetNonce(previous, _getAssetNonce(_contractAddress, _tokenId, _signer), _contractAddress, _tokenId, _signer, _msgSender());
+        emit AssetNonceUpdated(previous, _getAssetNonce(_contractAddress, _tokenId, _signer), _contractAddress, _tokenId, _signer, _msgSender());
     }
 
     function _getAssetNonce(
