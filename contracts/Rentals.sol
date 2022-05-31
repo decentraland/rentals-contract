@@ -13,8 +13,19 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
-    bytes32 public constant LESSOR_TYPE_HASH = 0xc051b116252f94829974cd91d68dd970ccc3e78b22bcaa50ea8b15e76dfdc1fb;
-    bytes32 public constant TENANT_TYPE_HASH = 0x61d73ea8cac070a687225b3c47827c383d42eb1fcc213dcf09f3fabc51d04db0;
+    bytes32 public constant LESSOR_TYPE_HASH =
+        keccak256(
+            bytes(
+                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+            )
+        );
+
+    bytes32 public constant TENANT_TYPE_HASH =
+        keccak256(
+            bytes(
+                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
+            )
+        );
 
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
