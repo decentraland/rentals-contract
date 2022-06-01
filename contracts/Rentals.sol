@@ -382,8 +382,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         uint256 i = _tenant.index;
 
-        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#_verify: INVALID_MAX_DAYS_LENGTH");
-        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#_verify: INVALID_MIN_DAYS_LENGTH");
+        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#_verify: MAX_DAYS_LENGTH_MISSMATCH");
+        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#_verify: MIN_DAYS_LENGTH_MISSMATCH");
         require(_tenant.index < _lessor.pricePerDay.length, "Rentals#_verify: INVALID_INDEX");
         require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
         require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");

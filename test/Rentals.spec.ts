@@ -825,7 +825,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#_verify: INVALID_MAX_DAYS_LENGTH')
+      ).to.be.revertedWith('Rentals#_verify: MAX_DAYS_LENGTH_MISSMATCH')
     })
 
     it('should revert when minDays length is different than pricePerDay length', async () => {
@@ -838,7 +838,7 @@ describe('Rentals', () => {
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
           )
-      ).to.be.revertedWith('Rentals#_verify: INVALID_MIN_DAYS_LENGTH')
+      ).to.be.revertedWith('Rentals#_verify: MIN_DAYS_LENGTH_MISSMATCH')
     })
 
     it('should revert when tenant index is outside the pricePerDay length', async () => {
