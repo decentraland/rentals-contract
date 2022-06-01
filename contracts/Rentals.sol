@@ -135,7 +135,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     @dev This can be used to invalidate all signatures created with the previous nonce.
      */
     function bumpContractNonce() external onlyOwner {
-        emit ContractNonceUpdated(contractNonce, ++contractNonce, _msgSender());
+        uint256 previous = contractNonce;
+        contractNonce++;
+
+        emit ContractNonceUpdated(previous, contractNonce, _msgSender());
     }
 
     /**
@@ -144,8 +147,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
      */
     function bumpSignerNonce() external {
         address sender = _msgSender();
+        uint256 previous = signerNonce[sender];
+        signerNonce[sender]++;
 
-        emit SignerNonceUpdated(signerNonce[sender], ++signerNonce[sender], sender);
+        emit SignerNonceUpdated(previous, signerNonce[sender], sender);
     }
 
     /**
@@ -319,23 +324,26 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     function _setToken(IERC20 _token) internal {
-        emit TokenUpdated(token, _token, _msgSender());
-
+        IERC20 previous = token;
         token = _token;
+
+        emit TokenUpdated(previous, token, _msgSender());
     }
 
     function _setFeeCollector(address _feeCollector) internal {
-        emit FeeCollectorUpdated(feeCollector, _feeCollector, _msgSender());
-
+        address previous = feeCollector;
         feeCollector = _feeCollector;
+
+        emit FeeCollectorUpdated(previous, feeCollector, _msgSender());
     }
 
     function _setFee(uint256 _fee) internal {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
-        emit FeeUpdated(fee, _fee, _msgSender());
-
+        uint256 previous = fee;
         fee = _fee;
+
+        emit FeeUpdated(previous, fee, _msgSender());
     }
 
     function _bumpAssetNonce(
@@ -343,14 +351,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _tokenId,
         address _signer
     ) internal {
-        emit AssetNonceUpdated(
-            assetNonce[_contractAddress][_tokenId][_signer],
-            ++assetNonce[_contractAddress][_tokenId][_signer],
-            _contractAddress,
-            _tokenId,
-            _signer,
-            _msgSender()
-        );
+        uint256 previous = assetNonce[_contractAddress][_tokenId][_signer];
+        assetNonce[_contractAddress][_tokenId][_signer]++;
+
+        emit AssetNonceUpdated(previous, assetNonce[_contractAddress][_tokenId][_signer], _contractAddress, _tokenId, _signer, _msgSender());
     }
 
     function _getAssetNonce(
