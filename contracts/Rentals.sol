@@ -27,6 +27,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
             )
         );
 
+    bytes4 public constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
+
     uint256 public contractNonce;
     mapping(address => uint256) public signerNonce;
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
@@ -226,7 +228,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
 
-        if (verifiable.supportsInterface(0x8f9f4b63)) {
+        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
             require(verifiable.verifyFingerprint(tokenId, abi.encodePacked(_lessor.fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
         }
 
