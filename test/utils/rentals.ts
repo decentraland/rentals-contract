@@ -5,9 +5,9 @@ import { Rentals } from '../../typechain-types'
 
 export const getRandomSignature = () => ethers.utils.randomBytes(65)
 
-export const getRandomSalt = () => ethers.utils.randomBytes(32)
+export const getRandomBytes32 = () => ethers.utils.randomBytes(32)
 
-export const getRandomBytes = () => getRandomSalt()
+export const getZeroBytes32 = () => getRandomBytes32().map(() => 0)
 
 export const ether = (amount: string) => ethers.utils.parseUnits(amount, 'ether')
 
@@ -38,7 +38,7 @@ export const getLessorSignature = (signer: SignerWithAddress, contract: Rentals,
           name: 'tokenId',
         },
         {
-          type: 'bytes',
+          type: 'bytes32',
           name: 'fingerprint',
         },
         {
@@ -89,7 +89,7 @@ export const getTenantSignature = (signer: SignerWithAddress, contract: Rentals,
           name: 'tokenId',
         },
         {
-          type: 'bytes',
+          type: 'bytes32',
           name: 'fingerprint',
         },
         {

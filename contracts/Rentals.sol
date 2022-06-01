@@ -16,14 +16,14 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     bytes32 public constant LESSOR_TYPE_HASH =
         keccak256(
             bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes32 fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
             )
         );
 
     bytes32 public constant TENANT_TYPE_HASH =
         keccak256(
             bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
+                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes32 fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
             )
         );
 
@@ -43,7 +43,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address signer;
         address contractAddress;
         uint256 tokenId;
-        bytes fingerprint;
+        bytes32 fingerprint;
         uint256 expiration;
         uint256[3] nonces;
         uint256[] pricePerDay;
@@ -56,7 +56,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address signer;
         address contractAddress;
         uint256 tokenId;
-        bytes fingerprint;
+        bytes32 fingerprint;
         uint256 expiration;
         uint256[3] nonces;
         uint256 pricePerDay;
@@ -227,7 +227,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
 
         if (verifiable.supportsInterface(0x8f9f4b63)) {
-            require(verifiable.verifyFingerprint(tokenId, _lessor.fingerprint), "Rentals#rent: INVALID_FINGERPRINT");
+            require(verifiable.verifyFingerprint(tokenId, abi.encodePacked(_lessor.fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
         }
 
         require(!_isRented(contractAddress, tokenId), "Rentals#rent: CURRENTLY_RENTED");
@@ -393,7 +393,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(_lessor.pricePerDay[i] == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
         require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
         require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
-        require(keccak256(_lessor.fingerprint) == keccak256(_tenant.fingerprint), "Rentals#_verify: DIFFERENT_FINGERPRINT");
+        require(_lessor.fingerprint == _tenant.fingerprint, "Rentals#_verify: DIFFERENT_FINGERPRINT");
         require(_lessor.nonces[0] == contractNonce, "Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE");
         require(_tenant.nonces[0] == contractNonce, "Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE");
         require(_lessor.nonces[1] == signerNonce[_lessor.signer], "Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE");
@@ -410,7 +410,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
                     _lessor.signer,
                     _lessor.contractAddress,
                     _lessor.tokenId,
-                    keccak256(_lessor.fingerprint),
+                    _lessor.fingerprint,
                     _lessor.expiration,
                     keccak256(abi.encodePacked(_lessor.nonces)),
                     keccak256(abi.encodePacked(_lessor.pricePerDay)),
@@ -427,7 +427,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
                     _tenant.signer,
                     _tenant.contractAddress,
                     _tenant.tokenId,
-                    keccak256(_tenant.fingerprint),
+                    _tenant.fingerprint,
                     _tenant.expiration,
                     keccak256(abi.encodePacked(_tenant.nonces)),
                     _tenant.pricePerDay,

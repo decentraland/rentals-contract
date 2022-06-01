@@ -4,7 +4,16 @@ import { BigNumber } from 'ethers'
 import { ethers, network } from 'hardhat'
 import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
-import { daysToSeconds, ether, getLessorSignature, getMetaTxSignature, getRandomBytes, getTenantSignature, now } from './utils/rentals'
+import {
+  daysToSeconds,
+  ether,
+  getLessorSignature,
+  getMetaTxSignature,
+  getRandomBytes32,
+  getTenantSignature,
+  getZeroBytes32,
+  now,
+} from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -58,7 +67,7 @@ describe('Rentals', () => {
       signer: lessor.address,
       contractAddress: erc721.address,
       tokenId,
-      fingerprint: [],
+      fingerprint: getZeroBytes32(),
       expiration: now() + 1000,
       nonces: [0, 0, 0],
       pricePerDay: [ether('100')],
@@ -70,7 +79,7 @@ describe('Rentals', () => {
       signer: tenant.address,
       contractAddress: erc721.address,
       tokenId,
-      fingerprint: [],
+      fingerprint: getZeroBytes32(),
       pricePerDay: ether('100'),
       expiration: now() + 1000,
       nonces: [0, 0, 0],
@@ -81,6 +90,7 @@ describe('Rentals', () => {
   })
 
   afterEach(async () => {
+    // console.log(tenantParams)
     await network.provider.send('evm_revert', [snapshotId])
   })
 
@@ -651,9 +661,9 @@ describe('Rentals', () => {
                   type: 'uint256',
                 },
                 {
-                  internalType: 'bytes',
+                  internalType: 'bytes32',
                   name: 'fingerprint',
-                  type: 'bytes',
+                  type: 'bytes32',
                 },
                 {
                   internalType: 'uint256',
@@ -708,9 +718,9 @@ describe('Rentals', () => {
                   type: 'uint256',
                 },
                 {
-                  internalType: 'bytes',
+                  internalType: 'bytes32',
                   name: 'fingerprint',
-                  type: 'bytes',
+                  type: 'bytes32',
                 },
                 {
                   internalType: 'uint256',
@@ -962,7 +972,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when lessor and tenant provide different fingerprints', async () => {
-      tenantParams = { ...tenantParams, fingerprint: getRandomBytes() }
+      tenantParams = { ...tenantParams, fingerprint: getRandomBytes32() }
 
       await expect(
         rentals
@@ -1056,7 +1066,7 @@ describe('Rentals', () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
 
-      lessorParams = { ...lessorParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes() }
+      lessorParams = { ...lessorParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes32() }
       tenantParams = { ...tenantParams, contractAddress: lessorParams.contractAddress, fingerprint: lessorParams.fingerprint }
 
       await expect(
