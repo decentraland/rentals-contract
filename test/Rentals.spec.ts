@@ -1278,7 +1278,7 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_ORIGINAL_OWNER')
+      await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
   })
 
