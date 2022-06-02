@@ -356,16 +356,16 @@ describe('Rentals', () => {
     })
   })
 
-  describe('getOriginalOwner', () => {
+  describe('getLessor', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should return address(0) when nothing is set', async () => {
-      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
     })
 
-    it('should return the address of the original asset owner after a rent', async () => {
+    it('should return the address of the lessor after starting a rent', async () => {
       await rentals
         .connect(lessor)
         .rent(
@@ -373,7 +373,62 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+
+    it('should return the address of the lessor after the rent is over', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
+      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+  })
+
+  describe('getTenant', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+    })
+
+    it('should return address(0) when nothing is set', async () => {
+      expect(await rentals.connect(tenant).getTenant(erc721.address, tokenId)).to.equal(zeroAddress)
+    })
+
+    it('should return the address of the tenant after starting a rent', async () => {
+      await rentals
+        .connect(tenant)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(tenant).getTenant(erc721.address, tokenId)).to.equal(tenant.address)
+    })
+
+    it('should return the address of the tenant after the rent is over', async () => {
+      await rentals
+        .connect(tenant)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      expect(await rentals.connect(tenant).isRented(erc721.address, tokenId)).to.equal(true)
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      expect(await rentals.connect(tenant).isRented(erc721.address, tokenId)).to.equal(false)
+      expect(await rentals.connect(tenant).getTenant(erc721.address, tokenId)).to.equal(tenant.address)
     })
   })
 
@@ -511,7 +566,7 @@ describe('Rentals', () => {
     })
 
     it('should update original owners with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
 
       await rentals
         .connect(lessor)
@@ -520,7 +575,7 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      expect(await rentals.connect(lessor).getOriginalOwner(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1143,7 +1198,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
 
-      expect(await rentals.getOriginalOwner(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
     })
 
     it('should transfer the asset to the original owner', async () => {
@@ -1228,11 +1283,24 @@ describe('Rentals', () => {
   })
 
   describe('setOperator', () => {
+    const newOperator = zeroAddress
+
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
-    it('should allow the original owner to set the operator of an asset owned by the contract if it is not rented', async () => {
+    it('should allow the tenant to update the asset operator', async () => {
+      await rentals
+        .connect(lessor)
+        .rent(
+          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
+          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
+        )
+
+      await rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
+    })
+
+    it('should allow the lessor to update the asset operator after the rent is over', async () => {
       await rentals
         .connect(lessor)
         .rent(
@@ -1243,10 +1311,18 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      await rentals.connect(lessor).setOperator(erc721.address, tokenId, zeroAddress)
+      await rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
     })
 
-    it('should emit an OperatorUpdated event', async () => {
+    it('should revert when the asset has never been rented', async () => {
+      const setOperatorByLessor = rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
+      const setOperatorByTenant = rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
+
+      await expect(setOperatorByLessor).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
+      await expect(setOperatorByTenant).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
+    })
+
+    it('should revert when the tenant tries to update the operator after the rent is over', async () => {
       await rentals
         .connect(lessor)
         .rent(
@@ -1257,12 +1333,12 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      await expect(rentals.connect(lessor).setOperator(erc721.address, tokenId, zeroAddress))
-        .to.emit(rentals, 'OperatorUpdated')
-        .withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
+      const setOperator = rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
+
+      await expect(setOperator).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
     })
 
-    it('should accept a meta tx', async () => {
+    it('should revert when the lessor tries to update the operator before the rental ends', async () => {
       await rentals
         .connect(lessor)
         .rent(
@@ -1270,38 +1346,9 @@ describe('Rentals', () => {
           { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      const setOperator = rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
 
-      const abi = ['function setOperator(address _contractAddress,uint256 _tokenId,address _operator)']
-      const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('setOperator', [erc721.address, tokenId, zeroAddress])
-      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
-
-      const setOperator = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
-      await expect(setOperator).to.emit(rentals, 'OperatorUpdated').withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
-    })
-
-    it('should revert if the contract does not have the asset', async () => {
-      await expect(rentals.connect(lessor).setOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
-        'Rentals#setOperator: NOT_ORIGINAL_OWNER'
-      )
-    })
-
-    it('should revert the caller is not the original owner of the asset', async () => {
-      await rentals
-        .connect(lessor)
-        .rent(
-          { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
-          { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }
-        )
-
-      await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
-      await network.provider.send('evm_mine')
-
-      await expect(rentals.connect(tenant).setOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
-        'Rentals#setOperator: NOT_ORIGINAL_OWNER'
-      )
+      await expect(setOperator).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
     })
   })
 

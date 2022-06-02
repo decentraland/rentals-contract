@@ -35,8 +35,9 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
     IERC20 public token;
 
-    mapping(address => mapping(uint256 => address)) public originalOwners;
-    mapping(address => mapping(uint256 => uint256)) public ongoingRentals;
+    mapping(address => mapping(uint256 => address)) public lessors;
+    mapping(address => mapping(uint256 => address)) public tenants;
+    mapping(address => mapping(uint256 => uint256)) public rentals;
 
     address public feeCollector;
     uint256 public fee;
@@ -181,13 +182,28 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Get the original owner address of an asset before it was transfered to this contract.
+    @notice Get the lessor address of a given asset.
+    @dev Will return the address of the lessor of the asset even if the rent is already over.
+    Useful for operations such as `claim` were the contract needs to know who the asset belonged to initially.
+    Fuction `claim` will set it back to address(0) which is the default (empty) address.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
-    @return The original owner address or address(0) if there is none.
+    @return The address of the lessor or address(0) if there is no lessor for the asset.
      */
-    function getOriginalOwner(address _contractAddress, uint256 _tokenId) external view returns (address) {
-        return _getOriginalOwner(_contractAddress, _tokenId);
+    function getLessor(address _contractAddress, uint256 _tokenId) external view returns (address) {
+        return _getLessor(_contractAddress, _tokenId);
+    }
+
+    /**
+    @notice Get the tenant address of a given asset.
+    @dev Will return the address of the tenant of the asset even if the rent is already over.
+    Fuction `claim` will set it back to address(0) which is the default (empty) address.
+    @param _contractAddress The contract address of the asset.
+    @param _tokenId The token id of the asset.
+    @return The address of the tenant or address(0) if there is no tenant for the asset.
+     */
+    function getTenant(address _contractAddress, uint256 _tokenId) external view returns (address) {
+        return tenants[_contractAddress][_tokenId];
     }
 
     /**
@@ -236,15 +252,15 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         IERC721Operable asset = IERC721Operable(contractAddress);
 
-        bool isAssetOwnedByContract = _getOriginalOwner(contractAddress, tokenId) != address(0);
+        bool isAssetOwnedByContract = _getLessor(contractAddress, tokenId) != address(0);
 
         if (isAssetOwnedByContract) {
-            require(_getOriginalOwner(contractAddress, tokenId) == lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
+            require(_getLessor(contractAddress, tokenId) == lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
         } else {
-            originalOwners[contractAddress][tokenId] = lessor;
+            lessors[contractAddress][tokenId] = lessor;
         }
 
-        ongoingRentals[contractAddress][tokenId] = block.timestamp + rentalDays * 86400; // 86400 = seconds in a day
+        rentals[contractAddress][tokenId] = block.timestamp + rentalDays * 86400; // 86400 = seconds in a day
 
         _bumpAssetNonce(contractAddress, tokenId, lessor);
         _bumpAssetNonce(contractAddress, tokenId, tenant);
@@ -261,6 +277,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
             asset.safeTransferFrom(lessor, address(this), tokenId);
         }
 
+        tenants[contractAddress][tokenId] = tenant;
+
         asset.setUpdateOperator(tokenId, operator);
 
         emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, _msgSender());
@@ -275,9 +293,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address sender = _msgSender();
 
         require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
-        require(_getOriginalOwner(_contractAddress, _tokenId) == sender, "Rentals#claim: NOT_ORIGINAL_OWNER");
+        require(_getLessor(_contractAddress, _tokenId) == sender, "Rentals#claim: NOT_LESSOR");
 
-        originalOwners[_contractAddress][_tokenId] = address(0);
+        lessors[_contractAddress][_tokenId] = address(0);
+        tenants[_contractAddress][_tokenId] = address(0);
 
         IERC721 asset = IERC721(_contractAddress);
 
@@ -287,8 +306,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice The original owner of the asset change the operator of said asset if it is not currently rented.
-    @dev As the operator permission cannot be removed automatically from the tenant after the rent ends, the lessor has to do it manually afterwards.
+    @notice Set the operator of a given asset.
+    @dev Only when the rent is active a tenant can change the operator of an asset.
+    When the rent is over, the lessor is the one that can change the operator.
+    In the case of the lessor, this is useful to update the operator without having to claim the asset back once the rent is over.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
     @param _operator The address that will have operator privileges over the asset.
@@ -298,12 +319,16 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _tokenId,
         address _operator
     ) external {
-        address sender = _msgSender();
-
-        require(!_isRented(_contractAddress, _tokenId), "Rentals#setOperator: CURRENTLY_RENTED");
-        require(_getOriginalOwner(_contractAddress, _tokenId) == sender, "Rentals#setOperator: NOT_ORIGINAL_OWNER");
-
         IERC721Operable asset = IERC721Operable(_contractAddress);
+
+        address sender = _msgSender();
+        address tenant = tenants[_contractAddress][_tokenId];
+        address lessor = _getLessor(_contractAddress, _tokenId);
+
+        bool rented = _isRented(_contractAddress, _tokenId);
+        bool canSetOperator = (tenant == sender && rented) || (lessor == sender && !rented);
+
+        require(canSetOperator, "Rentals#setOperator: CANNOT_UPDATE_OPERATOR");
 
         asset.setUpdateOperator(_tokenId, _operator);
 
@@ -367,12 +392,12 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         return assetNonce[_contractAddress][_tokenId][_signer];
     }
 
-    function _getOriginalOwner(address _contractAddress, uint256 _tokenId) internal view returns (address) {
-        return originalOwners[_contractAddress][_tokenId];
+    function _getLessor(address _contractAddress, uint256 _tokenId) internal view returns (address) {
+        return lessors[_contractAddress][_tokenId];
     }
 
     function _getRentalEnd(address _contractAddress, uint256 _tokenId) internal view returns (uint256) {
-        return ongoingRentals[_contractAddress][_tokenId];
+        return rentals[_contractAddress][_tokenId];
     }
 
     function _isRented(address _contractAddress, uint256 _tokenId) internal view returns (bool) {
