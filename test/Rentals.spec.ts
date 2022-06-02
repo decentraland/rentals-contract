@@ -1227,7 +1227,7 @@ describe('Rentals', () => {
     })
   })
 
-  describe('setUpdateOperator', () => {
+  describe('setOperator', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
@@ -1243,7 +1243,7 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      await rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)
+      await rentals.connect(lessor).setOperator(erc721.address, tokenId, zeroAddress)
     })
 
     it('should emit an OperatorUpdated event', async () => {
@@ -1257,7 +1257,7 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress))
+      await expect(rentals.connect(lessor).setOperator(erc721.address, tokenId, zeroAddress))
         .to.emit(rentals, 'OperatorUpdated')
         .withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
     })
@@ -1273,18 +1273,18 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      const abi = ['function setUpdateOperator(address _contractAddress,uint256 _tokenId,address _operator)']
+      const abi = ['function setOperator(address _contractAddress,uint256 _tokenId,address _operator)']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('setUpdateOperator', [erc721.address, tokenId, zeroAddress])
+      const functionSignature = iface.encodeFunctionData('setOperator', [erc721.address, tokenId, zeroAddress])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
 
-      const setUpdateOperator = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
-      await expect(setUpdateOperator).to.emit(rentals, 'OperatorUpdated').withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
+      const setOperator = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      await expect(setOperator).to.emit(rentals, 'OperatorUpdated').withArgs(erc721.address, tokenId, zeroAddress, lessor.address)
     })
 
     it('should revert if the contract does not have the asset', async () => {
-      await expect(rentals.connect(lessor).setUpdateOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
-        'Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER'
+      await expect(rentals.connect(lessor).setOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
+        'Rentals#setOperator: NOT_ORIGINAL_OWNER'
       )
     })
 
@@ -1299,8 +1299,8 @@ describe('Rentals', () => {
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      await expect(rentals.connect(tenant).setUpdateOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
-        'Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER'
+      await expect(rentals.connect(tenant).setOperator(erc721.address, tokenId, zeroAddress)).to.be.revertedWith(
+        'Rentals#setOperator: NOT_ORIGINAL_OWNER'
       )
     })
   })

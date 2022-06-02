@@ -293,15 +293,15 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     @param _tokenId The token id of the asset.
     @param _operator The address that will have operator privileges over the asset.
      */
-    function setUpdateOperator(
+    function setOperator(
         address _contractAddress,
         uint256 _tokenId,
         address _operator
     ) external {
         address sender = _msgSender();
 
-        require(!_isRented(_contractAddress, _tokenId), "Rentals#setUpdateOperator: CURRENTLY_RENTED");
-        require(_getOriginalOwner(_contractAddress, _tokenId) == sender, "Rentals#setUpdateOperator: NOT_ORIGINAL_OWNER");
+        require(!_isRented(_contractAddress, _tokenId), "Rentals#setOperator: CURRENTLY_RENTED");
+        require(_getOriginalOwner(_contractAddress, _tokenId) == sender, "Rentals#setOperator: NOT_ORIGINAL_OWNER");
 
         IERC721Operable asset = IERC721Operable(_contractAddress);
 
