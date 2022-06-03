@@ -6,12 +6,14 @@ import "../commons/NativeMetaTransaction.sol";
 
 contract DummyNativeMetaTransactionImplementator is NativeMetaTransaction {
     uint256 public counter;
+    address public increaseCounterCaller;
 
     function initialize() external initializer {
         __EIP712_init("DummyNativeMetaTransactionImplementator", "1");
     }
 
     function increaseCounter(uint256 _amount) external {
+        increaseCounterCaller = _getMsgSender();
         counter += _amount;
     }
 

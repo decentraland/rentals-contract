@@ -71,6 +71,18 @@ describe('NativeMetaTransaction', () => {
       expect(ethers.utils.defaultAbiCoder.decode(['uint256'], data)[0]).to.be.equal(30)
     })
 
+    it('should _getMsgSender should extract the provided _userAddress instead of the msg.sender', async () => {
+      const abi = ['function increaseCounter(uint256 _amount)']
+      const metaTxFunctionData = getMetaTxFunctionData(abi, 'increaseCounter', [10])
+      const metaTxSignature = await getMetaTxSignature(user, nmtImplementator, metaTxFunctionData)
+
+      expect(await nmtImplementator.increaseCounterCaller()).to.be.equal('0x0000000000000000000000000000000000000000')
+
+      await nmtImplementator.connect(deployer).executeMetaTransaction(user.address, metaTxFunctionData, metaTxSignature)
+
+      expect(await nmtImplementator.increaseCounterCaller()).to.be.equal(user.address)
+    })
+
     it('should revert with the relayed funcion revert message', async () => {
       const abi = ['function functionThatReverts()']
       const metaTxFunctionData = getMetaTxFunctionData(abi, 'functionThatReverts')
@@ -81,7 +93,7 @@ describe('NativeMetaTransaction', () => {
       await expect(functionThatReverts).to.be.revertedWith('ALWAYS_REVERTING_NEVER_INREVERTING')
     })
 
-    it('should revert wthout a reason if the relayed function reverted silently', async () => {
+    it('should revert without a reason if the relayed function reverted silently', async () => {
       const abi = ['function functionThatRevertsSilently()']
       const metaTxFunctionData = getMetaTxFunctionData(abi, 'functionThatRevertsSilently')
       const metaTxSignature = await getMetaTxSignature(user, nmtImplementator, metaTxFunctionData)
