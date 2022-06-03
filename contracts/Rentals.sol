@@ -4,10 +4,10 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
-import "./external/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./commons/NativeMetaTransaction.sol";
+import "./commons/AddressExtractor.sol";
 
 import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
@@ -348,6 +348,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     ) external view override returns (bytes4) {
         require(_operator == address(this), "Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
         return 0x150b7a02;
+    }
+
+    function _msgSender() internal view override returns (address sender) {
+        return AddressExtractor.extract();
     }
 
     function _setToken(IERC20 _token) internal {

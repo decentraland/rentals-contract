@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.7;
 
-import "../external/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 
 abstract contract NativeMetaTransaction is EIP712Upgradeable {
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(bytes("MetaTransaction(uint256 nonce,address from,bytes functionData)"));
