@@ -5,40 +5,66 @@ pragma solidity ^0.8.7;
 import "../external/EIP712Upgradeable.sol";
 
 abstract contract NativeMetaTransaction is EIP712Upgradeable {
-    bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(bytes("MetaTransaction(uint256 nonce,address from,bytes functionSignature)"));
+    bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(bytes("MetaTransaction(uint256 nonce,address from,bytes functionData)"));
 
-    event MetaTransactionExecuted(address _userAddress, address _relayerAddress, bytes _functionSignature);
-
-    mapping(address => uint256) nonces;
+    mapping(address => uint256) internal nonces;
 
     struct MetaTransaction {
         uint256 nonce;
         address from;
-        bytes functionSignature;
+        bytes functionData;
     }
 
-    function getNonce(address _user) external view returns (uint256 nonce) {
-        nonce = nonces[_user];
+    event MetaTransactionExecuted(address _userAddress, address _relayerAddress, bytes _functionData);
+
+    /**
+    @notice Get the meta transaction nonce of a given user address.
+    @dev These nonces are used to invalidate already used meta transaction signatures.
+    @param _user The address of the user.
+    @return The nonce for a given user.
+     */
+    function getNonce(address _user) external view returns (uint256) {
+        return nonces[_user];
     }
 
+    /**
+    @notice Execute a transaction from the contract appending _userAddress to the call data.
+    @dev The appended address can then be extracted from the called context in order to use it instead of msg.sender.
+    The caller of `executeMetaTransaction` will pay for gas fees so _userAddress can experience "gasless" transactions.
+    @param _userAddress The address appended to the call data.
+    @param _functionData Data containing information about the contract function to be called.
+    @param _signature Signature created by _userAddress to validate that they wanted 
+    @return The data as bytes of what the relayed function would have returned.
+     */
     function executeMetaTransaction(
         address _userAddress,
-        bytes memory _functionSignature,
+        bytes memory _functionData,
         bytes memory _signature
     ) external payable returns (bytes memory) {
-        MetaTransaction memory metaTx = MetaTransaction({nonce: nonces[_userAddress], from: _userAddress, functionSignature: _functionSignature});
+        MetaTransaction memory metaTx = MetaTransaction({nonce: nonces[_userAddress], from: _userAddress, functionData: _functionData});
 
-        require(_verify(_userAddress, metaTx, _signature), "NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH");
+        require(_verify(_userAddress, metaTx, _signature), "NativeMetaTransaction#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH");
 
-        // increase nonce for user (to avoid re-use)
         nonces[_userAddress]++;
 
-        emit MetaTransactionExecuted(_userAddress, msg.sender, _functionSignature);
+        emit MetaTransactionExecuted(_userAddress, msg.sender, _functionData);
 
-        // Append userAddress and relayer address at the end to extract it from calling context
-        (bool success, bytes memory returnData) = address(this).call{value: msg.value}(abi.encodePacked(_functionSignature, _userAddress));
+        (bool success, bytes memory returnData) = address(this).call{value: msg.value}(abi.encodePacked(_functionData, _userAddress));
 
-        require(success, "NMT#executeMetaTransaction: CALL_FAILED");
+        // Bubble up error based on https://github.com/Uniswap/v3-periphery/blob/v1.0.0/contracts/base/Multicall.sol
+        if (!success) {
+            if (returnData.length < 68) {
+                // Revert silently when there is no message in the returned data.
+                revert();
+            }
+
+            assembly {
+                // Remove the selector.
+                returnData := add(returnData, 0x04)
+            }
+
+            revert(abi.decode(returnData, (string)));
+        }
 
         return returnData;
     }
@@ -48,14 +74,9 @@ abstract contract NativeMetaTransaction is EIP712Upgradeable {
         MetaTransaction memory _metaTx,
         bytes memory _signature
     ) private view returns (bool) {
-        require(_signer != address(0), "NMT#_verify: INVALID_SIGNER");
+        bytes32 structHash = keccak256(abi.encode(META_TRANSACTION_TYPEHASH, _metaTx.nonce, _metaTx.from, keccak256(_metaTx.functionData)));
+        bytes32 typedDataHash = _hashTypedDataV4(structHash);
 
-        bytes32 msgHash = _hashTypedDataV4(_hashMetaTransaction(_metaTx));
-
-        return _signer == ECDSAUpgradeable.recover(msgHash, _signature);
-    }
-
-    function _hashMetaTransaction(MetaTransaction memory _metaTx) private pure returns (bytes32) {
-        return keccak256(abi.encode(META_TRANSACTION_TYPEHASH, _metaTx.nonce, _metaTx.from, keccak256(_metaTx.functionSignature)));
+        return _signer == ECDSAUpgradeable.recover(typedDataHash, _signature);
     }
 }

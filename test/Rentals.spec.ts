@@ -145,10 +145,10 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       const abi = ['function setToken(address _token)']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('setToken', [newToken])
-      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('setToken', [newToken])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionData)
 
-      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
 
       expect(await rentals.token()).to.be.equal(newToken)
     })
@@ -183,10 +183,10 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       const abi = ['function setFeeCollector(address _feeCollector)']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('setFeeCollector', [newFeeCollector])
-      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('setFeeCollector', [newFeeCollector])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionData)
 
-      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
 
       expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
     })
@@ -222,10 +222,10 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       const abi = ['function setFee(uint256 _fee)']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('setFee', [newFee])
-      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('setFee', [newFee])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionData)
 
-      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
 
       expect(await rentals.fee()).to.be.equal(newFee)
     })
@@ -258,11 +258,11 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       const abi = ['function bumpContractNonce()']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('bumpContractNonce', [])
-      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('bumpContractNonce', [])
+      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionData)
 
       expect(await rentals.connect(owner).contractNonce()).to.equal(0)
-      await rentals.connect(owner).executeMetaTransaction(owner.address, functionSignature, metaTxSignature)
+      await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
       expect(await rentals.connect(owner).contractNonce()).to.equal(1)
     })
 
@@ -289,11 +289,11 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       const abi = ['function bumpSignerNonce()']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('bumpSignerNonce', [])
-      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('bumpSignerNonce', [])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
       expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(0)
-      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
       expect(await rentals.connect(lessor).signerNonce(lessor.address)).to.equal(1)
     })
   })
@@ -318,11 +318,11 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       const abi = ['function bumpAssetNonce(address _contractAddress, uint256 _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('bumpAssetNonce', [erc721.address, tokenId])
-      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('bumpAssetNonce', [erc721.address, tokenId])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
-      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
     })
   })
@@ -826,13 +826,13 @@ describe('Rentals', () => {
       ]
 
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('rent', [
+      const functionData = iface.encodeFunctionData('rent', [
         { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
         { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) },
       ])
-      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
-      const rent = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      const rent = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
 
       await expect(rent)
         .to.emit(rentals, 'RentalStarted')
@@ -1248,11 +1248,11 @@ describe('Rentals', () => {
 
       const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionSignature = iface.encodeFunctionData('claim', [erc721.address, tokenId])
-      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionSignature)
+      const functionData = iface.encodeFunctionData('claim', [erc721.address, tokenId])
+      const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
       expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
-      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionSignature, metaTxSignature)
+      await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
       expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
     })
 
