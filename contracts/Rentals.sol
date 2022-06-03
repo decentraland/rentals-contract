@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./commons/NativeMetaTransaction.sol";
-import "./commons/AddressExtractor.sol";
 
 import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
@@ -351,7 +350,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     function _msgSender() internal view override returns (address sender) {
-        return AddressExtractor.extract();
+        return _getMsgSender();
     }
 
     function _setToken(IERC20 _token) internal {

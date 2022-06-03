@@ -29,7 +29,7 @@ abstract contract NativeMetaTransaction is EIP712Upgradeable {
 
     /**
     @notice Execute a transaction from the contract appending _userAddress to the call data.
-    @dev The appended address can then be extracted from the called context in order to use it instead of msg.sender.
+    @dev The appended address can then be extracted from the called context with _getMsgSender to use that instead of msg.sender.
     The caller of `executeMetaTransaction` will pay for gas fees so _userAddress can experience "gasless" transactions.
     @param _userAddress The address appended to the call data.
     @param _functionData Data containing information about the contract function to be called.
@@ -78,5 +78,20 @@ abstract contract NativeMetaTransaction is EIP712Upgradeable {
         bytes32 typedDataHash = _hashTypedDataV4(structHash);
 
         return _signer == ECDSAUpgradeable.recover(typedDataHash, _signature);
+    }
+
+    function _getMsgSender() internal view returns (address sender) {
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(mload(add(array, index)), 0xffffffffffffffffffffffffffffffffffffffff)
+            }
+        } else {
+            sender = msg.sender;
+        }
+
+        return sender;
     }
 }
