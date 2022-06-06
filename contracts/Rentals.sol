@@ -238,7 +238,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
                     _lessor.signer,
                     _lessor.contractAddress,
                     _lessor.tokenId,
-                    _fingerprint,
                     _lessor.expiration,
                     keccak256(abi.encodePacked(_lessor.nonces)),
                     keccak256(abi.encodePacked(_lessor.pricePerDay)),
