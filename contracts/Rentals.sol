@@ -15,14 +15,14 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     bytes32 public constant LESSOR_TYPE_HASH =
         keccak256(
             bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes32 fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+                "Lessor(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
             )
         );
 
     bytes32 public constant TENANT_TYPE_HASH =
         keccak256(
             bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes32 fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
+                "Tenant(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
             )
         );
 
@@ -45,7 +45,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address signer;
         address contractAddress;
         uint256 tokenId;
-        bytes32 fingerprint;
         uint256 expiration;
         uint256[3] nonces;
         uint256[] pricePerDay;
@@ -58,13 +57,12 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address signer;
         address contractAddress;
         uint256 tokenId;
-        bytes32 fingerprint;
         uint256 expiration;
         uint256[3] nonces;
         uint256 pricePerDay;
         uint256 rentalDays;
         address operator;
-        uint256 index;
+        bytes32 fingerprint;
         bytes signature;
     }
 
@@ -225,62 +223,110 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         return _isRented(_contractAddress, _tokenId);
     }
 
-    /**
-    @notice Rent an asset providing the signature of both the lessor and the tenant and a set of matching parameters.
-    @param _lessor Data corresponding to the lessor.
-    @param _tenant Data corresponding to the tenant.
-     */
-    function rent(Lessor calldata _lessor, Tenant calldata _tenant) external {
-        _verify(_lessor, _tenant);
+    function rentAsTenant(
+        Lessor calldata _lessor,
+        address _operator,
+        uint256 _index,
+        uint256 _rentalDays,
+        bytes32 _fingerprint
+    ) external {
+        // Validate signature's signer
+        bytes32 lessorMessageHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    LESSOR_TYPE_HASH,
+                    _lessor.signer,
+                    _lessor.contractAddress,
+                    _lessor.tokenId,
+                    _fingerprint,
+                    _lessor.expiration,
+                    keccak256(abi.encodePacked(_lessor.nonces)),
+                    keccak256(abi.encodePacked(_lessor.pricePerDay)),
+                    keccak256(abi.encodePacked(_lessor.maxDays)),
+                    keccak256(abi.encodePacked(_lessor.minDays))
+                )
+            )
+        );
 
-        address lessor = _lessor.signer;
-        address tenant = _tenant.signer;
-        address contractAddress = _lessor.contractAddress;
-        uint256 tokenId = _lessor.tokenId;
-        uint256 pricePerDay = _lessor.pricePerDay[_tenant.index];
-        uint256 rentalDays = _tenant.rentalDays;
-        address operator = _tenant.operator;
+        address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _lessor.signature);
 
-        IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
+        require(lessor == _lessor.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
 
-        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(verifiable.verifyFingerprint(tokenId, abi.encodePacked(_lessor.fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
-        }
+        // Validate sender
+        address tenant = _msgSender();
 
-        require(!_isRented(contractAddress, tokenId), "Rentals#rent: CURRENTLY_RENTED");
+        require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
 
-        IERC721Operable asset = IERC721Operable(contractAddress);
+        // Validate nonces
+        uint256 lessorAssetNonce = _getAssetNonce(_lessor.contractAddress, _lessor.tokenId, lessor);
 
-        bool isAssetOwnedByContract = _getLessor(contractAddress, tokenId) != address(0);
+        require(_lessor.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
+        require(_lessor.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
+        require(_lessor.nonces[2] == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
 
-        if (isAssetOwnedByContract) {
-            require(_getLessor(contractAddress, tokenId) == lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
-        } else {
-            lessors[contractAddress][tokenId] = lessor;
-        }
+        // Validate params
+        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
+        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH");
+        require(_index < _lessor.pricePerDay.length, "Rentals#rent: INVALID_INDEX");
+        require(_lessor.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
+        require(_lessor.minDays[_index] <= _lessor.maxDays[_index], "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_lessor.minDays[_index] > 0, "Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO");
+        require(_rentalDays >= _lessor.minDays[_index] && _rentalDays <= _lessor.maxDays[_index], "Rentals#rent: DAYS_NOT_IN_RANGE");
 
-        rentals[contractAddress][tokenId] = block.timestamp + rentalDays * 86400; // 86400 = seconds in a day
+        // Execute rental
+        _rent(lessor, tenant, _lessor.contractAddress, _lessor.tokenId, _fingerprint, _lessor.pricePerDay[_index], _rentalDays, _operator);
+    }
 
-        _bumpAssetNonce(contractAddress, tokenId, lessor);
-        _bumpAssetNonce(contractAddress, tokenId, tenant);
+    function rentAsLessor(Tenant calldata _tenant) external {
+        // Validate signature's signer
+        bytes32 tenantMessageHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    TENANT_TYPE_HASH,
+                    _tenant.signer,
+                    _tenant.contractAddress,
+                    _tenant.tokenId,
+                    _tenant.expiration,
+                    keccak256(abi.encodePacked(_tenant.nonces)),
+                    _tenant.pricePerDay,
+                    _tenant.rentalDays,
+                    _tenant.operator,
+                    _tenant.fingerprint
+                )
+            )
+        );
 
-        if (pricePerDay > 0) {
-            uint256 totalPrice = pricePerDay * rentalDays;
-            uint256 forCollector = (totalPrice * fee) / 1_000_000;
+        address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _tenant.signature);
 
-            token.transferFrom(tenant, lessor, totalPrice - forCollector);
-            token.transferFrom(tenant, feeCollector, forCollector);
-        }
+        require(tenant == _tenant.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
 
-        if (!isAssetOwnedByContract) {
-            asset.safeTransferFrom(lessor, address(this), tokenId);
-        }
+        // Validate sender
+        address lessor = _msgSender();
 
-        tenants[contractAddress][tokenId] = tenant;
+        require(lessor != tenant, "Rentals#rent: LESSOR_CANNOT_BE_TENANT");
 
-        asset.setUpdateOperator(tokenId, operator);
+        // Validate nonces
+        uint256 tenantAssetNonce = _getAssetNonce(_tenant.contractAddress, _tenant.tokenId, tenant);
 
-        emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, _msgSender());
+        require(_tenant.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
+        require(_tenant.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
+        require(_tenant.nonces[2] == tenantAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
+
+        // Validate params
+        require(_tenant.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
+        require(_tenant.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
+
+        // Execute rental
+        _rent(
+            lessor,
+            tenant,
+            _tenant.contractAddress,
+            _tenant.tokenId,
+            _tenant.fingerprint,
+            _tenant.pricePerDay,
+            _tenant.rentalDays,
+            _tenant.operator
+        );
     }
 
     /**
@@ -407,82 +453,55 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         return block.timestamp < _getRentalEnd(_contractAddress, _tokenId);
     }
 
-    function _verify(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
-        _verifySignatures(_lessor, _tenant);
+    function _rent(
+        address _lessor,
+        address _tenant,
+        address _contractAddress,
+        uint256 _tokenId,
+        bytes32 _fingerprint,
+        uint256 _pricePerDay,
+        uint256 _rentalDays,
+        address _operator
+    ) internal {
+        IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
 
-        uint256 i = _tenant.index;
+        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
+            require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
+        }
 
-        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#_verify: MAX_DAYS_LENGTH_MISSMATCH");
-        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#_verify: MIN_DAYS_LENGTH_MISSMATCH");
-        require(_tenant.index < _lessor.pricePerDay.length, "Rentals#_verify: INVALID_INDEX");
-        require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
-        require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
-        require(_lessor.minDays[i] <= _lessor.maxDays[i], "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_lessor.minDays[i] > 0, "Rentals#_verify: MIN_DAYS_0");
-        require(_tenant.rentalDays >= _lessor.minDays[i] && _tenant.rentalDays <= _lessor.maxDays[i], "Rentals#_verify: DAYS_NOT_IN_RANGE");
-        require(_lessor.pricePerDay[i] == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
-        require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
-        require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
-        require(_lessor.fingerprint == _tenant.fingerprint, "Rentals#_verify: DIFFERENT_FINGERPRINT");
-        require(_lessor.nonces[0] == contractNonce, "Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE");
-        require(_tenant.nonces[0] == contractNonce, "Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE");
-        require(_lessor.nonces[1] == signerNonce[_lessor.signer], "Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE");
-        require(_tenant.nonces[1] == signerNonce[_tenant.signer], "Rentals#_verify: INVALID_TENANT_SIGNER_NONCE");
+        require(!_isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
 
-        _verifyAssetNonces(_lessor, _tenant);
-    }
+        IERC721Operable asset = IERC721Operable(_contractAddress);
 
-    function _verifySignatures(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
-        bytes32 lessorMessageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    LESSOR_TYPE_HASH,
-                    _lessor.signer,
-                    _lessor.contractAddress,
-                    _lessor.tokenId,
-                    _lessor.fingerprint,
-                    _lessor.expiration,
-                    keccak256(abi.encodePacked(_lessor.nonces)),
-                    keccak256(abi.encodePacked(_lessor.pricePerDay)),
-                    keccak256(abi.encodePacked(_lessor.maxDays)),
-                    keccak256(abi.encodePacked(_lessor.minDays))
-                )
-            )
-        );
+        bool isAssetOwnedByContract = _getLessor(_contractAddress, _tokenId) != address(0);
 
-        bytes32 tenantMessageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    TENANT_TYPE_HASH,
-                    _tenant.signer,
-                    _tenant.contractAddress,
-                    _tenant.tokenId,
-                    _tenant.fingerprint,
-                    _tenant.expiration,
-                    keccak256(abi.encodePacked(_tenant.nonces)),
-                    _tenant.pricePerDay,
-                    _tenant.rentalDays,
-                    _tenant.operator,
-                    _tenant.index
-                )
-            )
-        );
+        if (isAssetOwnedByContract) {
+            require(_getLessor(_contractAddress, _tokenId) == _lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
+        } else {
+            lessors[_contractAddress][_tokenId] = _lessor;
+        }
 
-        address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _lessor.signature);
-        address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _tenant.signature);
+        rentals[_contractAddress][_tokenId] = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
-        require(tenant == _tenant.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
-        require(lessor == _lessor.signer, "Rentals#_verifySignatures: INVALID_LESSOR_SIGNATURE");
-    }
+        _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
+        _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
 
-    function _verifyAssetNonces(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
-        address contractAddress = _lessor.contractAddress;
-        uint256 tokenId = _lessor.tokenId;
+        if (_pricePerDay > 0) {
+            uint256 totalPrice = _pricePerDay * _rentalDays;
+            uint256 forCollector = (totalPrice * fee) / 1_000_000;
 
-        uint256 lessorAssetNonce = _getAssetNonce(contractAddress, tokenId, _lessor.signer);
-        uint256 tenantAssetNonce = _getAssetNonce(contractAddress, tokenId, _tenant.signer);
+            token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
+            token.transferFrom(_tenant, feeCollector, forCollector);
+        }
 
-        require(_lessor.nonces[2] == lessorAssetNonce, "Rentals#_verifyAssetNonces: INVALID_LESSOR_ASSET_NONCE");
-        require(_tenant.nonces[2] == tenantAssetNonce, "Rentals#_verifyAssetNonces: INVALID_TENANT_ASSET_NONCE");
+        if (!isAssetOwnedByContract) {
+            asset.safeTransferFrom(_lessor, address(this), _tokenId);
+        }
+
+        tenants[_contractAddress][_tokenId] = _tenant;
+
+        asset.setUpdateOperator(_tokenId, _operator);
+
+        emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
     }
 }
