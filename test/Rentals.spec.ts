@@ -333,34 +333,6 @@ describe('Rentals', () => {
     })
   })
 
-  describe('getLessor', () => {
-    beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
-    })
-
-    it('should return address(0) when nothing is set', async () => {
-      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
-    })
-
-    it('should return the address of the lessor after starting a rent', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-
-      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
-    })
-
-    it('should return the address of the lessor after the rent is over', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
-
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
-      await network.provider.send('evm_mine')
-
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
-      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
-    })
-  })
-
   describe('getTenant', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
@@ -516,7 +488,7 @@ describe('Rentals', () => {
     })
 
     it('should update the lessors mappingwith lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.connect(lessor).lessors(erc721.address, tokenId)).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -528,7 +500,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(tenant).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.connect(tenant).lessors(erc721.address, tokenId)).to.equal(lessor.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1083,11 +1055,11 @@ describe('Rentals', () => {
     })
 
     it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.connect(lessor).lessors(erc721.address, tokenId)).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
 
-      expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.connect(lessor).lessors(erc721.address, tokenId)).to.equal(lessor.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1367,7 +1339,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
 
-      expect(await rentals.getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
     })
 
     it('should transfer the asset to the original owner', async () => {
