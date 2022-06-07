@@ -333,34 +333,6 @@ describe('Rentals', () => {
     })
   })
 
-  describe('getTenant', () => {
-    beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
-    })
-
-    it('should return address(0) when nothing is set', async () => {
-      expect(await rentals.connect(tenant).getTenant(erc721.address, tokenId)).to.equal(zeroAddress)
-    })
-
-    it('should return the address of the tenant after starting a rent', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-
-      expect(await rentals.connect(lessor).getTenant(erc721.address, tokenId)).to.equal(tenant.address)
-    })
-
-    it('should return the address of the tenant after the rent is over', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
-
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
-      await network.provider.send('evm_mine')
-
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
-      expect(await rentals.connect(lessor).getTenant(erc721.address, tokenId)).to.equal(tenant.address)
-    })
-  })
-
   describe('getRentalEnd', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)

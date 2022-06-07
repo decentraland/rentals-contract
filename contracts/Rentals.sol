@@ -183,17 +183,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Get the tenant address of a given asset.
-    @dev Will return the address of the tenant of the asset even if the rent is already over.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-    @return The address of the tenant or address(0) if there is no tenant for the asset.
-     */
-    function getTenant(address _contractAddress, uint256 _tokenId) external view returns (address) {
-        return tenants[_contractAddress][_tokenId];
-    }
-
-    /**
     @notice Get the timestamp of when a rental will end.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
