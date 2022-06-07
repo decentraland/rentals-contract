@@ -12,6 +12,7 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
+    // EIP712 type hashes for recovering the signer from a signature.
     bytes32 public constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
@@ -26,21 +27,36 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
             )
         );
 
+    // EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 public constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
 
+    // Nonces used to invalidate signatures.
     uint256 public contractNonce;
+    // (signer address -> nonce)
     mapping(address => uint256) public signerNonce;
+    // (contract address -> token id -> signer address -> nonce)
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
 
+    // ERC20 token used to pay for rent and fees.
     IERC20 public token;
 
+    // Keeps track of the original owners of the assets that have been rented.
+    // (contract address -> token id -> lessor address)
     mapping(address => mapping(uint256 => address)) public lessors;
+    // Keeps track of the addresses acting as tenants of an asset after the initiation of a rental.
+    // (contract address -> token id -> tenant address)
     mapping(address => mapping(uint256 => address)) public tenants;
+    // Keeps track of the timestamp when rentals end.
+    // (contract address -> token id -> finish timestamp)
     mapping(address => mapping(uint256 => uint256)) public rentals;
 
+    // Address that will receive ERC20 tokens collected as rental fees.
     address public feeCollector;
+    // Value per million wei that will be deducted from the rental price and sent to the collector.
     uint256 public fee;
 
+    // Contains the rental conditions proposed by the owner of an asset.
+    // Includes the signature and data required for verification.
     struct Listing {
         address signer;
         address contractAddress;
@@ -53,6 +69,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bytes signature;
     }
 
+    // Contains data of a rental offer from a user made to the owner of an asset.
+    // Includes the signature and data required for verification.
     struct Bid {
         address signer;
         address contractAddress;
@@ -87,11 +105,12 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
     /**
     @notice Initialize the contract.
-    @dev Can only be initialized once, This method should be called by an upgradable proxy.
+    @dev This method should be called as soon as the contract is deployed.
+    Using this method in favor of a constructor allows the implementation of various kinds of proxies.
     @param _owner The address of the owner of the contract.
     @param _token The address of the ERC20 token used by tenants to pay rent.
     @param _feeCollector Address that will receive rental fees
-    @param _fee Fee (per million wei) that will be transfered from the rental price to the fee collector.
+    @param _fee Value per million wei that will be transfered from the rental price to the fee collector.
      */
     function initialize(
         address _owner,
@@ -182,7 +201,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     @notice Get the lessor address of a given asset.
     @dev Will return the address of the lessor of the asset even if the rent is already over.
     Useful for operations such as `claim` were the contract needs to know who the asset belonged to initially.
-    Fuction `claim` will set it back to address(0) which is the default (empty) address.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
     @return The address of the lessor or address(0) if there is no lessor for the asset.
@@ -194,7 +212,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     /**
     @notice Get the tenant address of a given asset.
     @dev Will return the address of the tenant of the asset even if the rent is already over.
-    Fuction `claim` will set it back to address(0) which is the default (empty) address.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
     @return The address of the tenant or address(0) if there is no tenant for the asset.
@@ -223,6 +240,18 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         return _isRented(_contractAddress, _tokenId);
     }
 
+    /**
+    @notice Accept a rental listing created by the owner of an asset.
+    @param _listing Contains the listing conditions as well as the signature data for verification.
+    @param _operator The address that will be given operator permissions over an asset.
+    @param _index The rental conditions index chosen from the options provided in _listing.
+    @param _rentalDays The amount of days the caller wants to rent the asset.
+    Must be a value between the selected condition's min and max days.
+    @param _fingerprint The fingerprint used to verify composable erc721s.
+    Useful in order to prevent a front run were, for example, the owner removes LAND from and Estate before
+    the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
+    they expected.
+     */
     function acceptListing(
         Listing calldata _listing,
         address _operator,
@@ -276,6 +305,10 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
     }
 
+    /**
+    @notice Accept a bid for an asset you own.
+    @param _bid Contains the bid conditions as well as the signature data for verification.
+     */
     function acceptBid(Bid calldata _bid) external {
         // Validate signature's signer
         bytes32 tenantMessageHash = _hashTypedDataV4(
