@@ -12,40 +12,55 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
-    bytes32 public constant LESSOR_TYPE_HASH =
+    // EIP712 type hashes for recovering the signer from a signature.
+    bytes32 public constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,bytes32 fingerprint,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
             )
         );
 
-    bytes32 public constant TENANT_TYPE_HASH =
+    bytes32 public constant BID_TYPE_HASH =
         keccak256(
             bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,bytes32 fingerprint,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,uint256 index)"
+                "Bid(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
             )
         );
 
+    // EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 public constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
 
+    // Nonces used to invalidate signatures.
     uint256 public contractNonce;
+    // (signer address -> nonce)
     mapping(address => uint256) public signerNonce;
+    // (contract address -> token id -> signer address -> nonce)
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
 
+    // ERC20 token used to pay for rent and fees.
     IERC20 public token;
 
+    // Keeps track of the original owners of the assets that have been rented.
+    // (contract address -> token id -> lessor address)
     mapping(address => mapping(uint256 => address)) public lessors;
+    // Keeps track of the addresses acting as tenants of an asset after the initiation of a rental.
+    // (contract address -> token id -> tenant address)
     mapping(address => mapping(uint256 => address)) public tenants;
+    // Keeps track of the timestamp when rentals end.
+    // (contract address -> token id -> finish timestamp)
     mapping(address => mapping(uint256 => uint256)) public rentals;
 
+    // Address that will receive ERC20 tokens collected as rental fees.
     address public feeCollector;
+    // Value per million wei that will be deducted from the rental price and sent to the collector.
     uint256 public fee;
 
-    struct Lessor {
+    // Contains the rental conditions proposed by the owner of an asset.
+    // Includes the signature and data required for verification.
+    struct Listing {
         address signer;
         address contractAddress;
         uint256 tokenId;
-        bytes32 fingerprint;
         uint256 expiration;
         uint256[3] nonces;
         uint256[] pricePerDay;
@@ -54,17 +69,18 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bytes signature;
     }
 
-    struct Tenant {
+    // Contains data of a rental offer from a user made to the owner of an asset.
+    // Includes the signature and data required for verification.
+    struct Bid {
         address signer;
         address contractAddress;
         uint256 tokenId;
-        bytes32 fingerprint;
         uint256 expiration;
         uint256[3] nonces;
         uint256 pricePerDay;
         uint256 rentalDays;
         address operator;
-        uint256 index;
+        bytes32 fingerprint;
         bytes signature;
     }
 
@@ -74,6 +90,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     event ContractNonceUpdated(uint256 _from, uint256 _to, address _sender);
     event SignerNonceUpdated(uint256 _from, uint256 _to, address _sender);
     event AssetNonceUpdated(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
+    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
+    event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
     event RentalStarted(
         address _contractAddress,
         uint256 _tokenId,
@@ -84,16 +102,15 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _pricePerDay,
         address _sender
     );
-    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
-    event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
 
     /**
     @notice Initialize the contract.
-    @dev Can only be initialized once, This method should be called by an upgradable proxy.
+    @dev This method should be called as soon as the contract is deployed.
+    Using this method in favor of a constructor allows the implementation of various kinds of proxies.
     @param _owner The address of the owner of the contract.
     @param _token The address of the ERC20 token used by tenants to pay rent.
     @param _feeCollector Address that will receive rental fees
-    @param _fee Fee (per million wei) that will be transfered from the rental price to the fee collector.
+    @param _fee Value per million wei that will be transfered from the rental price to the fee collector.
      */
     function initialize(
         address _owner,
@@ -184,7 +201,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     @notice Get the lessor address of a given asset.
     @dev Will return the address of the lessor of the asset even if the rent is already over.
     Useful for operations such as `claim` were the contract needs to know who the asset belonged to initially.
-    Fuction `claim` will set it back to address(0) which is the default (empty) address.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
     @return The address of the lessor or address(0) if there is no lessor for the asset.
@@ -196,7 +212,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     /**
     @notice Get the tenant address of a given asset.
     @dev Will return the address of the tenant of the asset even if the rent is already over.
-    Fuction `claim` will set it back to address(0) which is the default (empty) address.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
     @return The address of the tenant or address(0) if there is no tenant for the asset.
@@ -226,61 +241,123 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Rent an asset providing the signature of both the lessor and the tenant and a set of matching parameters.
-    @param _lessor Data corresponding to the lessor.
-    @param _tenant Data corresponding to the tenant.
+    @notice Accept a rental listing created by the owner of an asset.
+    @param _listing Contains the listing conditions as well as the signature data for verification.
+    @param _operator The address that will be given operator permissions over an asset.
+    @param _index The rental conditions index chosen from the options provided in _listing.
+    @param _rentalDays The amount of days the caller wants to rent the asset.
+    Must be a value between the selected condition's min and max days.
+    @param _fingerprint The fingerprint used to verify composable erc721s.
+    Useful in order to prevent a front run were, for example, the owner removes LAND from and Estate before
+    the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
+    they expected.
      */
-    function rent(Lessor calldata _lessor, Tenant calldata _tenant) external {
-        _verify(_lessor, _tenant);
+    function acceptListing(
+        Listing calldata _listing,
+        address _operator,
+        uint256 _index,
+        uint256 _rentalDays,
+        bytes32 _fingerprint
+    ) external {
+        // Verify that the signer provided in the listing is the one that signed it.
+        bytes32 listingHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    LISTING_TYPE_HASH,
+                    _listing.signer,
+                    _listing.contractAddress,
+                    _listing.tokenId,
+                    _listing.expiration,
+                    keccak256(abi.encodePacked(_listing.nonces)),
+                    keccak256(abi.encodePacked(_listing.pricePerDay)),
+                    keccak256(abi.encodePacked(_listing.maxDays)),
+                    keccak256(abi.encodePacked(_listing.minDays))
+                )
+            )
+        );
 
-        address lessor = _lessor.signer;
-        address tenant = _tenant.signer;
-        address contractAddress = _lessor.contractAddress;
-        uint256 tokenId = _lessor.tokenId;
-        uint256 pricePerDay = _lessor.pricePerDay[_tenant.index];
-        uint256 rentalDays = _tenant.rentalDays;
-        address operator = _tenant.operator;
+        address lessor = ECDSAUpgradeable.recover(listingHash, _listing.signature);
 
-        IERC721Verifiable verifiable = IERC721Verifiable(contractAddress);
+        require(lessor == _listing.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
 
-        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(verifiable.verifyFingerprint(tokenId, abi.encodePacked(_lessor.fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
-        }
+        // Verify that the caller and the signer are not the same address.
+        address tenant = _msgSender();
 
-        require(!_isRented(contractAddress, tokenId), "Rentals#rent: CURRENTLY_RENTED");
+        require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
 
-        IERC721Operable asset = IERC721Operable(contractAddress);
+        // Verify that the nonces provided in the listing match the ones in the contract.
+        uint256 signerAssetNonce = _getAssetNonce(_listing.contractAddress, _listing.tokenId, lessor);
 
-        bool isAssetOwnedByContract = _getLessor(contractAddress, tokenId) != address(0);
+        require(_listing.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
+        require(_listing.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
+        require(_listing.nonces[2] == signerAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
 
-        if (isAssetOwnedByContract) {
-            require(_getLessor(contractAddress, tokenId) == lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
-        } else {
-            lessors[contractAddress][tokenId] = lessor;
-        }
+        // Verify that pricePerDay, maxDays and minDays have the same length
+        require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
+        require(_listing.pricePerDay.length == _listing.minDays.length, "Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH");
 
-        rentals[contractAddress][tokenId] = block.timestamp + rentalDays * 86400; // 86400 = seconds in a day
+        // Verify that the provided index is not out of bounds of the listing conditions.
+        require(_index < _listing.pricePerDay.length, "Rentals#rent: INVALID_INDEX");
 
-        _bumpAssetNonce(contractAddress, tokenId, lessor);
-        _bumpAssetNonce(contractAddress, tokenId, tenant);
+        // Verify that the listing is not already expired.
+        require(_listing.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
 
-        if (pricePerDay > 0) {
-            uint256 totalPrice = pricePerDay * rentalDays;
-            uint256 forCollector = (totalPrice * fee) / 1_000_000;
+        // Verify that minDays and maxDays have valid values.
+        require(_listing.minDays[_index] <= _listing.maxDays[_index], "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_listing.minDays[_index] > 0, "Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO");
 
-            token.transferFrom(tenant, lessor, totalPrice - forCollector);
-            token.transferFrom(tenant, feeCollector, forCollector);
-        }
+        // Verify that the provided rental days is between min and max days range.
+        require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#rent: DAYS_NOT_IN_RANGE");
 
-        if (!isAssetOwnedByContract) {
-            asset.safeTransferFrom(lessor, address(this), tokenId);
-        }
+        _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
+    }
 
-        tenants[contractAddress][tokenId] = tenant;
+    /**
+    @notice Accept a bid for rent of an asset owned by the caller.
+    @param _bid Contains the bid conditions as well as the signature data for verification.
+     */
+    function acceptBid(Bid calldata _bid) external {
+        // Verify that the signer provided in the bid is the one that signed it.
+        bytes32 bidHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    BID_TYPE_HASH,
+                    _bid.signer,
+                    _bid.contractAddress,
+                    _bid.tokenId,
+                    _bid.expiration,
+                    keccak256(abi.encodePacked(_bid.nonces)),
+                    _bid.pricePerDay,
+                    _bid.rentalDays,
+                    _bid.operator,
+                    _bid.fingerprint
+                )
+            )
+        );
 
-        asset.setUpdateOperator(tokenId, operator);
+        address tenant = ECDSAUpgradeable.recover(bidHash, _bid.signature);
 
-        emit RentalStarted(contractAddress, tokenId, lessor, tenant, operator, rentalDays, pricePerDay, _msgSender());
+        require(tenant == _bid.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
+
+        // Verify that the caller and the signer are not the same address.
+        address lessor = _msgSender();
+
+        require(lessor != tenant, "Rentals#rent: LESSOR_CANNOT_BE_TENANT");
+
+        // Verify that the nonces provided in the listing match the ones in the contract.
+        uint256 signerAssetNonce = _getAssetNonce(_bid.contractAddress, _bid.tokenId, tenant);
+
+        require(_bid.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
+        require(_bid.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
+        require(_bid.nonces[2] == signerAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
+
+        // Verify that the listing is not already expired.
+        require(_bid.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
+
+        // Verify that the rental days provided in the bid are valid.
+        require(_bid.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
+
+        _rent(lessor, tenant, _bid.contractAddress, _bid.tokenId, _bid.fingerprint, _bid.pricePerDay, _bid.rentalDays, _bid.operator);
     }
 
     /**
@@ -291,12 +368,16 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     function claim(address _contractAddress, uint256 _tokenId) external {
         address sender = _msgSender();
 
+        // Verify that the rent has finished.
         require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
+        // Verify that the caller is the original owner of the asset.
         require(_getLessor(_contractAddress, _tokenId) == sender, "Rentals#claim: NOT_LESSOR");
 
+        // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
         lessors[_contractAddress][_tokenId] = address(0);
         tenants[_contractAddress][_tokenId] = address(0);
 
+        // Transfer the asset back to its original owner.
         IERC721 asset = IERC721(_contractAddress);
 
         asset.safeTransferFrom(address(this), sender, _tokenId);
@@ -325,10 +406,13 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address lessor = _getLessor(_contractAddress, _tokenId);
 
         bool rented = _isRented(_contractAddress, _tokenId);
+        // If rented, only the tenant can change the operator.
+        // If not, only the original owner can.
         bool canSetOperator = (tenant == sender && rented) || (lessor == sender && !rented);
 
         require(canSetOperator, "Rentals#setOperator: CANNOT_UPDATE_OPERATOR");
 
+        // Update the operator.
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit OperatorUpdated(_contractAddress, _tokenId, _operator, sender);
@@ -407,82 +491,65 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         return block.timestamp < _getRentalEnd(_contractAddress, _tokenId);
     }
 
-    function _verify(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
-        _verifySignatures(_lessor, _tenant);
+    function _rent(
+        address _lessor,
+        address _tenant,
+        address _contractAddress,
+        uint256 _tokenId,
+        bytes32 _fingerprint,
+        uint256 _pricePerDay,
+        uint256 _rentalDays,
+        address _operator
+    ) internal {
+        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
+        IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
 
-        uint256 i = _tenant.index;
+        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
+            require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
+        }
 
-        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#_verify: MAX_DAYS_LENGTH_MISSMATCH");
-        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#_verify: MIN_DAYS_LENGTH_MISSMATCH");
-        require(_tenant.index < _lessor.pricePerDay.length, "Rentals#_verify: INVALID_INDEX");
-        require(_lessor.expiration > block.timestamp, "Rentals#_verify: EXPIRED_LESSOR_SIGNATURE");
-        require(_tenant.expiration > block.timestamp, "Rentals#_verify: EXPIRED_TENANT_SIGNATURE");
-        require(_lessor.minDays[i] <= _lessor.maxDays[i], "Rentals#_verify: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_lessor.minDays[i] > 0, "Rentals#_verify: MIN_DAYS_0");
-        require(_tenant.rentalDays >= _lessor.minDays[i] && _tenant.rentalDays <= _lessor.maxDays[i], "Rentals#_verify: DAYS_NOT_IN_RANGE");
-        require(_lessor.pricePerDay[i] == _tenant.pricePerDay, "Rentals#_verify: DIFFERENT_PRICE_PER_DAY");
-        require(_lessor.contractAddress == _tenant.contractAddress, "Rentals#_verify: DIFFERENT_CONTRACT_ADDRESS");
-        require(_lessor.tokenId == _tenant.tokenId, "Rentals#_verify: DIFFERENT_TOKEN_ID");
-        require(_lessor.fingerprint == _tenant.fingerprint, "Rentals#_verify: DIFFERENT_FINGERPRINT");
-        require(_lessor.nonces[0] == contractNonce, "Rentals#_verify: INVALID_LESSOR_CONTRACT_NONCE");
-        require(_tenant.nonces[0] == contractNonce, "Rentals#_verify: INVALID_TENANT_CONTRACT_NONCE");
-        require(_lessor.nonces[1] == signerNonce[_lessor.signer], "Rentals#_verify: INVALID_LESSOR_SIGNER_NONCE");
-        require(_tenant.nonces[1] == signerNonce[_tenant.signer], "Rentals#_verify: INVALID_TENANT_SIGNER_NONCE");
+        // Verify that the asset is not already rented.
+        require(!_isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
 
-        _verifyAssetNonces(_lessor, _tenant);
-    }
+        IERC721Operable asset = IERC721Operable(_contractAddress);
 
-    function _verifySignatures(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
-        bytes32 lessorMessageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    LESSOR_TYPE_HASH,
-                    _lessor.signer,
-                    _lessor.contractAddress,
-                    _lessor.tokenId,
-                    _lessor.fingerprint,
-                    _lessor.expiration,
-                    keccak256(abi.encodePacked(_lessor.nonces)),
-                    keccak256(abi.encodePacked(_lessor.pricePerDay)),
-                    keccak256(abi.encodePacked(_lessor.maxDays)),
-                    keccak256(abi.encodePacked(_lessor.minDays))
-                )
-            )
-        );
+        bool isAssetOwnedByContract = _getLessor(_contractAddress, _tokenId) != address(0);
 
-        bytes32 tenantMessageHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    TENANT_TYPE_HASH,
-                    _tenant.signer,
-                    _tenant.contractAddress,
-                    _tenant.tokenId,
-                    _tenant.fingerprint,
-                    _tenant.expiration,
-                    keccak256(abi.encodePacked(_tenant.nonces)),
-                    _tenant.pricePerDay,
-                    _tenant.rentalDays,
-                    _tenant.operator,
-                    _tenant.index
-                )
-            )
-        );
+        if (isAssetOwnedByContract) {
+            // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
+            require(_getLessor(_contractAddress, _tokenId) == _lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
+        } else {
+            // Track the original owner of the asset in the lessors map for future use.
+            lessors[_contractAddress][_tokenId] = _lessor;
+        }
 
-        address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _lessor.signature);
-        address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _tenant.signature);
+        // Set the rental finish timestamp in the rentals mapping.
+        rentals[_contractAddress][_tokenId] = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
-        require(tenant == _tenant.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
-        require(lessor == _lessor.signer, "Rentals#_verifySignatures: INVALID_LESSOR_SIGNATURE");
-    }
+        // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
+        _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
+        _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
 
-    function _verifyAssetNonces(Lessor calldata _lessor, Tenant calldata _tenant) internal view {
-        address contractAddress = _lessor.contractAddress;
-        uint256 tokenId = _lessor.tokenId;
+        if (_pricePerDay > 0) {
+            uint256 totalPrice = _pricePerDay * _rentalDays;
+            uint256 forCollector = (totalPrice * fee) / 1_000_000;
 
-        uint256 lessorAssetNonce = _getAssetNonce(contractAddress, tokenId, _lessor.signer);
-        uint256 tenantAssetNonce = _getAssetNonce(contractAddress, tokenId, _tenant.signer);
+            // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
+            token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
+            token.transferFrom(_tenant, feeCollector, forCollector);
+        }
 
-        require(_lessor.nonces[2] == lessorAssetNonce, "Rentals#_verifyAssetNonces: INVALID_LESSOR_ASSET_NONCE");
-        require(_tenant.nonces[2] == tenantAssetNonce, "Rentals#_verifyAssetNonces: INVALID_TENANT_ASSET_NONCE");
+        // Only transfer the ERC721 to this contract if it doesn't already have it.
+        if (!isAssetOwnedByContract) {
+            asset.safeTransferFrom(_lessor, address(this), _tokenId);
+        }
+
+        // Track the new tenant in the mapping.
+        tenants[_contractAddress][_tokenId] = _tenant;
+
+        // Update the operator
+        asset.setUpdateOperator(_tokenId, _operator);
+
+        emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
     }
 }
