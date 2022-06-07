@@ -368,12 +368,16 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     function claim(address _contractAddress, uint256 _tokenId) external {
         address sender = _msgSender();
 
+        // Verify that the rent has finished.
         require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
+        // Verify that the caller is the original owner of the asset.
         require(_getLessor(_contractAddress, _tokenId) == sender, "Rentals#claim: NOT_LESSOR");
 
+        // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
         lessors[_contractAddress][_tokenId] = address(0);
         tenants[_contractAddress][_tokenId] = address(0);
 
+        // Transfer the asset back to its original owner.
         IERC721 asset = IERC721(_contractAddress);
 
         asset.safeTransferFrom(address(this), sender, _tokenId);
@@ -402,10 +406,13 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         address lessor = _getLessor(_contractAddress, _tokenId);
 
         bool rented = _isRented(_contractAddress, _tokenId);
+        // If rented, only the tenant can change the operator.
+        // If not, only the original owner can.
         bool canSetOperator = (tenant == sender && rented) || (lessor == sender && !rented);
 
         require(canSetOperator, "Rentals#setOperator: CANNOT_UPDATE_OPERATOR");
 
+        // Update the operator.
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit OperatorUpdated(_contractAddress, _tokenId, _operator, sender);
@@ -494,12 +501,14 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         address _operator
     ) internal {
+        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
         IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
 
         if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
             require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
         }
 
+        // Verify that the asset is not already rented.
         require(!_isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
 
         IERC721Operable asset = IERC721Operable(_contractAddress);
@@ -507,13 +516,17 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bool isAssetOwnedByContract = _getLessor(_contractAddress, _tokenId) != address(0);
 
         if (isAssetOwnedByContract) {
+            // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
             require(_getLessor(_contractAddress, _tokenId) == _lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
         } else {
+            // Track the original owner of the asset in the lessors map for future use.
             lessors[_contractAddress][_tokenId] = _lessor;
         }
 
+        // Set the rental finish timestamp in the rentals mapping.
         rentals[_contractAddress][_tokenId] = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
+        // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
         _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
         _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
 
@@ -521,16 +534,20 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
             uint256 totalPrice = _pricePerDay * _rentalDays;
             uint256 forCollector = (totalPrice * fee) / 1_000_000;
 
+            // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
             token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
             token.transferFrom(_tenant, feeCollector, forCollector);
         }
 
+        // Only transfer the ERC721 to this contract if it doesn't already have it.
         if (!isAssetOwnedByContract) {
             asset.safeTransferFrom(_lessor, address(this), _tokenId);
         }
 
+        // Track the new tenant in the mapping.
         tenants[_contractAddress][_tokenId] = _tenant;
 
+        // Update the operator
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
