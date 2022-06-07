@@ -342,7 +342,7 @@ describe('Rentals', () => {
     })
 
     it('should return 1 for both lessor and tenant after a rent', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
@@ -359,13 +359,13 @@ describe('Rentals', () => {
     })
 
     it('should return the address of the lessor after starting a rent', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
     })
 
     it('should return the address of the lessor after the rent is over', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
 
@@ -387,13 +387,13 @@ describe('Rentals', () => {
     })
 
     it('should return the address of the tenant after starting a rent', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).getTenant(erc721.address, tokenId)).to.equal(tenant.address)
     })
 
     it('should return the address of the tenant after the rent is over', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
 
@@ -418,7 +418,7 @@ describe('Rentals', () => {
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(
         latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1
@@ -436,13 +436,13 @@ describe('Rentals', () => {
     })
 
     it('should return true after an asset is rented', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
     })
 
     it('should return false after and asset is rented and enough time passes to surpass the rental end time', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -451,13 +451,13 @@ describe('Rentals', () => {
     })
   })
 
-  describe('rentAsLessor', () => {
+  describe('acceptOffer', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should emit a RentalStarted event', async () => {
-      await expect(rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }))
+      await expect(rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }))
         .to.emit(rentals, 'RentalStarted')
         .withArgs(
           tenantParams.contractAddress,
@@ -472,7 +472,7 @@ describe('Rentals', () => {
     })
 
     it('should emit an AssetNonceUpdated event for the lessor and the tenant', async () => {
-      await expect(rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }))
+      await expect(rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) }))
         .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, lessorParams.contractAddress, lessorParams.tokenId, lessorParams.signer, lessor.address)
         .to.emit(rentals, 'AssetNonceUpdated')
@@ -482,7 +482,7 @@ describe('Rentals', () => {
     it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
       expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(zeroAddress)
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).getLessor(erc721.address, tokenId)).to.equal(lessor.address)
     })
@@ -491,7 +491,7 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
       expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, tenant.address)).to.equal(0)
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
       expect(await rentals.connect(lessor).getAssetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
@@ -503,7 +503,7 @@ describe('Rentals', () => {
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(
         latestBlockTime + daysToSeconds(tenantParams.rentalDays) + 1
@@ -517,7 +517,7 @@ describe('Rentals', () => {
 
       tenantParams.pricePerDay = '0'
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
@@ -529,7 +529,7 @@ describe('Rentals', () => {
       const originalBalanceLessor = await erc20.balanceOf(lessor.address)
       const originalBalanceCollector = await erc20.balanceOf(collector.address)
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
       const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
@@ -547,7 +547,7 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).setFee('0')
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
 
@@ -563,7 +563,7 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).setFee('1000000')
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       const total = BigNumber.from(tenantParams.pricePerDay).mul(tenantParams.rentalDays)
 
@@ -634,7 +634,7 @@ describe('Rentals', () => {
               type: 'tuple',
             },
           ],
-          name: 'rentAsLessor',
+          name: 'acceptOffer',
           outputs: [],
           stateMutability: 'nonpayable',
           type: 'function',
@@ -642,7 +642,7 @@ describe('Rentals', () => {
       ]
 
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('rentAsLessor', [
+      const functionData = iface.encodeFunctionData('acceptOffer', [
         { ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) },
       ])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
@@ -667,7 +667,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(lessor)
-          .rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, { ...tenantParams, signer: lessor.address }) })
+          .acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, { ...tenantParams, signer: lessor.address }) })
       ).to.be.revertedWith('Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE')
     })
 
@@ -675,7 +675,7 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, signer: lessor.address }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(lessor, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(lessor, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: LESSOR_CANNOT_BE_TENANT')
     })
 
@@ -683,7 +683,7 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, expiration: now() - 1000 }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: EXPIRED_TENANT_SIGNATURE')
     })
 
@@ -691,7 +691,7 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, rentalDays: 0 }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO')
     })
 
@@ -699,7 +699,7 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, nonces: [1, 0, 0] }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_CONTRACT_NONCE')
     })
 
@@ -707,7 +707,7 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, nonces: [0, 1, 0] }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNER_NONCE')
     })
 
@@ -715,7 +715,7 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_ASSET_NONCE')
     })
 
@@ -726,23 +726,23 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes32() }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
     })
 
     it('should revert if an asset is already being rented', async () => {
-      rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       lessorParams = { ...lessorParams, nonces: [0, 0, 1] }
       tenantParams = { ...tenantParams, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
     })
 
     it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -750,12 +750,12 @@ describe('Rentals', () => {
       tenantParams = { ...tenantParams, expiration: maxUint256, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(extra).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+        rentals.connect(extra).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
       ).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
     })
   })
 
-  describe('rentAsTenant', () => {
+  describe('acceptListing', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
@@ -764,7 +764,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -789,7 +789,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -815,7 +815,7 @@ describe('Rentals', () => {
 
       const rent = rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           index,
@@ -842,7 +842,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -859,7 +859,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -879,7 +879,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -902,7 +902,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -922,7 +922,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -948,7 +948,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -972,7 +972,7 @@ describe('Rentals', () => {
 
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -1064,7 +1064,7 @@ describe('Rentals', () => {
               type: 'bytes32',
             },
           ],
-          name: 'rentAsTenant',
+          name: 'acceptListing',
           outputs: [],
           stateMutability: 'nonpayable',
           type: 'function',
@@ -1072,7 +1072,7 @@ describe('Rentals', () => {
       ]
 
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('rentAsTenant', [
+      const functionData = iface.encodeFunctionData('acceptListing', [
         { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
         tenantParams.operator,
         0,
@@ -1103,7 +1103,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(lessor)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1117,7 +1117,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, { ...lessorParams, signer: tenant.address }) },
             tenantParams.operator,
             0,
@@ -1133,7 +1133,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1149,7 +1149,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1165,7 +1165,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             index,
@@ -1181,7 +1181,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1197,7 +1197,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1213,7 +1213,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1229,7 +1229,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1245,7 +1245,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1261,7 +1261,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1277,7 +1277,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1293,7 +1293,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1313,7 +1313,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1326,7 +1326,7 @@ describe('Rentals', () => {
     it('should revert if an asset is already being rented', async () => {
       rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -1339,7 +1339,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1352,7 +1352,7 @@ describe('Rentals', () => {
     it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
       await rentals
         .connect(tenant)
-        .rentAsTenant(
+        .acceptListing(
           { ...lessorParams, signature: await getLessorSignature(lessor, rentals, lessorParams) },
           tenantParams.operator,
           0,
@@ -1368,7 +1368,7 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(tenant)
-          .rentAsTenant(
+          .acceptListing(
             { ...lessorParams, signature: await getLessorSignature(extra, rentals, lessorParams) },
             tenantParams.operator,
             0,
@@ -1385,7 +1385,7 @@ describe('Rentals', () => {
     })
 
     it('should set the original owner to address(0)', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1396,7 +1396,7 @@ describe('Rentals', () => {
     })
 
     it('should transfer the asset to the original owner', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1409,7 +1409,7 @@ describe('Rentals', () => {
     })
 
     it('should emit an AssetClaimed event', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1420,7 +1420,7 @@ describe('Rentals', () => {
     })
 
     it('should accept a meta tx', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1436,13 +1436,13 @@ describe('Rentals', () => {
     })
 
     it('should revert when the asset is currently being rented', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await expect(rentals.connect(lessor).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
     it('should revert when the caller is not the original owner of the asset', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1459,13 +1459,13 @@ describe('Rentals', () => {
     })
 
     it('should allow the tenant to update the asset operator', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
     })
 
     it('should allow the lessor to update the asset operator after the rent is over', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1482,7 +1482,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when the tenant tries to update the operator after the rent is over', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(tenantParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1493,7 +1493,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when the lessor tries to update the operator before the rental ends', async () => {
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       const setOperator = rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
 
@@ -1509,7 +1509,7 @@ describe('Rentals', () => {
     it('should allow the asset transfer from a rent', async () => {
       expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
 
-      await rentals.connect(lessor).rentAsLessor({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
+      await rentals.connect(lessor).acceptOffer({ ...tenantParams, signature: await getTenantSignature(tenant, rentals, tenantParams) })
 
       expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
     })

@@ -223,7 +223,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         return _isRented(_contractAddress, _tokenId);
     }
 
-    function rentAsTenant(
+    function acceptListing(
         Lessor calldata _lessor,
         address _operator,
         uint256 _index,
@@ -276,7 +276,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         _rent(lessor, tenant, _lessor.contractAddress, _lessor.tokenId, _fingerprint, _lessor.pricePerDay[_index], _rentalDays, _operator);
     }
 
-    function rentAsLessor(Tenant calldata _tenant) external {
+    function acceptOffer(Tenant calldata _tenant) external {
         // Validate signature's signer
         bytes32 tenantMessageHash = _hashTypedDataV4(
             keccak256(
