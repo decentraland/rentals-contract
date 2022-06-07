@@ -230,36 +230,36 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         address lessor = ECDSAUpgradeable.recover(listingHash, _listing.signature);
 
-        require(lessor == _listing.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
+        require(lessor == _listing.signer, "Rentals#acceptListing: SIGNATURE_MISSMATCH");
 
         // Verify that the caller and the signer are not the same address.
         address tenant = _msgSender();
 
-        require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
+        require(tenant != lessor, "Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
         uint256 signerAssetNonce = assetNonce[_listing.contractAddress][_listing.tokenId][lessor];
 
-        require(_listing.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
-        require(_listing.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
-        require(_listing.nonces[2] == signerAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
+        require(_listing.nonces[0] == contractNonce, "Rentals#acceptListing: CONTRACT_NONCE_MISSMATCH");
+        require(_listing.nonces[1] == signerNonce[lessor], "Rentals#acceptListing: SIGNER_NONCE_MISSMATCH");
+        require(_listing.nonces[2] == signerAssetNonce, "Rentals#acceptListing: ASSET_NONCE_MISSMATCH");
 
         // Verify that pricePerDay, maxDays and minDays have the same length
-        require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
-        require(_listing.pricePerDay.length == _listing.minDays.length, "Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH");
+        require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH");
+        require(_listing.pricePerDay.length == _listing.minDays.length, "Rentals#acceptListing: MIN_DAYS_LENGTH_MISSMATCH");
 
         // Verify that the provided index is not out of bounds of the listing conditions.
-        require(_index < _listing.pricePerDay.length, "Rentals#rent: INVALID_INDEX");
+        require(_index < _listing.pricePerDay.length, "Rentals#acceptListing: INDEX_OUT_OF_BOUNDS");
 
         // Verify that the listing is not already expired.
-        require(_listing.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
+        require(_listing.expiration > block.timestamp, "Rentals#acceptListing: EXPIRED_SIGNATURE");
 
         // Verify that minDays and maxDays have valid values.
-        require(_listing.minDays[_index] <= _listing.maxDays[_index], "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_listing.minDays[_index] > 0, "Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO");
+        require(_listing.minDays[_index] <= _listing.maxDays[_index], "Rentals#acceptListing: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_listing.minDays[_index] > 0, "Rentals#acceptListing: MIN_DAYS_IS_ZERO");
 
         // Verify that the provided rental days is between min and max days range.
-        require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#rent: DAYS_NOT_IN_RANGE");
+        require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
 
         _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
     }
@@ -289,25 +289,25 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         address tenant = ECDSAUpgradeable.recover(bidHash, _bid.signature);
 
-        require(tenant == _bid.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
+        require(tenant == _bid.signer, "Rentals#acceptBid: SIGNATURE_MISSMATCH");
 
         // Verify that the caller and the signer are not the same address.
         address lessor = _msgSender();
 
-        require(lessor != tenant, "Rentals#rent: LESSOR_CANNOT_BE_TENANT");
+        require(lessor != tenant, "Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
         uint256 signerAssetNonce = assetNonce[_bid.contractAddress][_bid.tokenId][tenant];
 
-        require(_bid.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
-        require(_bid.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
-        require(_bid.nonces[2] == signerAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
+        require(_bid.nonces[0] == contractNonce, "Rentals#acceptBid: CONTRACT_NONCE_MISSMATCH");
+        require(_bid.nonces[1] == signerNonce[tenant], "Rentals#acceptBid: SIGNER_NONCE_MISSMATCH");
+        require(_bid.nonces[2] == signerAssetNonce, "Rentals#acceptBid: ASSET_NONCE_MISSMATCH");
 
         // Verify that the listing is not already expired.
-        require(_bid.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
+        require(_bid.expiration > block.timestamp, "Rentals#acceptBid: EXPIRED_SIGNATURE");
 
         // Verify that the rental days provided in the bid are valid.
-        require(_bid.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
+        require(_bid.rentalDays > 0, "Rentals#acceptBid: RENTAL_DAYS_IS_ZERO");
 
         _rent(lessor, tenant, _bid.contractAddress, _bid.tokenId, _bid.fingerprint, _bid.pricePerDay, _bid.rentalDays, _bid.operator);
     }

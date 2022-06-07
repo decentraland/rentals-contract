@@ -711,7 +711,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: TENANT_CANNOT_BE_LESSOR')
+      ).to.be.revertedWith('Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER')
     })
 
     it('should revert when the lessor signer does not match the signer in params', async () => {
@@ -725,7 +725,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNATURE')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
     })
 
     it('should revert when maxDays length is different than pricePerDay length', async () => {
@@ -741,7 +741,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH')
     })
 
     it('should revert when minDays length is different than pricePerDay length', async () => {
@@ -757,7 +757,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: MIN_DAYS_LENGTH_MISSMATCH')
     })
 
     it('should revert when tenant index is outside the pricePerDay length', async () => {
@@ -773,7 +773,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_INDEX')
+      ).to.be.revertedWith('Rentals#acceptListing: INDEX_OUT_OF_BOUNDS')
     })
 
     it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
@@ -789,7 +789,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: EXPIRED_LESSOR_SIGNATURE')
+      ).to.be.revertedWith('Rentals#acceptListing: EXPIRED_SIGNATURE')
     })
 
     it('should revert when max days is lower than min days', async () => {
@@ -805,7 +805,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS')
+      ).to.be.revertedWith('Rentals#acceptListing: MAX_DAYS_LOWER_THAN_MIN_DAYS')
     })
 
     it('should revert when min days is 0', async () => {
@@ -821,7 +821,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO')
+      ).to.be.revertedWith('Rentals#acceptListing: MIN_DAYS_IS_ZERO')
     })
 
     it('should revert when tenant days is lower than lessor min days', async () => {
@@ -837,7 +837,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+      ).to.be.revertedWith('Rentals#acceptListing: DAYS_NOT_IN_RANGE')
     })
 
     it('should revert when tenant days is higher than lessor max days', async () => {
@@ -853,7 +853,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: DAYS_NOT_IN_RANGE')
+      ).to.be.revertedWith('Rentals#acceptListing: DAYS_NOT_IN_RANGE')
     })
 
     it('should revert when lessor contract nonce is not the same as the contract', async () => {
@@ -869,7 +869,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE')
+      ).to.be.revertedWith('Rentals#acceptListing: CONTRACT_NONCE_MISSMATCH')
     })
 
     it('should revert when lessor signer nonce is not the same as the contract', async () => {
@@ -885,7 +885,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_SIGNER_NONCE')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNER_NONCE_MISSMATCH')
     })
 
     it('should revert when lessor asset nonce is not the same as the contract', async () => {
@@ -901,7 +901,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_LESSOR_ASSET_NONCE')
+      ).to.be.revertedWith('Rentals#acceptListing: ASSET_NONCE_MISSMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
@@ -1192,7 +1192,7 @@ describe('Rentals', () => {
         rentals
           .connect(lessor)
           .acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, { ...bidParams, signer: lessor.address }) })
-      ).to.be.revertedWith('Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE')
+      ).to.be.revertedWith('Rentals#acceptBid: SIGNATURE_MISSMATCH')
     })
 
     it('should revert when lessor is same as tenant', async () => {
@@ -1200,7 +1200,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(lessor, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: LESSOR_CANNOT_BE_TENANT')
+      ).to.be.revertedWith('Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER')
     })
 
     it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
@@ -1208,7 +1208,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: EXPIRED_TENANT_SIGNATURE')
+      ).to.be.revertedWith('Rentals#acceptBid: EXPIRED_SIGNATURE')
     })
 
     it('should revert when tenant rental days is zero', async () => {
@@ -1216,7 +1216,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO')
+      ).to.be.revertedWith('Rentals#acceptBid: RENTAL_DAYS_IS_ZERO')
     })
 
     it('should revert when tenant contract nonce is not the same as the contract', async () => {
@@ -1224,7 +1224,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_CONTRACT_NONCE')
+      ).to.be.revertedWith('Rentals#acceptBid: CONTRACT_NONCE_MISSMATCH')
     })
 
     it('should revert when tenant signer nonce is not the same as the contract', async () => {
@@ -1232,7 +1232,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_SIGNER_NONCE')
+      ).to.be.revertedWith('Rentals#acceptBid: SIGNER_NONCE_MISSMATCH')
     })
 
     it('should revert when tenant asset nonce is not the same as the contract', async () => {
@@ -1240,7 +1240,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: INVALID_TENANT_ASSET_NONCE')
+      ).to.be.revertedWith('Rentals#acceptBid: ASSET_NONCE_MISSMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
