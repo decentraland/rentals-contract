@@ -259,7 +259,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         bytes32 _fingerprint
     ) external {
-        // Validate signature's signer
+        // Verify that the signer provided in the listing is the one that signed it.
         bytes32 lessorMessageHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
@@ -280,28 +280,35 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
         require(lessor == _listing.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
 
-        // Validate sender
+        // Verify that the caller and the signer are not the same address.
         address tenant = _msgSender();
 
         require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
 
-        // Validate nonces
+        // Verify that the nonces provided in the listing match the ones in the contract.
         uint256 lessorAssetNonce = _getAssetNonce(_listing.contractAddress, _listing.tokenId, lessor);
 
         require(_listing.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
         require(_listing.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
         require(_listing.nonces[2] == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
 
-        // Validate params
+        // Verify that pricePerDay, maxDays and minDays have the same length
         require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
         require(_listing.pricePerDay.length == _listing.minDays.length, "Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH");
+
+        // Verify that the provided index is not out of bounds of the listing conditions.
         require(_index < _listing.pricePerDay.length, "Rentals#rent: INVALID_INDEX");
+
+        // Verify that the listing is not already expired.
         require(_listing.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
+
+        // Verify that minDays and maxDays have valid values.
         require(_listing.minDays[_index] <= _listing.maxDays[_index], "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
         require(_listing.minDays[_index] > 0, "Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO");
+
+        // Verify that the provided rental days is between min and max days range.
         require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#rent: DAYS_NOT_IN_RANGE");
 
-        // Execute rental
         _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
     }
 
