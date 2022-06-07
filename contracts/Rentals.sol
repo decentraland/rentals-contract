@@ -12,17 +12,17 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
-    bytes32 public constant LESSOR_TYPE_HASH =
+    bytes32 public constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
-                "Lessor(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
             )
         );
 
-    bytes32 public constant TENANT_TYPE_HASH =
+    bytes32 public constant BID_TYPE_HASH =
         keccak256(
             bytes(
-                "Tenant(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
+                "Bid(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
             )
         );
 
@@ -41,7 +41,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     address public feeCollector;
     uint256 public fee;
 
-    struct Lessor {
+    struct Listing {
         address signer;
         address contractAddress;
         uint256 tokenId;
@@ -53,7 +53,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bytes signature;
     }
 
-    struct Tenant {
+    struct Bid {
         address signer;
         address contractAddress;
         uint256 tokenId;
@@ -224,7 +224,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     function acceptListing(
-        Lessor calldata _lessor,
+        Listing calldata _listing,
         address _operator,
         uint256 _index,
         uint256 _rentalDays,
@@ -234,22 +234,22 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bytes32 lessorMessageHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    LESSOR_TYPE_HASH,
-                    _lessor.signer,
-                    _lessor.contractAddress,
-                    _lessor.tokenId,
-                    _lessor.expiration,
-                    keccak256(abi.encodePacked(_lessor.nonces)),
-                    keccak256(abi.encodePacked(_lessor.pricePerDay)),
-                    keccak256(abi.encodePacked(_lessor.maxDays)),
-                    keccak256(abi.encodePacked(_lessor.minDays))
+                    LISTING_TYPE_HASH,
+                    _listing.signer,
+                    _listing.contractAddress,
+                    _listing.tokenId,
+                    _listing.expiration,
+                    keccak256(abi.encodePacked(_listing.nonces)),
+                    keccak256(abi.encodePacked(_listing.pricePerDay)),
+                    keccak256(abi.encodePacked(_listing.maxDays)),
+                    keccak256(abi.encodePacked(_listing.minDays))
                 )
             )
         );
 
-        address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _lessor.signature);
+        address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _listing.signature);
 
-        require(lessor == _lessor.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
+        require(lessor == _listing.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
 
         // Validate sender
         address tenant = _msgSender();
@@ -257,47 +257,47 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
 
         // Validate nonces
-        uint256 lessorAssetNonce = _getAssetNonce(_lessor.contractAddress, _lessor.tokenId, lessor);
+        uint256 lessorAssetNonce = _getAssetNonce(_listing.contractAddress, _listing.tokenId, lessor);
 
-        require(_lessor.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
-        require(_lessor.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
-        require(_lessor.nonces[2] == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
+        require(_listing.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
+        require(_listing.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
+        require(_listing.nonces[2] == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
 
         // Validate params
-        require(_lessor.pricePerDay.length == _lessor.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
-        require(_lessor.pricePerDay.length == _lessor.minDays.length, "Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH");
-        require(_index < _lessor.pricePerDay.length, "Rentals#rent: INVALID_INDEX");
-        require(_lessor.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
-        require(_lessor.minDays[_index] <= _lessor.maxDays[_index], "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_lessor.minDays[_index] > 0, "Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO");
-        require(_rentalDays >= _lessor.minDays[_index] && _rentalDays <= _lessor.maxDays[_index], "Rentals#rent: DAYS_NOT_IN_RANGE");
+        require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
+        require(_listing.pricePerDay.length == _listing.minDays.length, "Rentals#rent: MIN_DAYS_LENGTH_MISSMATCH");
+        require(_index < _listing.pricePerDay.length, "Rentals#rent: INVALID_INDEX");
+        require(_listing.expiration > block.timestamp, "Rentals#rent: EXPIRED_LESSOR_SIGNATURE");
+        require(_listing.minDays[_index] <= _listing.maxDays[_index], "Rentals#rent: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(_listing.minDays[_index] > 0, "Rentals#rent: MIN_DAYS_CANNOT_BE_ZERO");
+        require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#rent: DAYS_NOT_IN_RANGE");
 
         // Execute rental
-        _rent(lessor, tenant, _lessor.contractAddress, _lessor.tokenId, _fingerprint, _lessor.pricePerDay[_index], _rentalDays, _operator);
+        _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
     }
 
-    function acceptOffer(Tenant calldata _tenant) external {
+    function acceptBid(Bid calldata _bid) external {
         // Validate signature's signer
         bytes32 tenantMessageHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    TENANT_TYPE_HASH,
-                    _tenant.signer,
-                    _tenant.contractAddress,
-                    _tenant.tokenId,
-                    _tenant.expiration,
-                    keccak256(abi.encodePacked(_tenant.nonces)),
-                    _tenant.pricePerDay,
-                    _tenant.rentalDays,
-                    _tenant.operator,
-                    _tenant.fingerprint
+                    BID_TYPE_HASH,
+                    _bid.signer,
+                    _bid.contractAddress,
+                    _bid.tokenId,
+                    _bid.expiration,
+                    keccak256(abi.encodePacked(_bid.nonces)),
+                    _bid.pricePerDay,
+                    _bid.rentalDays,
+                    _bid.operator,
+                    _bid.fingerprint
                 )
             )
         );
 
-        address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _tenant.signature);
+        address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _bid.signature);
 
-        require(tenant == _tenant.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
+        require(tenant == _bid.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
 
         // Validate sender
         address lessor = _msgSender();
@@ -305,26 +305,26 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(lessor != tenant, "Rentals#rent: LESSOR_CANNOT_BE_TENANT");
 
         // Validate nonces
-        uint256 tenantAssetNonce = _getAssetNonce(_tenant.contractAddress, _tenant.tokenId, tenant);
+        uint256 tenantAssetNonce = _getAssetNonce(_bid.contractAddress, _bid.tokenId, tenant);
 
-        require(_tenant.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
-        require(_tenant.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
-        require(_tenant.nonces[2] == tenantAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
+        require(_bid.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
+        require(_bid.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
+        require(_bid.nonces[2] == tenantAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
 
         // Validate params
-        require(_tenant.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
-        require(_tenant.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
+        require(_bid.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
+        require(_bid.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
 
         // Execute rental
         _rent(
             lessor,
             tenant,
-            _tenant.contractAddress,
-            _tenant.tokenId,
-            _tenant.fingerprint,
-            _tenant.pricePerDay,
-            _tenant.rentalDays,
-            _tenant.operator
+            _bid.contractAddress,
+            _bid.tokenId,
+            _bid.fingerprint,
+            _bid.pricePerDay,
+            _bid.rentalDays,
+            _bid.operator
         );
     }
 
