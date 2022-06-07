@@ -260,7 +260,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         bytes32 _fingerprint
     ) external {
         // Verify that the signer provided in the listing is the one that signed it.
-        bytes32 lessorMessageHash = _hashTypedDataV4(
+        bytes32 listingHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     LISTING_TYPE_HASH,
@@ -276,7 +276,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
             )
         );
 
-        address lessor = ECDSAUpgradeable.recover(lessorMessageHash, _listing.signature);
+        address lessor = ECDSAUpgradeable.recover(listingHash, _listing.signature);
 
         require(lessor == _listing.signer, "Rentals#rent: INVALID_LESSOR_SIGNATURE");
 
@@ -286,11 +286,11 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 lessorAssetNonce = _getAssetNonce(_listing.contractAddress, _listing.tokenId, lessor);
+        uint256 signerAssetNonce = _getAssetNonce(_listing.contractAddress, _listing.tokenId, lessor);
 
         require(_listing.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
         require(_listing.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
-        require(_listing.nonces[2] == lessorAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
+        require(_listing.nonces[2] == signerAssetNonce, "Rentals#rent: INVALID_LESSOR_ASSET_NONCE");
 
         // Verify that pricePerDay, maxDays and minDays have the same length
         require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#rent: MAX_DAYS_LENGTH_MISSMATCH");
@@ -313,12 +313,12 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Accept a bid for an asset you own.
+    @notice Accept a bid for rent of an asset owned by the caller.
     @param _bid Contains the bid conditions as well as the signature data for verification.
      */
     function acceptBid(Bid calldata _bid) external {
-        // Validate signature's signer
-        bytes32 tenantMessageHash = _hashTypedDataV4(
+        // Verify that the signer provided in the bid is the one that signed it.
+        bytes32 bidHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     BID_TYPE_HASH,
@@ -335,27 +335,28 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
             )
         );
 
-        address tenant = ECDSAUpgradeable.recover(tenantMessageHash, _bid.signature);
+        address tenant = ECDSAUpgradeable.recover(bidHash, _bid.signature);
 
         require(tenant == _bid.signer, "Rentals#_verifySignatures: INVALID_TENANT_SIGNATURE");
 
-        // Validate sender
+        // Verify that the caller and the signer are not the same address.
         address lessor = _msgSender();
 
         require(lessor != tenant, "Rentals#rent: LESSOR_CANNOT_BE_TENANT");
 
-        // Validate nonces
-        uint256 tenantAssetNonce = _getAssetNonce(_bid.contractAddress, _bid.tokenId, tenant);
+        // Verify that the nonces provided in the listing match the ones in the contract.
+        uint256 signerAssetNonce = _getAssetNonce(_bid.contractAddress, _bid.tokenId, tenant);
 
         require(_bid.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
         require(_bid.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
-        require(_bid.nonces[2] == tenantAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
+        require(_bid.nonces[2] == signerAssetNonce, "Rentals#rent: INVALID_TENANT_ASSET_NONCE");
 
-        // Validate params
+        // Verify that the listing is not already expired.
         require(_bid.expiration > block.timestamp, "Rentals#rent: EXPIRED_TENANT_SIGNATURE");
+
+        // Verify that the rental days provided in the bid are valid.
         require(_bid.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
 
-        // Execute rental
         _rent(lessor, tenant, _bid.contractAddress, _bid.tokenId, _bid.fingerprint, _bid.pricePerDay, _bid.rentalDays, _bid.operator);
     }
 
