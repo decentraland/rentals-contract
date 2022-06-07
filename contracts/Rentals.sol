@@ -183,21 +183,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Get the asset nonce for a signer.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-    @param _signer The address of the user.
-    @return The asset nonce.
-     */
-    function getAssetNonce(
-        address _contractAddress,
-        uint256 _tokenId,
-        address _signer
-    ) external view returns (uint256) {
-        return _getAssetNonce(_contractAddress, _tokenId, _signer);
-    }
-
-    /**
     @notice Get the lessor address of a given asset.
     @dev Will return the address of the lessor of the asset even if the rent is already over.
     Useful for operations such as `claim` were the contract needs to know who the asset belonged to initially.
@@ -286,7 +271,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(tenant != lessor, "Rentals#rent: TENANT_CANNOT_BE_LESSOR");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 signerAssetNonce = _getAssetNonce(_listing.contractAddress, _listing.tokenId, lessor);
+        uint256 signerAssetNonce = assetNonce[_listing.contractAddress][_listing.tokenId][lessor];
 
         require(_listing.nonces[0] == contractNonce, "Rentals#rent: INVALID_LESSOR_CONTRACT_NONCE");
         require(_listing.nonces[1] == signerNonce[lessor], "Rentals#rent: INVALID_LESSOR_SIGNER_NONCE");
@@ -345,7 +330,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(lessor != tenant, "Rentals#rent: LESSOR_CANNOT_BE_TENANT");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 signerAssetNonce = _getAssetNonce(_bid.contractAddress, _bid.tokenId, tenant);
+        uint256 signerAssetNonce = assetNonce[_bid.contractAddress][_bid.tokenId][tenant];
 
         require(_bid.nonces[0] == contractNonce, "Rentals#rent: INVALID_TENANT_CONTRACT_NONCE");
         require(_bid.nonces[1] == signerNonce[tenant], "Rentals#rent: INVALID_TENANT_SIGNER_NONCE");
@@ -469,14 +454,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         assetNonce[_contractAddress][_tokenId][_signer]++;
 
         emit AssetNonceUpdated(previous, assetNonce[_contractAddress][_tokenId][_signer], _contractAddress, _tokenId, _signer, _msgSender());
-    }
-
-    function _getAssetNonce(
-        address _contractAddress,
-        uint256 _tokenId,
-        address _signer
-    ) internal view returns (uint256) {
-        return assetNonce[_contractAddress][_tokenId][_signer];
     }
 
     function _getLessor(address _contractAddress, uint256 _tokenId) internal view returns (address) {
