@@ -7,7 +7,8 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgra
 abstract contract NativeMetaTransaction is EIP712Upgradeable {
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(bytes("MetaTransaction(uint256 nonce,address from,bytes functionData)"));
 
-    mapping(address => uint256) internal nonces;
+    // Track signer nonces so the same signature cannot be used more than once.
+    mapping(address => uint256) public nonces;
 
     struct MetaTransaction {
         uint256 nonce;
@@ -18,18 +19,8 @@ abstract contract NativeMetaTransaction is EIP712Upgradeable {
     event MetaTransactionExecuted(address _userAddress, address _relayerAddress, bytes _functionData);
 
     /**
-    @notice Get the meta transaction nonce of a given user address.
-    @dev These nonces are used to invalidate already used meta transaction signatures.
-    @param _user The address of the user.
-    @return The nonce for a given user.
-     */
-    function getNonce(address _user) external view returns (uint256) {
-        return nonces[_user];
-    }
-
-    /**
     @notice Execute a transaction from the contract appending _userAddress to the call data.
-    @dev The appended address can then be extracted from the called context with _getMsgSender to use that instead of msg.sender.
+    @dev The appended address can then be extracted from the called context with _getMsgSender instead of using msg.sender.
     The caller of `executeMetaTransaction` will pay for gas fees so _userAddress can experience "gasless" transactions.
     @param _userAddress The address appended to the call data.
     @param _functionData Data containing information about the contract function to be called.

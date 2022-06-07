@@ -119,7 +119,7 @@ export const getBidSignature = (signer: SignerWithAddress, contract: Rentals, pa
 
 export const getMetaTxSignature = async (signer: SignerWithAddress, contract: Rentals, functionData: string): Promise<string> => {
   const params = {
-    nonce: await contract.getNonce(signer.address),
+    nonce: await contract.nonces(signer.address),
     from: signer.address,
     functionData,
   }
