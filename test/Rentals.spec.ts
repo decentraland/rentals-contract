@@ -333,25 +333,6 @@ describe('Rentals', () => {
     })
   })
 
-  describe('getRentalEnd', () => {
-    beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
-    })
-
-    it('should return 0 when the asset was never rented', async () => {
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(0)
-    })
-
-    it('should return the timestamp of when the rend will finish after being rented', async () => {
-      const latestBlock = await ethers.provider.getBlock('latest')
-      const latestBlockTime = latestBlock.timestamp
-
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
-    })
-  })
-
   describe('isRented', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
@@ -494,7 +475,7 @@ describe('Rentals', () => {
     })
 
     it('should update the ongoing rentals mapping for the rented asset', async () => {
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(0)
+      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
@@ -509,7 +490,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1045,14 +1026,14 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping for the rented asset with the rental finish timestamp', async () => {
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(0)
+      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
       await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
 
-      expect(await rentals.connect(lessor).getRentalEnd(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {

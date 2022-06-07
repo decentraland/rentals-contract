@@ -183,16 +183,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Get the timestamp of when a rental will end.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-    @return The timestamp for when a rental ends or 0 if the asset has not been rented yet.
-     */
-    function getRentalEnd(address _contractAddress, uint256 _tokenId) external view returns (uint256) {
-        return _getRentalEnd(_contractAddress, _tokenId);
-    }
-
-    /**
     @notice Get if and asset is currently being rented.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
@@ -433,12 +423,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         emit AssetNonceUpdated(previous, assetNonce[_contractAddress][_tokenId][_signer], _contractAddress, _tokenId, _signer, _msgSender());
     }
 
-    function _getRentalEnd(address _contractAddress, uint256 _tokenId) internal view returns (uint256) {
-        return rentals[_contractAddress][_tokenId];
-    }
-
     function _isRented(address _contractAddress, uint256 _tokenId) internal view returns (bool) {
-        return block.timestamp < _getRentalEnd(_contractAddress, _tokenId);
+        return block.timestamp < rentals[_contractAddress][_tokenId];
     }
 
     function _rent(
