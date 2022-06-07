@@ -72,6 +72,8 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     event ContractNonceUpdated(uint256 _from, uint256 _to, address _sender);
     event SignerNonceUpdated(uint256 _from, uint256 _to, address _sender);
     event AssetNonceUpdated(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
+    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
+    event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
     event RentalStarted(
         address _contractAddress,
         uint256 _tokenId,
@@ -82,8 +84,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         uint256 _pricePerDay,
         address _sender
     );
-    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
-    event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
 
     /**
     @notice Initialize the contract.
@@ -316,16 +316,7 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(_bid.rentalDays > 0, "Rentals#rent: RENTAL_DAYS_CANNOT_BE_ZERO");
 
         // Execute rental
-        _rent(
-            lessor,
-            tenant,
-            _bid.contractAddress,
-            _bid.tokenId,
-            _bid.fingerprint,
-            _bid.pricePerDay,
-            _bid.rentalDays,
-            _bid.operator
-        );
+        _rent(lessor, tenant, _bid.contractAddress, _bid.tokenId, _bid.fingerprint, _bid.pricePerDay, _bid.rentalDays, _bid.operator);
     }
 
     /**
