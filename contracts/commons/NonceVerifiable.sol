@@ -70,4 +70,21 @@ contract NonceVerifiable is OwnableUpgradeable {
 
         emit AssetNonceUpdated(previous, assetNonce[_contractAddress][_tokenId][_signer], _contractAddress, _tokenId, _signer, _msgSender());
     }
+
+    function _verifyContractNonce(uint256 _nonce) internal view {
+        require(_nonce == contractNonce, "NonceVerifiable#_verifyContractNonce: CONTRACT_NONCE_MISSMATCH");
+    }
+
+    function _verifySignerNonce(address _signer, uint256 _nonce) internal view {
+        require(_nonce == signerNonce[_signer], "NonceVerifiable#_verifySignerNonce: SIGNER_NONCE_MISSMATCH");
+    }
+
+    function _verifyAssetNonce(
+        address _contractAddress,
+        uint256 _tokenId,
+        address _signer,
+        uint256 _nonce
+    ) internal view {
+        require(_nonce == assetNonce[_contractAddress][_tokenId][_signer], "NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH");
+    }
 }

@@ -196,11 +196,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         require(tenant != lessor, "Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 signerAssetNonce = assetNonce[_listing.contractAddress][_listing.tokenId][lessor];
-
-        require(_listing.nonces[0] == contractNonce, "Rentals#acceptListing: CONTRACT_NONCE_MISSMATCH");
-        require(_listing.nonces[1] == signerNonce[lessor], "Rentals#acceptListing: SIGNER_NONCE_MISSMATCH");
-        require(_listing.nonces[2] == signerAssetNonce, "Rentals#acceptListing: ASSET_NONCE_MISSMATCH");
+        _verifyContractNonce(_listing.nonces[0]);
+        _verifySignerNonce(lessor, _listing.nonces[1]);
+        _verifyAssetNonce(_listing.contractAddress, _listing.tokenId, lessor, _listing.nonces[2]);
 
         // Verify that pricePerDay, maxDays and minDays have the same length
         require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH");
@@ -255,11 +253,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         require(lessor != tenant, "Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 signerAssetNonce = assetNonce[_bid.contractAddress][_bid.tokenId][tenant];
-
-        require(_bid.nonces[0] == contractNonce, "Rentals#acceptBid: CONTRACT_NONCE_MISSMATCH");
-        require(_bid.nonces[1] == signerNonce[tenant], "Rentals#acceptBid: SIGNER_NONCE_MISSMATCH");
-        require(_bid.nonces[2] == signerAssetNonce, "Rentals#acceptBid: ASSET_NONCE_MISSMATCH");
+        _verifyContractNonce(_bid.nonces[0]);
+        _verifySignerNonce(tenant, _bid.nonces[1]);
+        _verifyAssetNonce(_bid.contractAddress, _bid.tokenId, tenant, _bid.nonces[2]);
 
         // Verify that the listing is not already expired.
         require(_bid.expiration > block.timestamp, "Rentals#acceptBid: EXPIRED_SIGNATURE");
