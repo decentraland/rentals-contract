@@ -289,7 +289,7 @@ describe('Rentals', () => {
     })
 
     it('should emit an SignerNonceUpdated event', async () => {
-      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'SignerNonceUpdated').withArgs(0, 1, lessor.address)
+      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'SignerNonceUpdated').withArgs(0, 1, lessor.address, lessor.address)
     })
 
     it('should accept a meta tx', async () => {

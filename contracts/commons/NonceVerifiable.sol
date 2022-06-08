@@ -4,7 +4,7 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract NonceVerifiable is OwnableUpgradeable {
+abstract contract NonceVerifiable is OwnableUpgradeable {
     // Nonces used to invalidate signatures.
     uint256 public contractNonce;
     // (signer address -> nonce)
@@ -13,7 +13,7 @@ contract NonceVerifiable is OwnableUpgradeable {
     mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
 
     event ContractNonceUpdated(uint256 _from, uint256 _to, address _sender);
-    event SignerNonceUpdated(uint256 _from, uint256 _to, address _sender);
+    event SignerNonceUpdated(uint256 _from, uint256 _to, address _signer, address _sender);
     event AssetNonceUpdated(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
 
     // Public
@@ -57,7 +57,7 @@ contract NonceVerifiable is OwnableUpgradeable {
         uint256 previous = signerNonce[_signer];
         signerNonce[_signer]++;
 
-        emit SignerNonceUpdated(previous, signerNonce[_signer], _signer);
+        emit SignerNonceUpdated(previous, signerNonce[_signer], _signer, _msgSender());
     }
 
     function _bumpAssetNonce(
