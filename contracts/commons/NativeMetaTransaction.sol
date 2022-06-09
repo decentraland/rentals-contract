@@ -5,11 +5,13 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 
 abstract contract NativeMetaTransaction is EIP712Upgradeable {
+    /// @dev EIP712 type hash for recovering the signer from the signature.
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(bytes("MetaTransaction(uint256 nonce,address from,bytes functionData)"));
 
-    // Track signer nonces so the same signature cannot be used more than once.
+    /// @notice Track signer nonces so the same signature cannot be used more than once.
     mapping(address => uint256) public nonces;
 
+    /// @notice Struct with the data required to verify that the signature signer is the same as `from`.
     struct MetaTransaction {
         uint256 nonce;
         address from;
@@ -18,15 +20,13 @@ abstract contract NativeMetaTransaction is EIP712Upgradeable {
 
     event MetaTransactionExecuted(address _userAddress, address _relayerAddress, bytes _functionData);
 
-    /**
-    @notice Execute a transaction from the contract appending _userAddress to the call data.
-    @dev The appended address can then be extracted from the called context with _getMsgSender instead of using msg.sender.
-    The caller of `executeMetaTransaction` will pay for gas fees so _userAddress can experience "gasless" transactions.
-    @param _userAddress The address appended to the call data.
-    @param _functionData Data containing information about the contract function to be called.
-    @param _signature Signature created by _userAddress to validate that they wanted 
-    @return The data as bytes of what the relayed function would have returned.
-     */
+    /// @notice Execute a transaction from the contract appending _userAddress to the call data.
+    /// @dev The appended address can then be extracted from the called context with _getMsgSender instead of using msg.sender.
+    /// The caller of `executeMetaTransaction` will pay for gas fees so _userAddress can experience "gasless" transactions.
+    /// @param _userAddress The address appended to the call data.
+    /// @param _functionData Data containing information about the contract function to be called.
+    /// @param _signature Signature created by _userAddress to validate that they wanted
+    /// @return The data as bytes of what the relayed function would have returned.
     function executeMetaTransaction(
         address _userAddress,
         bytes memory _functionData,
@@ -71,6 +71,8 @@ abstract contract NativeMetaTransaction is EIP712Upgradeable {
         return _signer == ECDSAUpgradeable.recover(typedDataHash, _signature);
     }
 
+    /// @dev Extract the address of the sender from the msg.data if available. If not, fallback to returning the msg.sender.
+    /// @dev It is vital that the implementator uses this function for meta transaction support.
     function _getMsgSender() internal view returns (address sender) {
         if (msg.sender == address(this)) {
             bytes memory array = msg.data;
