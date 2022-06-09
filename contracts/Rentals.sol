@@ -97,15 +97,13 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address _sender
     );
 
-    /**
-    @notice Initialize the contract.
-    @dev This method should be called as soon as the contract is deployed.
-    Using this method in favor of a constructor allows the implementation of various kinds of proxies.
-    @param _owner The address of the owner of the contract.
-    @param _token The address of the ERC20 token used by tenants to pay rent.
-    @param _feeCollector Address that will receive rental fees
-    @param _fee Value per million wei that will be transfered from the rental price to the fee collector.
-     */
+    /// @notice Initialize the contract.
+    /// @dev This method should be called as soon as the contract is deployed.
+    /// Using this method in favor of a constructor allows the implementation of various kinds of proxies.
+    /// @param _owner The address of the owner of the contract.
+    /// @param _token The address of the ERC20 token used by tenants to pay rent.
+    /// @param _feeCollector Address that will receive rental fees
+    /// @param _fee Value per million wei that will be transfered from the rental price to the fee collector.
     function initialize(
         address _owner,
         IERC20 _token,
@@ -119,52 +117,42 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         _setFee(_fee);
     }
 
-    /**
-    @notice Set the ERC20 token used by tenants to pay rent.
-    @param _token The address of the token
-     */
+    /// @notice Set the ERC20 token used by tenants to pay rent.
+    /// @param _token The address of the token
     function setToken(IERC20 _token) external onlyOwner {
         _setToken(_token);
     }
 
-    /**
-    @notice Set the address of the fee collector.
-    @param _feeCollector The address of the fee collector.
-     */
+    /// @notice Set the address of the fee collector.
+    /// @param _feeCollector The address of the fee collector.
     function setFeeCollector(address _feeCollector) external onlyOwner {
         _setFeeCollector(_feeCollector);
     }
 
-    /**
-    @notice Set the fee (per million wei) for rentals.
-    @param _fee The value for the fee.
-     */
+    /// @notice Set the fee (per million wei) for rentals.
+    /// @param _fee The value for the fee.
     function setFee(uint256 _fee) external onlyOwner {
         _setFee(_fee);
     }
 
-    /**
-    @notice Get if and asset is currently being rented.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-    @return true or false depending if the asset is currently rented
-     */
+    /// @notice Get if and asset is currently being rented.
+    /// @param _contractAddress The contract address of the asset.
+    /// @param _tokenId The token id of the asset.
+    /// @return true or false depending if the asset is currently rented
     function isRented(address _contractAddress, uint256 _tokenId) external view returns (bool) {
         return _isRented(_contractAddress, _tokenId);
     }
 
-    /**
-    @notice Accept a rental listing created by the owner of an asset.
-    @param _listing Contains the listing conditions as well as the signature data for verification.
-    @param _operator The address that will be given operator permissions over an asset.
-    @param _index The rental conditions index chosen from the options provided in _listing.
-    @param _rentalDays The amount of days the caller wants to rent the asset.
-    Must be a value between the selected condition's min and max days.
-    @param _fingerprint The fingerprint used to verify composable erc721s.
-    Useful in order to prevent a front run were, for example, the owner removes LAND from and Estate before
-    the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
-    they expected.
-     */
+    /// @notice Accept a rental listing created by the owner of an asset.
+    /// @param _listing Contains the listing conditions as well as the signature data for verification.
+    /// @param _operator The address that will be given operator permissions over an asset.
+    /// @param _index The rental conditions index chosen from the options provided in _listing.
+    /// @param _rentalDays The amount of days the caller wants to rent the asset.
+    /// Must be a value between the selected condition's min and max days.
+    /// @param _fingerprint The fingerprint used to verify composable erc721s.
+    /// Useful in order to prevent a front run were, for example, the owner removes LAND from and Estate before
+    /// the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
+    /// they expected.
     function acceptListing(
         Listing calldata _listing,
         address _operator,
@@ -223,10 +211,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
     }
 
-    /**
-    @notice Accept a bid for rent of an asset owned by the caller.
-    @param _bid Contains the bid conditions as well as the signature data for verification.
-     */
+    /// @notice Accept a bid for rent of an asset owned by the caller.
+    /// @param _bid Contains the bid conditions as well as the signature data for verification.
     function acceptBid(Bid calldata _bid) external {
         // Verify that the signer provided in the bid is the one that signed it.
         bytes32 bidHash = _hashTypedDataV4(
@@ -269,11 +255,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         _rent(lessor, tenant, _bid.contractAddress, _bid.tokenId, _bid.fingerprint, _bid.pricePerDay, _bid.rentalDays, _bid.operator);
     }
 
-    /**
-    @notice The original owner of the asset can claim it back if said asset is not being rented.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-     */
+    /// @notice The original owner of the asset can claim it back if said asset is not being rented.
+    /// @param _contractAddress The contract address of the asset.
+    /// @param _tokenId The token id of the asset.
     function claim(address _contractAddress, uint256 _tokenId) external {
         address sender = _msgSender();
 
@@ -294,15 +278,13 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         emit AssetClaimed(_contractAddress, _tokenId, sender);
     }
 
-    /**
-    @notice Set the operator of a given asset.
-    @dev Only when the rent is active a tenant can change the operator of an asset.
-    When the rent is over, the lessor is the one that can change the operator.
-    In the case of the lessor, this is useful to update the operator without having to claim the asset back once the rent is over.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-    @param _operator The address that will have operator privileges over the asset.
-     */
+    /// @notice Set the operator of a given asset.
+    /// @dev Only when the rent is active a tenant can change the operator of an asset.
+    /// When the rent is over, the lessor is the one that can change the operator.
+    /// In the case of the lessor, this is useful to update the operator without having to claim the asset back once the rent is over.
+    /// @param _contractAddress The contract address of the asset.
+    /// @param _tokenId The token id of the asset.
+    /// @param _operator The address that will have operator privileges over the asset.
     function setOperator(
         address _contractAddress,
         uint256 _tokenId,
@@ -327,11 +309,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         emit OperatorUpdated(_contractAddress, _tokenId, _operator, sender);
     }
 
-    /**
-    @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
-    @dev The contract only allows safe transfers by itself made by the rent function.
-    @param _operator Caller of the safe transfer function.
-    */
+    /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
+    /// @dev The contract only allows safe transfers by itself made by the rent function.
+    /// @param _operator Caller of the safe transfer function.
     function onERC721Received(
         address _operator,
         address, // _from,
