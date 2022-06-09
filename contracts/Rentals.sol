@@ -13,7 +13,7 @@ import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
-    // EIP712 type hashes for recovering the signer from a signature.
+    /// @dev EIP712 type hashes for recovering the signer from a signature.
     bytes32 public constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
@@ -28,29 +28,32 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             )
         );
 
-    // EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
+    /// @dev EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 public constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
 
-    // ERC20 token used to pay for rent and fees.
+    /// @notice ERC20 token used to pay for rent and fees.
     IERC20 public token;
 
-    // Keeps track of the original owners of the assets that have been rented.
-    // (contract address -> token id -> lessor address)
+    /// @notice Keeps track of the original owners of the assets that have been rented.
+    /// @custom:schema (contract address -> token id -> lessor address)
     mapping(address => mapping(uint256 => address)) public lessors;
-    // Keeps track of the addresses acting as tenants of an asset after the initiation of a rental.
-    // (contract address -> token id -> tenant address)
+
+    /// @notice Keeps track of the addresses acting as tenants of an asset after the initiation of a rental.
+    /// @custom:schema (contract address -> token id -> tenant address)
     mapping(address => mapping(uint256 => address)) public tenants;
-    // Keeps track of the timestamp when rentals end.
-    // (contract address -> token id -> finish timestamp)
+
+    /// @notice Keeps track of the timestamp when rentals end.
+    /// @custom:schema (contract address -> token id -> finish timestamp)
     mapping(address => mapping(uint256 => uint256)) public rentals;
 
-    // Address that will receive ERC20 tokens collected as rental fees.
+    /// @notice Address that will receive ERC20 tokens collected as rental fees.
     address public feeCollector;
-    // Value per million wei that will be deducted from the rental price and sent to the collector.
+
+    /// @notice Value per million wei that will be deducted from the rental price and sent to the collector.
     uint256 public fee;
 
-    // Contains the rental conditions proposed by the owner of an asset.
-    // Includes the signature and data required for verification.
+    /// @notice Struct received as a parameter in `acceptListing` containing all information about
+    /// listing conditions and values required to verify the signature was created by the signer.
     struct Listing {
         address signer;
         address contractAddress;
@@ -63,8 +66,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         bytes signature;
     }
 
-    // Contains data of a rental offer from a user made to the owner of an asset.
-    // Includes the signature and data required for verification.
+    /// @notice Struct received as a parameter in `acceptBid` containing all information about
+    /// bid conditions and values required to verify the signature was created by the signer.
     struct Bid {
         address signer;
         address contractAddress;
