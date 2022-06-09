@@ -7,11 +7,12 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./commons/NativeMetaTransaction.sol";
+import "./commons/NonceVerifiable.sol";
 
 import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
 
-contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
+contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     // EIP712 type hashes for recovering the signer from a signature.
     bytes32 public constant LISTING_TYPE_HASH =
         keccak256(
@@ -29,13 +30,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
 
     // EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 public constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
-
-    // Nonces used to invalidate signatures.
-    uint256 public contractNonce;
-    // (signer address -> nonce)
-    mapping(address => uint256) public signerNonce;
-    // (contract address -> token id -> signer address -> nonce)
-    mapping(address => mapping(uint256 => mapping(address => uint256))) public assetNonce;
 
     // ERC20 token used to pay for rent and fees.
     IERC20 public token;
@@ -87,9 +81,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
     event FeeCollectorUpdated(address _from, address _to, address _sender);
     event FeeUpdated(uint256 _from, uint256 _to, address _sender);
-    event ContractNonceUpdated(uint256 _from, uint256 _to, address _sender);
-    event SignerNonceUpdated(uint256 _from, uint256 _to, address _sender);
-    event AssetNonceUpdated(uint256 _from, uint256 _to, address _contractAddress, uint256 _tokenId, address _signer, address _sender);
     event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
     event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
     event RentalStarted(
@@ -150,39 +141,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /**
-    @notice Increase by 1 the contract nonce
-    @dev This can be used to invalidate all signatures created with the previous nonce.
-     */
-    function bumpContractNonce() external onlyOwner {
-        uint256 previous = contractNonce;
-        contractNonce++;
-
-        emit ContractNonceUpdated(previous, contractNonce, _msgSender());
-    }
-
-    /**
-    @notice Increase by 1 the signer nonce
-    @dev This can be used to invalidate all signatures created by the caller with the previous nonce.
-     */
-    function bumpSignerNonce() external {
-        address sender = _msgSender();
-        uint256 previous = signerNonce[sender];
-        signerNonce[sender]++;
-
-        emit SignerNonceUpdated(previous, signerNonce[sender], sender);
-    }
-
-    /**
-    @notice Increase by 1 the asset nonce
-    @dev This can be used to invalidate all signatures created by the caller for a given asset with the previous nonce.
-    @param _contractAddress The contract address of the asset.
-    @param _tokenId The token id of the asset.
-     */
-    function bumpAssetNonce(address _contractAddress, uint256 _tokenId) external {
-        _bumpAssetNonce(_contractAddress, _tokenId, _msgSender());
-    }
-
-    /**
     @notice Get if and asset is currently being rented.
     @param _contractAddress The contract address of the asset.
     @param _tokenId The token id of the asset.
@@ -238,11 +196,9 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(tenant != lessor, "Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 signerAssetNonce = assetNonce[_listing.contractAddress][_listing.tokenId][lessor];
-
-        require(_listing.nonces[0] == contractNonce, "Rentals#acceptListing: CONTRACT_NONCE_MISSMATCH");
-        require(_listing.nonces[1] == signerNonce[lessor], "Rentals#acceptListing: SIGNER_NONCE_MISSMATCH");
-        require(_listing.nonces[2] == signerAssetNonce, "Rentals#acceptListing: ASSET_NONCE_MISSMATCH");
+        _verifyContractNonce(_listing.nonces[0]);
+        _verifySignerNonce(lessor, _listing.nonces[1]);
+        _verifyAssetNonce(_listing.contractAddress, _listing.tokenId, lessor, _listing.nonces[2]);
 
         // Verify that pricePerDay, maxDays and minDays have the same length
         require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH");
@@ -297,11 +253,9 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         require(lessor != tenant, "Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        uint256 signerAssetNonce = assetNonce[_bid.contractAddress][_bid.tokenId][tenant];
-
-        require(_bid.nonces[0] == contractNonce, "Rentals#acceptBid: CONTRACT_NONCE_MISSMATCH");
-        require(_bid.nonces[1] == signerNonce[tenant], "Rentals#acceptBid: SIGNER_NONCE_MISSMATCH");
-        require(_bid.nonces[2] == signerAssetNonce, "Rentals#acceptBid: ASSET_NONCE_MISSMATCH");
+        _verifyContractNonce(_bid.nonces[0]);
+        _verifySignerNonce(tenant, _bid.nonces[1]);
+        _verifyAssetNonce(_bid.contractAddress, _bid.tokenId, tenant, _bid.nonces[2]);
 
         // Verify that the listing is not already expired.
         require(_bid.expiration > block.timestamp, "Rentals#acceptBid: EXPIRED_SIGNATURE");
@@ -410,17 +364,6 @@ contract Rentals is OwnableUpgradeable, NativeMetaTransaction, IERC721Receiver {
         fee = _fee;
 
         emit FeeUpdated(previous, fee, _msgSender());
-    }
-
-    function _bumpAssetNonce(
-        address _contractAddress,
-        uint256 _tokenId,
-        address _signer
-    ) internal {
-        uint256 previous = assetNonce[_contractAddress][_tokenId][_signer];
-        assetNonce[_contractAddress][_tokenId][_signer]++;
-
-        emit AssetNonceUpdated(previous, assetNonce[_contractAddress][_tokenId][_signer], _contractAddress, _tokenId, _signer, _msgSender());
     }
 
     function _isRented(address _contractAddress, uint256 _tokenId) internal view returns (bool) {

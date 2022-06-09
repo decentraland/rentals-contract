@@ -289,7 +289,7 @@ describe('Rentals', () => {
     })
 
     it('should emit an SignerNonceUpdated event', async () => {
-      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'SignerNonceUpdated').withArgs(0, 1, lessor.address)
+      await expect(rentals.connect(lessor).bumpSignerNonce()).to.emit(rentals, 'SignerNonceUpdated').withArgs(0, 1, lessor.address, lessor.address)
     })
 
     it('should accept a meta tx', async () => {
@@ -869,7 +869,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: CONTRACT_NONCE_MISSMATCH')
+      ).to.be.revertedWith('NonceVerifiable#_verifyContractNonce: CONTRACT_NONCE_MISSMATCH')
     })
 
     it('should revert when lessor signer nonce is not the same as the contract', async () => {
@@ -885,7 +885,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: SIGNER_NONCE_MISSMATCH')
+      ).to.be.revertedWith('NonceVerifiable#_verifySignerNonce: SIGNER_NONCE_MISSMATCH')
     })
 
     it('should revert when lessor asset nonce is not the same as the contract', async () => {
@@ -901,7 +901,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: ASSET_NONCE_MISSMATCH')
+      ).to.be.revertedWith('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
@@ -1224,7 +1224,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#acceptBid: CONTRACT_NONCE_MISSMATCH')
+      ).to.be.revertedWith('NonceVerifiable#_verifyContractNonce: CONTRACT_NONCE_MISSMATCH')
     })
 
     it('should revert when tenant signer nonce is not the same as the contract', async () => {
@@ -1232,7 +1232,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#acceptBid: SIGNER_NONCE_MISSMATCH')
+      ).to.be.revertedWith('NonceVerifiable#_verifySignerNonce: SIGNER_NONCE_MISSMATCH')
     })
 
     it('should revert when tenant asset nonce is not the same as the contract', async () => {
@@ -1240,7 +1240,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#acceptBid: ASSET_NONCE_MISSMATCH')
+      ).to.be.revertedWith('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {

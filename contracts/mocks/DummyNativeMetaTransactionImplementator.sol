@@ -29,21 +29,3 @@ contract DummyNativeMetaTransactionImplementator is NativeMetaTransaction {
         revert();
     }
 }
-
-contract Relayer {
-    DummyNativeMetaTransactionImplementator nmtImplementator;
-
-    bytes public data;
-
-    constructor(DummyNativeMetaTransactionImplementator _nmtImplementator) {
-        nmtImplementator = _nmtImplementator;
-    }
-
-    function testExecuteMetaTransaction(
-        address _userAddress,
-        bytes memory _functionData,
-        bytes memory _signature
-    ) external {
-        data = nmtImplementator.executeMetaTransaction(_userAddress, _functionData, _signature);
-    }
-}
