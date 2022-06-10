@@ -244,12 +244,12 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         require(lessor != tenant, "Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER");
 
-        // Verify that the nonces provided in the listing match the ones in the contract.
+        // Verify that the nonces provided in the bid match the ones in the contract.
         _verifyContractNonce(_bid.nonces[0]);
         _verifySignerNonce(tenant, _bid.nonces[1]);
         _verifyAssetNonce(_bid.contractAddress, _bid.tokenId, tenant, _bid.nonces[2]);
 
-        // Verify that the listing is not already expired.
+        // Verify that the bid is not already expired.
         require(_bid.expiration > block.timestamp, "Rentals#acceptBid: EXPIRED_SIGNATURE");
 
         // Verify that the rental days provided in the bid are valid.
