@@ -440,8 +440,8 @@ describe('Rentals', () => {
         )
     })
 
-    it('should update the lessors mappingwith lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.connect(lessor).lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+    it('should update the lessors mapping with lessor when the contract does not own the asset already', async () => {
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -453,7 +453,23 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(tenant).lessors(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+
+    it('should update the tenants mapping with new tenant', async () => {
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1008,11 +1024,19 @@ describe('Rentals', () => {
     })
 
     it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.connect(lessor).lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
 
-      expect(await rentals.connect(lessor).lessors(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
+    })
+
+    it('should update the tenants mapping with new tenant', async () => {
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+
+      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1279,7 +1303,7 @@ describe('Rentals', () => {
     })
   })
 
-  describe.only('claim', () => {
+  describe('claim', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
