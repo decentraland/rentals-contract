@@ -139,8 +139,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
     /// @return true or false depending if the asset is currently rented
-    function isRented(address _contractAddress, uint256 _tokenId) external view returns (bool) {
-        return _isRented(_contractAddress, _tokenId);
+    function isRented(address _contractAddress, uint256 _tokenId) public view returns (bool) {
+        return block.timestamp < rentals[_contractAddress][_tokenId];
     }
 
     /// @notice Accept a rental listing created by the owner of an asset.
@@ -262,7 +262,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address sender = _msgSender();
 
         // Verify that the rent has finished.
-        require(!_isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
+        require(!isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
         // Verify that the caller is the original owner of the asset.
         require(lessors[_contractAddress][_tokenId] == sender, "Rentals#claim: NOT_LESSOR");
 
@@ -296,7 +296,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address tenant = tenants[_contractAddress][_tokenId];
         address lessor = lessors[_contractAddress][_tokenId];
 
-        bool rented = _isRented(_contractAddress, _tokenId);
+        bool rented = isRented(_contractAddress, _tokenId);
         // If rented, only the tenant can change the operator.
         // If not, only the original owner can.
         bool canSetOperator = (tenant == sender && rented) || (lessor == sender && !rented);
@@ -349,10 +349,6 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         emit FeeUpdated(previous, fee, _msgSender());
     }
 
-    function _isRented(address _contractAddress, uint256 _tokenId) internal view returns (bool) {
-        return block.timestamp < rentals[_contractAddress][_tokenId];
-    }
-
     function _rent(
         address _lessor,
         address _tenant,
@@ -371,7 +367,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
 
         // Verify that the asset is not already rented.
-        require(!_isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
+        require(!isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
 
         IERC721Operable asset = IERC721Operable(_contractAddress);
 
