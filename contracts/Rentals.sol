@@ -141,9 +141,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Get if and asset is currently being rented.
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
-    /// @return true or false depending if the asset is currently rented
-    function isRented(address _contractAddress, uint256 _tokenId) public view returns (bool) {
-        return block.timestamp < rentals[_contractAddress][_tokenId];
+    /// @return result true or false depending if the asset is currently rented
+    function isRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
+        result = block.timestamp < rentals[_contractAddress][_tokenId];
     }
 
     /// @notice Accept a rental listing created by the owner of an asset.
