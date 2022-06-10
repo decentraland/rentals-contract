@@ -358,11 +358,11 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
 
         if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#rent: INVALID_FINGERPRINT");
+            require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
         }
 
         // Verify that the asset is not already rented.
-        require(!isRented(_contractAddress, _tokenId), "Rentals#rent: CURRENTLY_RENTED");
+        require(!isRented(_contractAddress, _tokenId), "Rentals#_rent: CURRENTLY_RENTED");
 
         IERC721Operable asset = IERC721Operable(_contractAddress);
 
@@ -370,7 +370,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         if (isAssetOwnedByContract) {
             // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
-            require(lessors[_contractAddress][_tokenId] == _lessor, "Rentals#rent: NOT_ORIGINAL_OWNER");
+            require(lessors[_contractAddress][_tokenId] == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         } else {
             // Track the original owner of the asset in the lessors map for future use.
             lessors[_contractAddress][_tokenId] = _lessor;

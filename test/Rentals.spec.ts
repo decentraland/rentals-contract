@@ -920,7 +920,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
+      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
     })
 
     it('should revert if an asset is already being rented', async () => {
@@ -946,7 +946,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
     it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
@@ -975,7 +975,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
+      ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
     })
   })
 
@@ -1251,7 +1251,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: INVALID_FINGERPRINT')
+      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
     })
 
     it('should revert if an asset is already being rented', async () => {
@@ -1262,7 +1262,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: CURRENTLY_RENTED')
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
     it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
@@ -1275,7 +1275,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(extra).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#rent: NOT_ORIGINAL_OWNER')
+      ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
     })
   })
 
