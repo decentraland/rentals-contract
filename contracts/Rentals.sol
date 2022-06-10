@@ -14,14 +14,14 @@ import "./interfaces/IERC721Verifiable.sol";
 
 contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @dev EIP712 type hashes for recovering the signer from a signature.
-    bytes32 public constant LISTING_TYPE_HASH =
+    bytes32 private constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
                 "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
             )
         );
 
-    bytes32 public constant BID_TYPE_HASH =
+    bytes32 private constant BID_TYPE_HASH =
         keccak256(
             bytes(
                 "Bid(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
@@ -29,7 +29,10 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         );
 
     /// @dev EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
-    bytes4 public constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
+    bytes4 private constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
+    
+    /// @dev EIP165 hash used to detect if a contract supports the onERC721Received(address,address,uint256,bytes) function.
+    bytes4 private constant InterfaceId_OnERC721Received = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
 
     /// @notice ERC20 token used to pay for rent and fees.
     IERC20 public token;
@@ -319,7 +322,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         bytes calldata // _data
     ) external view override returns (bytes4) {
         require(_operator == address(this), "Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
-        return 0x150b7a02;
+        return InterfaceId_OnERC721Received;
     }
 
     /// @dev By overriding this function, _msgSender becomes compatible with meta transactions.
