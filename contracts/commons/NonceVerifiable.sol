@@ -42,18 +42,12 @@ abstract contract NonceVerifiable is OwnableUpgradeable {
 
     /// @dev Increase the contract nonce by 1
     function _bumpContractNonce() internal {
-        uint256 previous = contractNonce;
-        contractNonce++;
-
-        emit ContractNonceUpdated(previous, contractNonce, _msgSender());
+        emit ContractNonceUpdated(contractNonce, ++contractNonce, _msgSender());
     }
 
     /// @dev Increase the signer nonce by 1
     function _bumpSignerNonce(address _signer) internal {
-        uint256 previous = signerNonce[_signer];
-        signerNonce[_signer]++;
-
-        emit SignerNonceUpdated(previous, signerNonce[_signer], _signer, _msgSender());
+        emit SignerNonceUpdated(signerNonce[_signer], ++signerNonce[_signer], _signer, _msgSender());
     }
 
     /// @dev Increase the asset nonce by 1
@@ -62,10 +56,14 @@ abstract contract NonceVerifiable is OwnableUpgradeable {
         uint256 _tokenId,
         address _signer
     ) internal {
-        uint256 previous = assetNonce[_contractAddress][_tokenId][_signer];
-        assetNonce[_contractAddress][_tokenId][_signer]++;
-
-        emit AssetNonceUpdated(previous, assetNonce[_contractAddress][_tokenId][_signer], _contractAddress, _tokenId, _signer, _msgSender());
+        emit AssetNonceUpdated(
+            assetNonce[_contractAddress][_tokenId][_signer],
+            ++assetNonce[_contractAddress][_tokenId][_signer],
+            _contractAddress,
+            _tokenId,
+            _signer,
+            _msgSender()
+        );
     }
 
     /// @dev Reverts if the provided nonce does not match the contract nonce.

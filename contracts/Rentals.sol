@@ -30,7 +30,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
     /// @dev EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 private constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
-    
+
     /// @dev EIP165 hash used to detect if a contract supports the onERC721Received(address,address,uint256,bytes) function.
     bytes4 private constant InterfaceId_OnERC721Received = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
 
@@ -331,26 +331,17 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     }
 
     function _setToken(IERC20 _token) internal {
-        IERC20 previous = token;
-        token = _token;
-
-        emit TokenUpdated(previous, token, _msgSender());
+        emit TokenUpdated(token, token = _token, _msgSender());
     }
 
     function _setFeeCollector(address _feeCollector) internal {
-        address previous = feeCollector;
-        feeCollector = _feeCollector;
-
-        emit FeeCollectorUpdated(previous, feeCollector, _msgSender());
+        emit FeeCollectorUpdated(feeCollector, feeCollector = _feeCollector, _msgSender());
     }
 
     function _setFee(uint256 _fee) internal {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
-        uint256 previous = fee;
-        fee = _fee;
-
-        emit FeeUpdated(previous, fee, _msgSender());
+        emit FeeUpdated(fee, fee = _fee, _msgSender());
     }
 
     function _rent(
