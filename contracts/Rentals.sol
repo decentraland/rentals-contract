@@ -330,15 +330,15 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         return _getMsgSender();
     }
 
-    function _setToken(IERC20 _token) internal {
+    function _setToken(IERC20 _token) private {
         emit TokenUpdated(token, token = _token, _msgSender());
     }
 
-    function _setFeeCollector(address _feeCollector) internal {
+    function _setFeeCollector(address _feeCollector) private {
         emit FeeCollectorUpdated(feeCollector, feeCollector = _feeCollector, _msgSender());
     }
 
-    function _setFee(uint256 _fee) internal {
+    function _setFee(uint256 _fee) private {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
         emit FeeUpdated(fee, fee = _fee, _msgSender());
@@ -353,7 +353,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _pricePerDay,
         uint256 _rentalDays,
         address _operator
-    ) internal {
+    ) private {
         // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
         IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
 
