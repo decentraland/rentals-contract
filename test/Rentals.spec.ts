@@ -1279,13 +1279,17 @@ describe('Rentals', () => {
     })
   })
 
-  describe('claim', () => {
+  describe.only('claim', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
-    it('should set the original owner to address(0)', async () => {
+    it('should set the lessor to address(0)', async () => {
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+
       await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+
+      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
 
       await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
       await network.provider.send('evm_mine')
@@ -1293,6 +1297,21 @@ describe('Rentals', () => {
       await rentals.connect(lessor).claim(erc721.address, tokenId)
 
       expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+    })
+
+    it('should set tenant to address(0)', async () => {
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+
+      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
+
+      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_mine')
+
+      await rentals.connect(lessor).claim(erc721.address, tokenId)
+
+      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
     })
 
     it('should transfer the asset to the original owner', async () => {
