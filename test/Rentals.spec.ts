@@ -744,6 +744,24 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
     })
 
+    it('should revert when pricePerDay maxDays and minDays length is 0', async () => {
+      listingParams.pricePerDay = []
+      listingParams.maxDays = []
+      listingParams.minDays = []
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: INDEX_OUT_OF_BOUNDS')
+    })
+
     it('should revert when maxDays length is different than pricePerDay length', async () => {
       listingParams.maxDays = [10, 20]
 
