@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "./commons/NativeMetaTransaction.sol";
-import "./commons/NonceVerifiable.sol";
+import "@dcl/contracts-commons/meta-transactions/NativeMetaTransaction.sol";
+import "@dcl/contracts-commons/signatures/NonceVerifiable.sol";
 
 import "./interfaces/IERC721Operable.sol";
 import "./interfaces/IERC721Verifiable.sol";
