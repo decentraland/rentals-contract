@@ -325,7 +325,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         return InterfaceId_OnERC721Received;
     }
 
-    /// @dev By overriding this function, _msgSender becomes compatible with meta transactions.
+    /// @dev Overriding to return NativeMetaTransaction._getMsgSender for the contract to support meta transactions.
     function _msgSender() internal view override returns (address sender) {
         return _getMsgSender();
     }
