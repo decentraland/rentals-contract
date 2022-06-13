@@ -10,7 +10,7 @@ import {
   getListingSignature,
   getMetaTxSignature,
   getRandomBytes32,
-  getBidSignature,
+  getOfferSignature,
   getZeroBytes32,
   now,
 } from './utils/rentals'
@@ -33,8 +33,8 @@ describe('Rentals', () => {
   let composableErc721: DummyComposableERC721
   let erc20: DummyERC20
   let listingParams: Omit<Rentals.ListingStruct, 'signature'>
-  let bidParams: Omit<Rentals.BidStruct, 'signature'>
-  let acceptListingParams: Pick<typeof bidParams, 'operator' | 'rentalDays' | 'fingerprint'> & { index: BigNumberish }
+  let offerParams: Omit<Rentals.OfferStruct, 'signature'>
+  let acceptListingParams: Pick<typeof offerParams, 'operator' | 'rentalDays' | 'fingerprint'> & { index: BigNumberish }
   let snapshotId: any
 
   beforeEach(async () => {
@@ -76,7 +76,7 @@ describe('Rentals', () => {
       minDays: [10],
     }
 
-    bidParams = {
+    offerParams = {
       signer: tenant.address,
       contractAddress: erc721.address,
       tokenId,
@@ -89,10 +89,10 @@ describe('Rentals', () => {
     }
 
     acceptListingParams = {
-      operator: bidParams.operator,
+      operator: offerParams.operator,
       index: 0,
-      rentalDays: bidParams.rentalDays,
-      fingerprint: bidParams.fingerprint,
+      rentalDays: offerParams.rentalDays,
+      fingerprint: offerParams.fingerprint,
     }
   })
 
@@ -343,15 +343,15 @@ describe('Rentals', () => {
     })
 
     it('should return true after an asset is rented', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
     })
 
     it('should return false after and asset is rented and enough time passes to surpass the rental end time', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
@@ -377,13 +377,13 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'RentalStarted')
         .withArgs(
-          bidParams.contractAddress,
-          bidParams.tokenId,
+          offerParams.contractAddress,
+          offerParams.tokenId,
           listingParams.signer,
-          bidParams.signer,
-          bidParams.operator,
-          bidParams.rentalDays,
-          bidParams.pricePerDay,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
           tenant.address
         )
     })
@@ -403,7 +403,7 @@ describe('Rentals', () => {
         .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, listingParams.contractAddress, listingParams.tokenId, listingParams.signer, tenant.address)
         .to.emit(rentals, 'AssetNonceUpdated')
-        .withArgs(0, 1, bidParams.contractAddress, bidParams.tokenId, bidParams.signer, tenant.address)
+        .withArgs(0, 1, offerParams.contractAddress, offerParams.tokenId, offerParams.signer, tenant.address)
     })
 
     it('should allow the tenant to select a different option included in the tenant signature by providing a different index', async () => {
@@ -411,8 +411,8 @@ describe('Rentals', () => {
       listingParams.maxDays = [...listingParams.maxDays, 30]
       listingParams.minDays = [...listingParams.minDays, 20]
 
-      bidParams.pricePerDay = ether('20')
-      bidParams.rentalDays = 25
+      offerParams.pricePerDay = ether('20')
+      offerParams.rentalDays = 25
 
       const index = 1
 
@@ -420,22 +420,22 @@ describe('Rentals', () => {
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          bidParams.operator,
+          offerParams.operator,
           index,
-          bidParams.rentalDays,
-          bidParams.fingerprint
+          offerParams.rentalDays,
+          offerParams.fingerprint
         )
 
       await expect(rent)
         .to.emit(rentals, 'RentalStarted')
         .withArgs(
-          bidParams.contractAddress,
-          bidParams.tokenId,
+          offerParams.contractAddress,
+          offerParams.tokenId,
           listingParams.signer,
-          bidParams.signer,
-          bidParams.operator,
-          bidParams.rentalDays,
-          bidParams.pricePerDay,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
           tenant.address
         )
     })
@@ -506,7 +506,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -515,7 +515,7 @@ describe('Rentals', () => {
       const originalBalanceCollector = await erc20.balanceOf(collector.address)
 
       listingParams.pricePerDay = ['0']
-      bidParams.pricePerDay = '0'
+      offerParams.pricePerDay = '0'
 
       await rentals
         .connect(tenant)
@@ -547,7 +547,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      const total = BigNumber.from(bidParams.pricePerDay).mul(bidParams.rentalDays)
+      const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
       const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
       const forLessor = total.sub(forCollector)
 
@@ -573,7 +573,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      const total = BigNumber.from(bidParams.pricePerDay).mul(bidParams.rentalDays)
+      const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
@@ -597,7 +597,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      const total = BigNumber.from(bidParams.pricePerDay).mul(bidParams.rentalDays)
+      const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
@@ -703,13 +703,13 @@ describe('Rentals', () => {
       await expect(rent)
         .to.emit(rentals, 'RentalStarted')
         .withArgs(
-          bidParams.contractAddress,
-          bidParams.tokenId,
+          offerParams.contractAddress,
+          offerParams.tokenId,
           listingParams.signer,
-          bidParams.signer,
-          bidParams.operator,
-          bidParams.rentalDays,
-          bidParams.pricePerDay,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
           tenant.address
         )
     })
@@ -995,38 +995,38 @@ describe('Rentals', () => {
     })
   })
 
-  describe('acceptBid', () => {
+  describe('acceptOffer', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
     })
 
     it('should emit a RentalStarted event', async () => {
-      await expect(rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) }))
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) }))
         .to.emit(rentals, 'RentalStarted')
         .withArgs(
-          bidParams.contractAddress,
-          bidParams.tokenId,
+          offerParams.contractAddress,
+          offerParams.tokenId,
           listingParams.signer,
-          bidParams.signer,
-          bidParams.operator,
-          bidParams.rentalDays,
-          bidParams.pricePerDay,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
           lessor.address
         )
     })
 
     it('should emit an AssetNonceUpdated event for the lessor and the tenant', async () => {
-      await expect(rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) }))
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) }))
         .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, listingParams.contractAddress, listingParams.tokenId, listingParams.signer, lessor.address)
         .to.emit(rentals, 'AssetNonceUpdated')
-        .withArgs(0, 1, bidParams.contractAddress, bidParams.tokenId, bidParams.signer, lessor.address)
+        .withArgs(0, 1, offerParams.contractAddress, offerParams.tokenId, offerParams.signer, lessor.address)
     })
 
     it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
       expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
     })
@@ -1034,7 +1034,7 @@ describe('Rentals', () => {
     it('should update the tenants mapping with new tenant', async () => {
       expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
     })
@@ -1043,7 +1043,7 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(0)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
       expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
@@ -1055,9 +1055,9 @@ describe('Rentals', () => {
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(bidParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1065,9 +1065,9 @@ describe('Rentals', () => {
       const originalBalanceLessor = await erc20.balanceOf(lessor.address)
       const originalBalanceCollector = await erc20.balanceOf(collector.address)
 
-      bidParams.pricePerDay = '0'
+      offerParams.pricePerDay = '0'
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
@@ -1079,9 +1079,9 @@ describe('Rentals', () => {
       const originalBalanceLessor = await erc20.balanceOf(lessor.address)
       const originalBalanceCollector = await erc20.balanceOf(collector.address)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      const total = BigNumber.from(bidParams.pricePerDay).mul(bidParams.rentalDays)
+      const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
       const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
       const forLessor = total.sub(forCollector)
 
@@ -1097,9 +1097,9 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).setFee('0')
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      const total = BigNumber.from(bidParams.pricePerDay).mul(bidParams.rentalDays)
+      const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
@@ -1113,9 +1113,9 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).setFee('1000000')
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      const total = BigNumber.from(bidParams.pricePerDay).mul(bidParams.rentalDays)
+      const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
       expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
@@ -1179,12 +1179,12 @@ describe('Rentals', () => {
                   type: 'bytes',
                 },
               ],
-              internalType: 'struct Rentals.Bid',
-              name: '_bid',
+              internalType: 'struct Rentals.Offer',
+              name: '_offer',
               type: 'tuple',
             },
           ],
-          name: 'acceptBid',
+          name: 'acceptOffer',
           outputs: [],
           stateMutability: 'nonpayable',
           type: 'function',
@@ -1192,7 +1192,9 @@ describe('Rentals', () => {
       ]
 
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('acceptBid', [{ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) }])
+      const functionData = iface.encodeFunctionData('acceptOffer', [
+        { ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) },
+      ])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
       const rent = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
@@ -1200,13 +1202,13 @@ describe('Rentals', () => {
       await expect(rent)
         .to.emit(rentals, 'RentalStarted')
         .withArgs(
-          bidParams.contractAddress,
-          bidParams.tokenId,
+          offerParams.contractAddress,
+          offerParams.tokenId,
           listingParams.signer,
-          bidParams.signer,
-          bidParams.operator,
-          bidParams.rentalDays,
-          bidParams.pricePerDay,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
           lessor.address
         )
     })
@@ -1215,55 +1217,55 @@ describe('Rentals', () => {
       await expect(
         rentals
           .connect(lessor)
-          .acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, { ...bidParams, signer: lessor.address }) })
-      ).to.be.revertedWith('Rentals#acceptBid: SIGNATURE_MISSMATCH')
+          .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: lessor.address }) })
+      ).to.be.revertedWith('Rentals#acceptOffer: SIGNATURE_MISSMATCH')
     })
 
     it('should revert when lessor is same as tenant', async () => {
-      bidParams = { ...bidParams, signer: lessor.address }
+      offerParams = { ...offerParams, signer: lessor.address }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(lessor, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER')
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(lessor, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER')
     })
 
     it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
-      bidParams = { ...bidParams, expiration: now() - 1000 }
+      offerParams = { ...offerParams, expiration: now() - 1000 }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#acceptBid: EXPIRED_SIGNATURE')
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#acceptOffer: EXPIRED_SIGNATURE')
     })
 
     it('should revert when tenant rental days is zero', async () => {
-      bidParams = { ...bidParams, rentalDays: 0 }
+      offerParams = { ...offerParams, rentalDays: 0 }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
-      ).to.be.revertedWith('Rentals#acceptBid: RENTAL_DAYS_IS_ZERO')
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO')
     })
 
     it('should revert when tenant contract nonce is not the same as the contract', async () => {
-      bidParams = { ...bidParams, nonces: [1, 0, 0] }
+      offerParams = { ...offerParams, nonces: [1, 0, 0] }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('NonceVerifiable#_verifyContractNonce: CONTRACT_NONCE_MISSMATCH')
     })
 
     it('should revert when tenant signer nonce is not the same as the contract', async () => {
-      bidParams = { ...bidParams, nonces: [0, 1, 0] }
+      offerParams = { ...offerParams, nonces: [0, 1, 0] }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('NonceVerifiable#_verifySignerNonce: SIGNER_NONCE_MISSMATCH')
     })
 
     it('should revert when tenant asset nonce is not the same as the contract', async () => {
-      bidParams = { ...bidParams, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
     })
 
@@ -1271,34 +1273,34 @@ describe('Rentals', () => {
       const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
       const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
 
-      bidParams = { ...bidParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes32() }
+      offerParams = { ...offerParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes32() }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
     })
 
     it('should revert if an asset is already being rented', async () => {
-      rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       listingParams = { ...listingParams, nonces: [0, 0, 1] }
-      bidParams = { ...bidParams, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
     it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
-      bidParams = { ...bidParams, expiration: maxUint256, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, expiration: maxUint256, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(extra).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
     })
   })
@@ -1311,11 +1313,11 @@ describe('Rentals', () => {
     it('should set the lessor to address(0)', async () => {
       expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
@@ -1326,11 +1328,11 @@ describe('Rentals', () => {
     it('should set tenant to address(0)', async () => {
       expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
@@ -1339,9 +1341,9 @@ describe('Rentals', () => {
     })
 
     it('should transfer the asset to the original owner', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
@@ -1352,9 +1354,9 @@ describe('Rentals', () => {
     })
 
     it('should emit an AssetClaimed event', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await expect(rentals.connect(lessor).claim(erc721.address, tokenId))
@@ -1363,9 +1365,9 @@ describe('Rentals', () => {
     })
 
     it('should accept a meta tx', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
@@ -1379,15 +1381,15 @@ describe('Rentals', () => {
     })
 
     it('should revert when the asset is currently being rented', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await expect(rentals.connect(lessor).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
     it('should revert when the caller is not the original owner of the asset', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
@@ -1402,15 +1404,15 @@ describe('Rentals', () => {
     })
 
     it('should allow the tenant to update the asset operator', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
     })
 
     it('should allow the lessor to update the asset operator after the rent is over', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       await rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
@@ -1425,9 +1427,9 @@ describe('Rentals', () => {
     })
 
     it('should revert when the tenant tries to update the operator after the rent is over', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(bidParams.rentalDays)])
+      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
       await network.provider.send('evm_mine')
 
       const setOperator = rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
@@ -1436,7 +1438,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when the lessor tries to update the operator before the rental ends', async () => {
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       const setOperator = rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
 
@@ -1452,7 +1454,7 @@ describe('Rentals', () => {
     it('should allow the asset transfer from a rent', async () => {
       expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
 
-      await rentals.connect(lessor).acceptBid({ ...bidParams, signature: await getBidSignature(tenant, rentals, bidParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
     })

@@ -21,10 +21,10 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             )
         );
 
-    bytes32 private constant BID_TYPE_HASH =
+    bytes32 private constant OFFER_TYPE_HASH =
         keccak256(
             bytes(
-                "Bid(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
+                "Offer(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
             )
         );
 
@@ -69,9 +69,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         bytes signature;
     }
 
-    /// @notice Struct received as a parameter in `acceptBid` containing all information about
-    /// bid conditions and values required to verify the signature was created by the signer.
-    struct Bid {
+    /// @notice Struct received as a parameter in `acceptOffer` containing all information about
+    /// offer conditions and values required to verify the signature was created by the signer.
+    struct Offer {
         address signer;
         address contractAddress;
         uint256 tokenId;
@@ -214,48 +214,48 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
     }
 
-    /// @notice Accept a bid for rent of an asset owned by the caller.
-    /// @param _bid Contains the bid conditions as well as the signature data for verification.
-    function acceptBid(Bid calldata _bid) external {
-        // Verify that the signer provided in the bid is the one that signed it.
-        bytes32 bidHash = _hashTypedDataV4(
+    /// @notice Accept an offer for rent of an asset owned by the caller.
+    /// @param _offer Contains the offer conditions as well as the signature data for verification.
+    function acceptOffer(Offer calldata _offer) external {
+        // Verify that the signer provided in the offer is the one that signed it.
+        bytes32 offerHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    BID_TYPE_HASH,
-                    _bid.signer,
-                    _bid.contractAddress,
-                    _bid.tokenId,
-                    _bid.expiration,
-                    keccak256(abi.encodePacked(_bid.nonces)),
-                    _bid.pricePerDay,
-                    _bid.rentalDays,
-                    _bid.operator,
-                    _bid.fingerprint
+                    OFFER_TYPE_HASH,
+                    _offer.signer,
+                    _offer.contractAddress,
+                    _offer.tokenId,
+                    _offer.expiration,
+                    keccak256(abi.encodePacked(_offer.nonces)),
+                    _offer.pricePerDay,
+                    _offer.rentalDays,
+                    _offer.operator,
+                    _offer.fingerprint
                 )
             )
         );
 
-        address tenant = ECDSAUpgradeable.recover(bidHash, _bid.signature);
+        address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
 
-        require(tenant == _bid.signer, "Rentals#acceptBid: SIGNATURE_MISSMATCH");
+        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISSMATCH");
 
         // Verify that the caller and the signer are not the same address.
         address lessor = _msgSender();
 
-        require(lessor != tenant, "Rentals#acceptBid: CALLER_CANNOT_BE_SIGNER");
+        require(lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
 
-        // Verify that the nonces provided in the bid match the ones in the contract.
-        _verifyContractNonce(_bid.nonces[0]);
-        _verifySignerNonce(tenant, _bid.nonces[1]);
-        _verifyAssetNonce(_bid.contractAddress, _bid.tokenId, tenant, _bid.nonces[2]);
+        // Verify that the nonces provided in the offer match the ones in the contract.
+        _verifyContractNonce(_offer.nonces[0]);
+        _verifySignerNonce(tenant, _offer.nonces[1]);
+        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
 
-        // Verify that the bid is not already expired.
-        require(_bid.expiration > block.timestamp, "Rentals#acceptBid: EXPIRED_SIGNATURE");
+        // Verify that the offer is not already expired.
+        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
 
-        // Verify that the rental days provided in the bid are valid.
-        require(_bid.rentalDays > 0, "Rentals#acceptBid: RENTAL_DAYS_IS_ZERO");
+        // Verify that the rental days provided in the offer are valid.
+        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
 
-        _rent(lessor, tenant, _bid.contractAddress, _bid.tokenId, _bid.fingerprint, _bid.pricePerDay, _bid.rentalDays, _bid.operator);
+        _rent(lessor, tenant, _offer.contractAddress, _offer.tokenId, _offer.fingerprint, _offer.pricePerDay, _offer.rentalDays, _offer.operator);
     }
 
     /// @notice The original owner of the asset can claim it back if said asset is not being rented.

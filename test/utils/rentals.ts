@@ -66,7 +66,7 @@ export const getListingSignature = (
     params
   )
 
-export const getBidSignature = (signer: SignerWithAddress, contract: Rentals, params: Omit<Rentals.BidStruct, 'signature'>): Promise<string> =>
+export const getOfferSignature = (signer: SignerWithAddress, contract: Rentals, params: Omit<Rentals.OfferStruct, 'signature'>): Promise<string> =>
   signer._signTypedData(
     {
       chainId: 31337,
@@ -75,7 +75,7 @@ export const getBidSignature = (signer: SignerWithAddress, contract: Rentals, pa
       version: '1',
     },
     {
-      Bid: [
+      Offer: [
         {
           type: 'address',
           name: 'signer',
