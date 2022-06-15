@@ -15,6 +15,12 @@ export const now = () => Math.trunc(Date.now() / 1000)
 
 export const daysToSeconds = (days: BigNumberish) => BigNumber.from(days).mul(86400).toNumber()
 
+//@ts-ignore
+export const evmIncreaseTime = (seconds: number) => network.provider.send('evm_increaseTime', [seconds])
+
+//@ts-ignore
+export const evmMine = () => network.provider.send('evm_mine')
+
 export const getListingSignature = (
   signer: SignerWithAddress,
   contract: Rentals,

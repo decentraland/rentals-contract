@@ -13,6 +13,8 @@ import {
   getOfferSignature,
   getZeroBytes32,
   now,
+  evmMine,
+  evmIncreaseTime,
 } from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
@@ -351,8 +353,8 @@ describe('Rentals', () => {
     it('should return false after and asset is rented and enough time passes to surpass the rental end time', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
     })
@@ -994,8 +996,8 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(acceptListingParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(acceptListingParams.rentalDays))
+      await evmMine()
 
       listingParams = { ...listingParams, signer: extra.address, expiration: maxUint256 }
 
@@ -1312,8 +1314,8 @@ describe('Rentals', () => {
     it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       offerParams = { ...offerParams, expiration: maxUint256, nonces: [0, 0, 1] }
 
@@ -1335,8 +1337,8 @@ describe('Rentals', () => {
 
       expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
 
@@ -1350,8 +1352,8 @@ describe('Rentals', () => {
 
       expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       await rentals.connect(lessor).claim(erc721.address, tokenId)
 
@@ -1361,8 +1363,8 @@ describe('Rentals', () => {
     it('should transfer the asset to the original owner', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
 
@@ -1374,8 +1376,8 @@ describe('Rentals', () => {
     it('should emit an AssetClaimed event', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       await expect(rentals.connect(lessor).claim(erc721.address, tokenId))
         .to.emit(rentals, 'AssetClaimed')
@@ -1385,8 +1387,8 @@ describe('Rentals', () => {
     it('should accept a meta tx', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
       const iface = new ethers.utils.Interface(abi)
@@ -1407,8 +1409,8 @@ describe('Rentals', () => {
     it('should revert when the caller is not the original owner of the asset', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
@@ -1430,8 +1432,8 @@ describe('Rentals', () => {
     it('should allow the lessor to update the asset operator after the rent is over', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       await rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
     })
@@ -1447,8 +1449,8 @@ describe('Rentals', () => {
     it('should revert when the tenant tries to update the operator after the rent is over', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await network.provider.send('evm_increaseTime', [daysToSeconds(offerParams.rentalDays)])
-      await network.provider.send('evm_mine')
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
 
       const setOperator = rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
 
