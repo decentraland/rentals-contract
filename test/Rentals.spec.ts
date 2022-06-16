@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { DummyComposableERC721, DummyERC20, DummyERC721, MANAToken } from '../typechain-types'
+import { DummyComposableERC721, DummyERC721, MANAToken } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
 import {
   daysToSeconds,
