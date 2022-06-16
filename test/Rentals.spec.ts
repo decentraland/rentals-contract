@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { DummyComposableERC721, DummyERC20, DummyERC721 } from '../typechain-types'
+import { DummyComposableERC721, DummyERC20, DummyERC721, MANAToken } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
 import {
   daysToSeconds,
@@ -33,7 +33,7 @@ describe('Rentals', () => {
   let rentals: Rentals
   let erc721: DummyERC721
   let composableErc721: DummyComposableERC721
-  let erc20: DummyERC20
+  let mana: MANAToken
   let listingParams: Omit<Rentals.ListingStruct, 'signature'>
   let offerParams: Omit<Rentals.OfferStruct, 'signature'>
   let acceptListingParams: Pick<typeof offerParams, 'operator' | 'rentalDays' | 'fingerprint'> & { index: BigNumberish }
@@ -57,15 +57,15 @@ describe('Rentals', () => {
     const ComposableERC721Factory = await ethers.getContractFactory('DummyComposableERC721')
     composableErc721 = await ComposableERC721Factory.connect(deployer).deploy()
 
-    // Deploy ERC20
-    const ERC20Factory = await ethers.getContractFactory('DummyERC20')
-    erc20 = await ERC20Factory.connect(deployer).deploy()
+    // Deploy MANAToken
+    const MANATokenFactory = await ethers.getContractFactory('MANAToken')
+    mana = await MANATokenFactory.connect(deployer).deploy()
 
     await erc721.connect(lessor).mint(lessor.address, tokenId)
     await erc721.connect(lessor).approve(rentals.address, tokenId)
 
-    await erc20.connect(tenant).mint(tenant.address, ether('100000'))
-    await erc20.connect(tenant).approve(rentals.address, maxUint256)
+    await mana.connect(deployer).mint(tenant.address, ether('100000'))
+    await mana.connect(tenant).approve(rentals.address, maxUint256)
 
     listingParams = {
       signer: lessor.address,
@@ -104,7 +104,7 @@ describe('Rentals', () => {
 
   describe('initialize', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should set the owner', async () => {
@@ -112,7 +112,7 @@ describe('Rentals', () => {
     })
 
     it('should set the erc20 token', async () => {
-      expect(await rentals.token()).to.be.equal(erc20.address)
+      expect(await rentals.token()).to.be.equal(mana.address)
     })
 
     it('should set the fee collector', async () => {
@@ -124,7 +124,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when initialized more than once', async () => {
-      await expect(rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)).to.be.revertedWith(
+      await expect(rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
@@ -135,7 +135,7 @@ describe('Rentals', () => {
     let newToken: string
 
     beforeEach(async () => {
-      oldToken = erc20.address
+      oldToken = mana.address
       newToken = deployer.address
 
       await rentals.connect(deployer).initialize(owner.address, oldToken, collector.address, fee)
@@ -250,7 +250,7 @@ describe('Rentals', () => {
 
   describe('bumpContractNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should increase the contractNonce by 1', async () => {
@@ -281,7 +281,7 @@ describe('Rentals', () => {
 
   describe('bumpSignerNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should increase the signerNonce for the sender by 1', async () => {
@@ -308,7 +308,7 @@ describe('Rentals', () => {
 
   describe('bumpAssetNonce', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should increase the assetNonce for the sender by 1', async () => {
@@ -337,7 +337,7 @@ describe('Rentals', () => {
 
   describe('isRented', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should return false when the asset was never rented', async () => {
@@ -377,7 +377,7 @@ describe('Rentals', () => {
 
   describe('acceptListing', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should emit a RentalStarted event', async () => {
@@ -527,9 +527,9 @@ describe('Rentals', () => {
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       listingParams.pricePerDay = ['0']
       offerParams.pricePerDay = '0'
@@ -544,15 +544,15 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector)
     })
 
     it('should transfer erc20 from the tenant to the lessor and collector', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       await rentals
         .connect(tenant)
@@ -568,15 +568,15 @@ describe('Rentals', () => {
       const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
       const forLessor = total.sub(forCollector)
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(forLessor))
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(forCollector))
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(forLessor))
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(forCollector))
     })
 
     it('should not transfer erc20 to collector when fee is 0', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       await rentals.connect(owner).setFee('0')
 
@@ -592,15 +592,15 @@ describe('Rentals', () => {
 
       const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector)
     })
 
     it('should not transfer erc20 to lessor when fee is 1_000_000', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       await rentals.connect(owner).setFee('1000000')
 
@@ -616,9 +616,9 @@ describe('Rentals', () => {
 
       const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
     })
 
     it('should accept a meta tx', async () => {
@@ -1066,7 +1066,7 @@ describe('Rentals', () => {
 
   describe('acceptOffer', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should emit a RentalStarted event', async () => {
@@ -1130,23 +1130,23 @@ describe('Rentals', () => {
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       offerParams.pricePerDay = '0'
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant)
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector)
     })
 
     it('should transfer erc20 from the tenant to the lessor and collector', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -1154,15 +1154,15 @@ describe('Rentals', () => {
       const forCollector = total.mul(BigNumber.from(fee)).div(BigNumber.from(1000000))
       const forLessor = total.sub(forCollector)
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(forLessor))
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(forCollector))
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(forLessor))
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(forCollector))
     })
 
     it('should not transfer erc20 to collector when fee is 0', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       await rentals.connect(owner).setFee('0')
 
@@ -1170,15 +1170,15 @@ describe('Rentals', () => {
 
       const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector)
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor.add(total))
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector)
     })
 
     it('should not transfer erc20 to lessor when fee is 1_000_000', async () => {
-      const originalBalanceTenant = await erc20.balanceOf(tenant.address)
-      const originalBalanceLessor = await erc20.balanceOf(lessor.address)
-      const originalBalanceCollector = await erc20.balanceOf(collector.address)
+      const originalBalanceTenant = await mana.balanceOf(tenant.address)
+      const originalBalanceLessor = await mana.balanceOf(lessor.address)
+      const originalBalanceCollector = await mana.balanceOf(collector.address)
 
       await rentals.connect(owner).setFee('1000000')
 
@@ -1186,9 +1186,9 @@ describe('Rentals', () => {
 
       const total = BigNumber.from(offerParams.pricePerDay).mul(offerParams.rentalDays)
 
-      expect(await erc20.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
-      expect(await erc20.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
-      expect(await erc20.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
+      expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
+      expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
+      expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
     })
 
     it('should accept a meta tx', async () => {
@@ -1376,7 +1376,7 @@ describe('Rentals', () => {
 
   describe('claim', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should set the lessor to address(0)', async () => {
@@ -1469,7 +1469,7 @@ describe('Rentals', () => {
     const newOperator = zeroAddress
 
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should allow the tenant to update the asset operator', async () => {
@@ -1517,7 +1517,7 @@ describe('Rentals', () => {
 
   describe('onERC721Received', () => {
     beforeEach(async () => {
-      await rentals.connect(deployer).initialize(owner.address, erc20.address, collector.address, fee)
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
     it('should allow the asset transfer from a rent', async () => {
