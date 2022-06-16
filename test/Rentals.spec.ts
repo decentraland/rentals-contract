@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { DummyComposableERC721, DummyERC721, MANAToken } from '../typechain-types'
+import { DummyComposableERC721, LANDRegistry, MANAToken } from '../typechain-types'
 import { Rentals } from '../typechain-types/Rentals'
 import {
   daysToSeconds,
@@ -19,7 +19,6 @@ import {
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
-const tokenId = 1
 const fee = '100000' // 10% fee
 
 describe('Rentals', () => {
@@ -30,9 +29,11 @@ describe('Rentals', () => {
   let operator: SignerWithAddress
   let collector: SignerWithAddress
   let extra: SignerWithAddress
+  let proxyOwner: SignerWithAddress
   let rentals: Rentals
-  let erc721: DummyERC721
+  let land: LANDRegistry
   let composableErc721: DummyComposableERC721
+  let tokenId: BigNumber
   let mana: MANAToken
   let listingParams: Omit<Rentals.ListingStruct, 'signature'>
   let offerParams: Omit<Rentals.OfferStruct, 'signature'>
@@ -43,33 +44,45 @@ describe('Rentals', () => {
     snapshotId = await network.provider.send('evm_snapshot')
 
     // Store addresses
-    ;[deployer, owner, tenant, lessor, operator, collector, extra] = await ethers.getSigners()
+    ;[deployer, owner, tenant, lessor, operator, collector, extra, proxyOwner] = await ethers.getSigners()
 
     // Deploy Rentals contract
     const RentalsFactory = await ethers.getContractFactory('Rentals')
     rentals = await RentalsFactory.connect(deployer).deploy()
 
-    // Deploy ERC721
-    const ERC721Factory = await ethers.getContractFactory('DummyERC721')
-    erc721 = await ERC721Factory.connect(deployer).deploy()
+    // Deploy and Prepare LANDRegistry
+    const LANDRegistryFactory = await ethers.getContractFactory('LANDRegistry')
+    const landRegistry = await LANDRegistryFactory.connect(deployer).deploy()
+
+    const LANDProxyFactory = await ethers.getContractFactory('LANDProxy')
+    const landProxy = await LANDProxyFactory.connect(deployer).deploy()
+
+    await landProxy.connect(deployer).upgrade(landRegistry.address, [])
+
+    land = await ethers.getContractAt('LANDRegistry', landProxy.address)
+
+    await land.connect(deployer).transferOwnership(owner.address)
+
+    await land.connect(owner).assignNewParcel(0, 0, lessor.address)
+
+    tokenId = await land.encodeTokenId(0, 0)
+
+    await land.connect(lessor).setApprovalForAll(rentals.address, true)
 
     // Deploy ComposableERC721
     const ComposableERC721Factory = await ethers.getContractFactory('DummyComposableERC721')
     composableErc721 = await ComposableERC721Factory.connect(deployer).deploy()
 
-    // Deploy MANAToken
+    // Deploy and Prepare MANAToken
     const MANATokenFactory = await ethers.getContractFactory('MANAToken')
     mana = await MANATokenFactory.connect(deployer).deploy()
-
-    await erc721.connect(lessor).mint(lessor.address, tokenId)
-    await erc721.connect(lessor).approve(rentals.address, tokenId)
 
     await mana.connect(deployer).mint(tenant.address, ether('100000'))
     await mana.connect(tenant).approve(rentals.address, maxUint256)
 
     listingParams = {
       signer: lessor.address,
-      contractAddress: erc721.address,
+      contractAddress: land.address,
       tokenId,
       expiration: now() + 1000,
       nonces: [0, 0, 0],
@@ -80,7 +93,7 @@ describe('Rentals', () => {
 
     offerParams = {
       signer: tenant.address,
-      contractAddress: erc721.address,
+      contractAddress: land.address,
       tokenId,
       fingerprint: getZeroBytes32(),
       pricePerDay: ether('100'),
@@ -312,26 +325,26 @@ describe('Rentals', () => {
     })
 
     it('should increase the assetNonce for the sender by 1', async () => {
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
-      await rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId)
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(0)
+      await rentals.connect(lessor).bumpAssetNonce(land.address, tokenId)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(1)
     })
 
     it('should emit an AssetNonceUpdated event', async () => {
-      await expect(rentals.connect(lessor).bumpAssetNonce(erc721.address, tokenId))
+      await expect(rentals.connect(lessor).bumpAssetNonce(land.address, tokenId))
         .to.emit(rentals, 'AssetNonceUpdated')
-        .withArgs(0, 1, erc721.address, tokenId, lessor.address, lessor.address)
+        .withArgs(0, 1, land.address, tokenId, lessor.address, lessor.address)
     })
 
     it('should accept a meta tx', async () => {
       const abi = ['function bumpAssetNonce(address _contractAddress, uint256 _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('bumpAssetNonce', [erc721.address, tokenId])
+      const functionData = iface.encodeFunctionData('bumpAssetNonce', [land.address, tokenId])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(0)
       await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(1)
     })
   })
 
@@ -341,13 +354,13 @@ describe('Rentals', () => {
     })
 
     it('should return false when the asset was never rented', async () => {
-      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(false)
+      expect(await rentals.isRented(land.address, tokenId)).to.equal(false)
     })
 
     it('should return true after an asset is rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(true)
+      expect(await rentals.isRented(land.address, tokenId)).to.equal(true)
     })
 
     it('should return true when the current block timestamp is the same as the rental end', async () => {
@@ -358,11 +371,11 @@ describe('Rentals', () => {
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
-      const rentalEnd = await rentals.rentals(erc721.address, tokenId)
+      const rentalEnd = await rentals.rentals(land.address, tokenId)
 
       expect(rentalEnd).to.be.equal(latestBlockTime)
 
-      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(true)
+      expect(await rentals.isRented(land.address, tokenId)).to.equal(true)
     })
 
     it('should return false when the block timestamp is equal to the rental end + 1', async () => {
@@ -371,7 +384,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
       await evmMine()
 
-      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(false)
+      expect(await rentals.isRented(land.address, tokenId)).to.equal(false)
     })
   })
 
@@ -458,7 +471,7 @@ describe('Rentals', () => {
     })
 
     it('should update the lessors mapping with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -470,11 +483,11 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(lessor.address)
     })
 
     it('should update the tenants mapping with new tenant', async () => {
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -486,12 +499,12 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, tenant.address)).to.equal(0)
 
       await rentals
         .connect(tenant)
@@ -503,12 +516,12 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, tenant.address)).to.equal(1)
     })
 
     it('should update the ongoing rentals mapping for the rented asset', async () => {
-      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(0)
+      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
@@ -523,7 +536,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1093,40 +1106,40 @@ describe('Rentals', () => {
     })
 
     it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(lessor.address)
     })
 
     it('should update the tenants mapping with new tenant', async () => {
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, tenant.address)).to.equal(0)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, lessor.address)).to.equal(1)
-      expect(await rentals.connect(lessor).assetNonce(erc721.address, tokenId, tenant.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, lessor.address)).to.equal(1)
+      expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, tenant.address)).to.equal(1)
     })
 
     it('should update the rentals mapping for the rented asset with the rental finish timestamp', async () => {
-      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(0)
+      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.connect(lessor).rentals(erc721.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1380,33 +1393,33 @@ describe('Rentals', () => {
     })
 
     it('should set the lessor to address(0)', async () => {
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(lessor.address)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(lessor.address)
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).claim(erc721.address, tokenId)
+      await rentals.connect(lessor).claim(land.address, tokenId)
 
-      expect(await rentals.lessors(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
     })
 
     it('should set tenant to address(0)', async () => {
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(tenant.address)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(tenant.address)
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).claim(erc721.address, tokenId)
+      await rentals.connect(lessor).claim(land.address, tokenId)
 
-      expect(await rentals.tenants(erc721.address, tokenId)).to.equal(zeroAddress)
+      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
     })
 
     it('should transfer the asset to the original owner', async () => {
@@ -1415,11 +1428,11 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
+      expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
 
-      await rentals.connect(lessor).claim(erc721.address, tokenId)
+      await rentals.connect(lessor).claim(land.address, tokenId)
 
-      expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
+      expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
     })
 
     it('should emit an AssetClaimed event', async () => {
@@ -1428,9 +1441,9 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(lessor).claim(erc721.address, tokenId))
+      await expect(rentals.connect(lessor).claim(land.address, tokenId))
         .to.emit(rentals, 'AssetClaimed')
-        .withArgs(erc721.address, tokenId, lessor.address)
+        .withArgs(land.address, tokenId, lessor.address)
     })
 
     it('should accept a meta tx', async () => {
@@ -1441,18 +1454,18 @@ describe('Rentals', () => {
 
       const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('claim', [erc721.address, tokenId])
+      const functionData = iface.encodeFunctionData('claim', [land.address, tokenId])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
-      expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
+      expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
       await rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
-      expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
+      expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
     })
 
     it('should revert when the asset is currently being rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await expect(rentals.connect(lessor).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
+      await expect(rentals.connect(lessor).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
     it('should revert when the caller is not the original owner of the asset', async () => {
@@ -1461,7 +1474,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(tenant).claim(erc721.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
+      await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
   })
 
@@ -1475,7 +1488,7 @@ describe('Rentals', () => {
     it('should allow the tenant to update the asset operator', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
+      await rentals.connect(tenant).setOperator(land.address, tokenId, newOperator)
     })
 
     it('should allow the lessor to update the asset operator after the rent is over', async () => {
@@ -1484,12 +1497,12 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
+      await rentals.connect(lessor).setOperator(land.address, tokenId, newOperator)
     })
 
     it('should revert when the asset has never been rented', async () => {
-      const setOperatorByLessor = rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
-      const setOperatorByTenant = rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
+      const setOperatorByLessor = rentals.connect(lessor).setOperator(land.address, tokenId, newOperator)
+      const setOperatorByTenant = rentals.connect(tenant).setOperator(land.address, tokenId, newOperator)
 
       await expect(setOperatorByLessor).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
       await expect(setOperatorByTenant).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
@@ -1501,7 +1514,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      const setOperator = rentals.connect(tenant).setOperator(erc721.address, tokenId, newOperator)
+      const setOperator = rentals.connect(tenant).setOperator(land.address, tokenId, newOperator)
 
       await expect(setOperator).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
     })
@@ -1509,7 +1522,7 @@ describe('Rentals', () => {
     it('should revert when the lessor tries to update the operator before the rental ends', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      const setOperator = rentals.connect(lessor).setOperator(erc721.address, tokenId, newOperator)
+      const setOperator = rentals.connect(lessor).setOperator(land.address, tokenId, newOperator)
 
       await expect(setOperator).to.be.revertedWith('Rentals#setOperator: CANNOT_UPDATE_OPERATOR')
     })
@@ -1521,15 +1534,15 @@ describe('Rentals', () => {
     })
 
     it('should allow the asset transfer from a rent', async () => {
-      expect(await erc721.ownerOf(tokenId)).to.equal(lessor.address)
+      expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await erc721.ownerOf(tokenId)).to.equal(rentals.address)
+      expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
     })
 
     it('should revert when the contract receives an asset not transfered via rent', async () => {
-      const transfer = erc721.connect(lessor)['safeTransferFrom(address,address,uint256)'](lessor.address, rentals.address, tokenId)
+      const transfer = land.connect(lessor)['safeTransferFrom(address,address,uint256)'](lessor.address, rentals.address, tokenId)
       await expect(transfer).to.be.revertedWith('Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT')
     })
   })
