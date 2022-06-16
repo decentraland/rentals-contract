@@ -341,22 +341,37 @@ describe('Rentals', () => {
     })
 
     it('should return false when the asset was never rented', async () => {
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
+      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(false)
     })
 
     it('should return true after an asset is rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(true)
+      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(true)
     })
 
-    it('should return false after and asset is rented and enough time passes to surpass the rental end time', async () => {
+    it('should return true when the current block timestamp is the same as the rental end', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      expect(await rentals.connect(lessor).isRented(erc721.address, tokenId)).to.equal(false)
+      const latestBlock = await ethers.provider.getBlock('latest')
+      const latestBlockTime = latestBlock.timestamp
+      const rentalEnd = await rentals.rentals(erc721.address, tokenId)
+
+      expect(rentalEnd).to.be.equal(latestBlockTime)
+
+      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(true)
+    })
+
+    it('should return false when the block timestamp is equal to the rental end + 1', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      expect(await rentals.isRented(erc721.address, tokenId)).to.equal(false)
     })
   })
 
@@ -1012,6 +1027,50 @@ describe('Rentals', () => {
             acceptListingParams.fingerprint
           )
       ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
+    })
+
+    it('should revert with currently rented error when claim is sent in the same block as accept listing', async () => {
+      // Disable automine so the transactions are included in the same block.
+      await network.provider.send('evm_setAutomine', [false])
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      // await rentals.connect(lessor).claim(listingParams.contractAddress, listingParams.tokenId)
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      const pendingBlock = await network.provider.send('eth_getBlockByNumber', ['pending', false])
+      expect(pendingBlock.transactions.length).to.be.equal(2)
+
+      await evmMine()
+
+      // Restore automine so tests continue working as always.
+      await network.provider.send('evm_setAutomine', [true])
+
+      const latestBlock = await network.provider.send('eth_getBlockByNumber', ['latest', false])
+
+      const claimTrxHash = latestBlock.transactions[1]
+      const claimTrxTrace = await network.provider.send('debug_traceTransaction', [claimTrxHash])
+      const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
+      const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
+
+      expect(decodedErrorMessage).to.be.equal('Rentals#claim: CURRENTLY_RENTED')
     })
   })
 
