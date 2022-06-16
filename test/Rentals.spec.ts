@@ -1043,17 +1043,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      // await rentals.connect(lessor).claim(listingParams.contractAddress, listingParams.tokenId)
-
-      await rentals
-        .connect(tenant)
-        .acceptListing(
-          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          acceptListingParams.operator,
-          acceptListingParams.index,
-          acceptListingParams.rentalDays,
-          acceptListingParams.fingerprint
-        )
+      await rentals.connect(lessor).claim(listingParams.contractAddress, listingParams.tokenId)
 
       const pendingBlock = await network.provider.send('eth_getBlockByNumber', ['pending', false])
       expect(pendingBlock.transactions.length).to.be.equal(2)
