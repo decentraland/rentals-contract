@@ -8,7 +8,6 @@ import {
   ether,
   getListingSignature,
   getMetaTxSignature,
-  getRandomBytes32,
   getOfferSignature,
   getZeroBytes32,
   now,
