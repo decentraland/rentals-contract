@@ -2,8 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { DummyComposableERC721, LANDRegistry, MANAToken } from '../typechain-types'
-import { Rentals } from '../typechain-types/Rentals'
+import { EstateRegistry, LANDRegistry, MANAToken, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
   ether,
@@ -19,6 +18,7 @@ import {
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+const estateId = 1
 const fee = '100000' // 10% fee
 
 describe('Rentals', () => {
@@ -29,10 +29,9 @@ describe('Rentals', () => {
   let operator: SignerWithAddress
   let collector: SignerWithAddress
   let extra: SignerWithAddress
-  let proxyOwner: SignerWithAddress
   let rentals: Rentals
   let land: LANDRegistry
-  let composableErc721: DummyComposableERC721
+  let estate: EstateRegistry
   let tokenId: BigNumber
   let mana: MANAToken
   let listingParams: Omit<Rentals.ListingStruct, 'signature'>
@@ -44,7 +43,7 @@ describe('Rentals', () => {
     snapshotId = await network.provider.send('evm_snapshot')
 
     // Store addresses
-    ;[deployer, owner, tenant, lessor, operator, collector, extra, proxyOwner] = await ethers.getSigners()
+    ;[deployer, owner, tenant, lessor, operator, collector, extra] = await ethers.getSigners()
 
     // Deploy Rentals contract
     const RentalsFactory = await ethers.getContractFactory('Rentals')
@@ -61,17 +60,39 @@ describe('Rentals', () => {
 
     land = await ethers.getContractAt('LANDRegistry', landProxy.address)
 
-    await land.connect(deployer).transferOwnership(owner.address)
-
-    await land.connect(owner).assignNewParcel(0, 0, lessor.address)
+    await land.connect(deployer).assignNewParcel(0, 0, lessor.address)
 
     tokenId = await land.encodeTokenId(0, 0)
 
     await land.connect(lessor).setApprovalForAll(rentals.address, true)
 
-    // Deploy ComposableERC721
-    const ComposableERC721Factory = await ethers.getContractFactory('DummyComposableERC721')
-    composableErc721 = await ComposableERC721Factory.connect(deployer).deploy()
+    // Deploy and Prepare EstateRegistry
+    const EstateRegistryFactory = await ethers.getContractFactory('EstateRegistry')
+    const estateRegistry = await EstateRegistryFactory.connect(deployer).deploy()
+
+    const EstateProxyFactory = await ethers.getContractFactory('AdminUpgradeabilityProxy')
+    const estateProxy = await EstateProxyFactory.connect(deployer).deploy(estateRegistry.address)
+
+    await estateProxy.connect(deployer).changeAdmin(extra.address)
+
+    estate = await ethers.getContractAt('EstateRegistry', estateProxy.address)
+
+    await estate['initialize(string,string,address)']('Estate', 'EST', land.address)
+
+    await estate.connect(deployer).transferOwnership(owner.address)
+
+    await estateProxy.connect(extra).changeAdmin(deployer.address)
+
+    await land.connect(deployer).setEstateRegistry(estate.address)
+
+    await land.connect(deployer).assignNewParcel(1, 1, lessor.address)
+    await land.connect(deployer).assignNewParcel(1, 2, lessor.address)
+    await land.connect(deployer).assignNewParcel(2, 1, lessor.address)
+    await land.connect(deployer).assignNewParcel(2, 2, lessor.address)
+
+    await land.connect(lessor).createEstate([1, 1, 2, 2], [1, 2, 1, 2], lessor.address)
+
+    await estate.connect(lessor).setApprovalForAll(rentals.address, true)
 
     // Deploy and Prepare MANAToken
     const MANATokenFactory = await ethers.getContractFactory('MANAToken')
@@ -969,10 +990,7 @@ describe('Rentals', () => {
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
-      const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
-      const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
-
-      listingParams = { ...listingParams, contractAddress: falseVerifyFingerprint.address }
+      listingParams = { ...listingParams, contractAddress: estate.address, tokenId: estateId }
 
       await expect(
         rentals
@@ -985,6 +1003,21 @@ describe('Rentals', () => {
             acceptListingParams.fingerprint
           )
       ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
+    })
+
+    it("should NOT revert when the provided contract address's `verifyFingerprint` returns true", async () => {
+      listingParams = { ...listingParams, contractAddress: estate.address, tokenId: estateId }
+      acceptListingParams = { ...acceptListingParams, fingerprint: await estate.connect(tenant).getFingerprint(estateId) }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
     })
 
     it('should revert if an asset is already being rented', async () => {
@@ -1352,14 +1385,22 @@ describe('Rentals', () => {
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
-      const DummyFalseVerifyFingerprintFactory = await ethers.getContractFactory('DummyFalseVerifyFingerprint')
-      const falseVerifyFingerprint = await DummyFalseVerifyFingerprintFactory.connect(deployer).deploy()
-
-      offerParams = { ...offerParams, contractAddress: falseVerifyFingerprint.address, fingerprint: getRandomBytes32() }
+      offerParams = { ...offerParams, contractAddress: estate.address, tokenId: estateId }
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
+    })
+
+    it("should NOT revert when the provided contract address's `verifyFingerprint` returns true", async () => {
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(tenant).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
     })
 
     it('should revert if an asset is already being rented', async () => {
