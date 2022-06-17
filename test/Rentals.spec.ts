@@ -391,7 +391,7 @@ describe('Rentals', () => {
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
-      const rentalEnd = (await rentals.rentals(land.address, tokenId)).ending
+      const rentalEnd = (await rentals.rentals(land.address, tokenId)).endDate
 
       expect(rentalEnd).to.be.equal(latestBlockTime)
 
@@ -541,7 +541,7 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping with the end timestamp of the rented asset', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).ending).to.equal(0)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
@@ -556,7 +556,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(land.address, tokenId)).ending).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1164,14 +1164,14 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping for the rented asset with the rental finish timestamp', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).ending).to.equal(0)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).ending).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {

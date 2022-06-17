@@ -79,7 +79,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     struct Rental {
         address lessor;
         address tenant;
-        uint256 ending;
+        uint256 endDate;
     }
 
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
@@ -141,7 +141,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @param _tokenId The token id of the asset.
     /// @return result true or false depending if the asset is currently rented
     function isRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
-        result = block.timestamp <= rentals[_contractAddress][_tokenId].ending;
+        result = block.timestamp <= rentals[_contractAddress][_tokenId].endDate;
     }
 
     /// @notice Accept a rental listing created by the owner of an asset.
@@ -379,7 +379,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
 
         // Set the rental finish timestamp in the rentals mapping.
-        rental.ending = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
+        rental.endDate = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
         _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
@@ -403,6 +403,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
     }
 
+    /// @dev Transfer the erc20 tokens required to start a rent from the tenant to the lessor and the fee collector.
     function _handleTokenTransfers(
         address _lessor,
         address _tenant,
