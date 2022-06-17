@@ -37,17 +37,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice ERC20 token used to pay for rent and fees.
     IERC20 public token;
 
-    /// @notice Keeps track of the original owners of the assets that have been rented.
+    /// @notice Tracks necessary rental data per asset.
     /// @custom:schema (contract address -> token id -> lessor address)
-    mapping(address => mapping(uint256 => address)) public lessors;
-
-    /// @notice Keeps track of the addresses acting as tenants of an asset after the initiation of a rental.
-    /// @custom:schema (contract address -> token id -> tenant address)
-    mapping(address => mapping(uint256 => address)) public tenants;
-
-    /// @notice Keeps track of the timestamp when rentals end.
-    /// @custom:schema (contract address -> token id -> finish timestamp)
-    mapping(address => mapping(uint256 => uint256)) public rentals;
+    mapping(address => mapping(uint256 => Rental)) public rentals;
 
     /// @notice Address that will receive ERC20 tokens collected as rental fees.
     address public feeCollector;
@@ -82,6 +74,12 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address operator;
         bytes32 fingerprint;
         bytes signature;
+    }
+
+    struct Rental {
+        address lessor;
+        address tenant;
+        uint256 ending;
     }
 
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
@@ -143,7 +141,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @param _tokenId The token id of the asset.
     /// @return result true or false depending if the asset is currently rented
     function isRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
-        result = block.timestamp <= rentals[_contractAddress][_tokenId];
+        result = block.timestamp <= rentals[_contractAddress][_tokenId].ending;
     }
 
     /// @notice Accept a rental listing created by the owner of an asset.
@@ -266,12 +264,14 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         // Verify that the rent has finished.
         require(!isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
+
+        Rental memory rental = rentals[_contractAddress][_tokenId];
+
         // Verify that the caller is the original owner of the asset.
-        require(lessors[_contractAddress][_tokenId] == sender, "Rentals#claim: NOT_LESSOR");
+        require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
 
         // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
-        lessors[_contractAddress][_tokenId] = address(0);
-        tenants[_contractAddress][_tokenId] = address(0);
+        delete rentals[_contractAddress][_tokenId];
 
         // Transfer the asset back to its original owner.
         IERC721 asset = IERC721(_contractAddress);
@@ -296,13 +296,13 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         IERC721Operable asset = IERC721Operable(_contractAddress);
 
         address sender = _msgSender();
-        address tenant = tenants[_contractAddress][_tokenId];
-        address lessor = lessors[_contractAddress][_tokenId];
+
+        Rental memory rental = rentals[_contractAddress][_tokenId];
 
         bool rented = isRented(_contractAddress, _tokenId);
         // If rented, only the tenant can change the operator.
         // If not, only the original owner can.
-        bool canSetOperator = (tenant == sender && rented) || (lessor == sender && !rented);
+        bool canSetOperator = (rental.tenant == sender && rented) || (rental.lessor == sender && !rented);
 
         require(canSetOperator, "Rentals#setOperator: CANNOT_UPDATE_OPERATOR");
 
@@ -366,30 +366,27 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         IERC721Operable asset = IERC721Operable(_contractAddress);
 
-        bool isAssetOwnedByContract = lessors[_contractAddress][_tokenId] != address(0);
+        Rental storage rental = rentals[_contractAddress][_tokenId];
+
+        bool isAssetOwnedByContract = rental.lessor != address(0);
 
         if (isAssetOwnedByContract) {
             // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
-            require(lessors[_contractAddress][_tokenId] == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
+            require(rental.lessor == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         } else {
             // Track the original owner of the asset in the lessors map for future use.
-            lessors[_contractAddress][_tokenId] = _lessor;
+            rental.lessor = _lessor;
         }
 
         // Set the rental finish timestamp in the rentals mapping.
-        rentals[_contractAddress][_tokenId] = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
+        rental.ending = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
         _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
         _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
 
         if (_pricePerDay > 0) {
-            uint256 totalPrice = _pricePerDay * _rentalDays;
-            uint256 forCollector = (totalPrice * fee) / 1_000_000;
-
-            // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
-            token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
-            token.transferFrom(_tenant, feeCollector, forCollector);
+            _handleTokenTransfers(_lessor, _tenant, _pricePerDay, _rentalDays);
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
@@ -398,11 +395,25 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
 
         // Track the new tenant in the mapping.
-        tenants[_contractAddress][_tokenId] = _tenant;
+        rental.tenant = _tenant;
 
         // Update the operator
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
+    }
+
+    function _handleTokenTransfers(
+        address _lessor,
+        address _tenant,
+        uint256 _pricePerDay,
+        uint256 _rentalDays
+    ) private {
+        uint256 totalPrice = _pricePerDay * _rentalDays;
+        uint256 forCollector = (totalPrice * fee) / 1_000_000;
+
+        // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
+        token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
+        token.transferFrom(_tenant, feeCollector, forCollector);
     }
 }
