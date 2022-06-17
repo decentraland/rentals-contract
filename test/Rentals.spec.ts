@@ -490,7 +490,7 @@ describe('Rentals', () => {
         )
     })
 
-    it('should update the lessors mapping with lessor when the contract does not own the asset already', async () => {
+    it('should update the rentals mapping with lessor when the contract does not own the asset already', async () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals
@@ -506,7 +506,7 @@ describe('Rentals', () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
     })
 
-    it('should update the tenants mapping with new tenant', async () => {
+    it('should update the rentals mapping with new tenant', async () => {
       expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals
@@ -540,7 +540,7 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, tenant.address)).to.equal(1)
     })
 
-    it('should update the ongoing rentals mapping for the rented asset', async () => {
+    it('should update the rentals mapping with the end timestamp of the rented asset', async () => {
       expect((await rentals.rentals(land.address, tokenId)).ending).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
@@ -1137,7 +1137,7 @@ describe('Rentals', () => {
         .withArgs(0, 1, offerParams.contractAddress, offerParams.tokenId, offerParams.signer, lessor.address)
     })
 
-    it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
+    it('should update rentals mapping with lessor when the contract does not own the asset already', async () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -1145,7 +1145,7 @@ describe('Rentals', () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
     })
 
-    it('should update the tenants mapping with new tenant', async () => {
+    it('should update the rentals mapping with new tenant', async () => {
       expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
