@@ -391,7 +391,7 @@ describe('Rentals', () => {
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
-      const rentalEnd = await rentals.rentals(land.address, tokenId)
+      const rentalEnd = (await rentals.rentals(land.address, tokenId)).endDate
 
       expect(rentalEnd).to.be.equal(latestBlockTime)
 
@@ -490,8 +490,8 @@ describe('Rentals', () => {
         )
     })
 
-    it('should update the lessors mapping with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
+    it('should update the rentals mapping with lessor when the contract does not own the asset already', async () => {
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -503,11 +503,11 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(lessor.address)
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
     })
 
-    it('should update the tenants mapping with new tenant', async () => {
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
+    it('should update the rentals mapping with new tenant', async () => {
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -519,7 +519,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(tenant.address)
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -540,8 +540,8 @@ describe('Rentals', () => {
       expect(await rentals.connect(lessor).assetNonce(land.address, tokenId, tenant.address)).to.equal(1)
     })
 
-    it('should update the ongoing rentals mapping for the rented asset', async () => {
-      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(0)
+    it('should update the rentals mapping with the end timestamp of the rented asset', async () => {
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
@@ -556,7 +556,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1137,20 +1137,20 @@ describe('Rentals', () => {
         .withArgs(0, 1, offerParams.contractAddress, offerParams.tokenId, offerParams.signer, lessor.address)
     })
 
-    it('should update lessors mapping with lessor when the contract does not own the asset already', async () => {
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
+    it('should update rentals mapping with lessor when the contract does not own the asset already', async () => {
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(lessor.address)
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
     })
 
-    it('should update the tenants mapping with new tenant', async () => {
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
+    it('should update the rentals mapping with new tenant', async () => {
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(tenant.address)
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1164,14 +1164,14 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping for the rented asset with the rental finish timestamp', async () => {
-      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(0)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
 
       const latestBlock = await ethers.provider.getBlock('latest')
       const latestBlockTime = latestBlock.timestamp
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.connect(lessor).rentals(land.address, tokenId)).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1433,33 +1433,33 @@ describe('Rentals', () => {
     })
 
     it('should set the lessor to address(0)', async () => {
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(lessor.address)
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
       await rentals.connect(lessor).claim(land.address, tokenId)
 
-      expect(await rentals.lessors(land.address, tokenId)).to.equal(zeroAddress)
+      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
     })
 
     it('should set tenant to address(0)', async () => {
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(tenant.address)
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(tenant.address)
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
       await rentals.connect(lessor).claim(land.address, tokenId)
 
-      expect(await rentals.tenants(land.address, tokenId)).to.equal(zeroAddress)
+      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
     })
 
     it('should transfer the asset to the original owner', async () => {
