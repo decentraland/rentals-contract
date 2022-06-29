@@ -291,7 +291,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         if (_operator != address(this)) {
             Offer memory offer = abi.decode(_data, (Offer));
 
-            require(_msgSender() == offer.contractAddress, "Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH");
+            require(msg.sender == offer.contractAddress, "Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH");
 
             // Set the lessor of the rental to track that the contract already has it.
             rentals[offer.contractAddress][offer.tokenId].lessor = _from;
