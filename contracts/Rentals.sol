@@ -285,11 +285,11 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256, // _tokenId,
         bytes memory _data
     ) external override returns (bytes4) {
-        // When calling acceptListing or acceptOffer, this contract will transfer this asset from the holder to itself to initialize a rent.
-        // There is no need to do anything extra if that is the case.
         if (_operator != address(this)) {
             Offer memory offer = abi.decode(_data, (Offer));
 
+            // Check that the caller is the contract defined in the offer to ensure the function is being
+            // called through an ERC721.safeTransferFrom.
             require(msg.sender == offer.contractAddress, "Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH");
 
             _acceptOffer(offer, _from);
