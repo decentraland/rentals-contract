@@ -1,7 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
+import { ParamType } from 'ethers/lib/utils'
 import { ethers, network } from 'hardhat'
+import { off } from 'process'
 import { EstateRegistry, LANDRegistry, MANAToken, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
@@ -13,6 +15,7 @@ import {
   now,
   evmMine,
   evmIncreaseTime,
+  getLatestBlockTimestamp,
 } from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
@@ -389,11 +392,10 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      const latestBlock = await ethers.provider.getBlock('latest')
-      const latestBlockTime = latestBlock.timestamp
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
       const rentalEnd = (await rentals.rentals(land.address, tokenId)).endDate
 
-      expect(rentalEnd).to.be.equal(latestBlockTime)
+      expect(rentalEnd).to.be.equal(latestBlockTimestamp)
 
       expect(await rentals.isRented(land.address, tokenId)).to.equal(true)
     })
@@ -543,8 +545,7 @@ describe('Rentals', () => {
     it('should update the rentals mapping with the end timestamp of the rented asset', async () => {
       expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
 
-      const latestBlock = await ethers.provider.getBlock('latest')
-      const latestBlockTime = latestBlock.timestamp
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       await rentals
         .connect(tenant)
@@ -556,7 +557,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1166,12 +1167,11 @@ describe('Rentals', () => {
     it('should update the rentals mapping for the rented asset with the rental finish timestamp', async () => {
       expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
 
-      const latestBlock = await ethers.provider.getBlock('latest')
-      const latestBlockTime = latestBlock.timestamp
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1569,11 +1569,29 @@ describe('Rentals', () => {
   })
 
   describe('onERC721Received', () => {
+    let offerEncodeType: string
+    let offerEncodeValue: any
+
     beforeEach(async () => {
+      offerEncodeType = 'tuple(address,address,uint256,uint256,uint256[3],uint256,uint256,address,bytes32,bytes)'
+
+      offerEncodeValue = [
+        offerParams.signer,
+        offerParams.contractAddress,
+        offerParams.tokenId,
+        offerParams.expiration,
+        offerParams.nonces,
+        offerParams.pricePerDay,
+        offerParams.rentalDays,
+        offerParams.operator,
+        offerParams.fingerprint,
+        await getOfferSignature(tenant, rentals, offerParams),
+      ]
+
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should allow the asset transfer from a rent', async () => {
+    it('should allow the asset transfer from accepting an offer', async () => {
       expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -1581,9 +1599,51 @@ describe('Rentals', () => {
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
     })
 
-    it('should revert when the contract receives an asset not transfered via rent', async () => {
-      const transfer = land.connect(lessor)['safeTransferFrom(address,address,uint256)'](lessor.address, rentals.address, tokenId)
-      await expect(transfer).to.be.revertedWith('Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT')
+    it('should allow the asset transfer from accepting a listing', async () => {
+      expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
+    })
+
+    it('should accept an offer by transfering the asset to the rentals contract with the offer data', async () => {
+      expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
+
+      let rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
+
+      rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+
+      const latestBlockTime = await getLatestBlockTimestamp()
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays))
+    })
+
+    it('should revert when the caller is different from the contract address provided in the offer', async () => {
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+      await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
+        'Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH'
+      )
     })
   })
 })

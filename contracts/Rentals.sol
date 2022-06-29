@@ -215,45 +215,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
     function acceptOffer(Offer calldata _offer) external {
-        // Verify that the signer provided in the offer is the one that signed it.
-        bytes32 offerHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    OFFER_TYPE_HASH,
-                    _offer.signer,
-                    _offer.contractAddress,
-                    _offer.tokenId,
-                    _offer.expiration,
-                    keccak256(abi.encodePacked(_offer.nonces)),
-                    _offer.pricePerDay,
-                    _offer.rentalDays,
-                    _offer.operator,
-                    _offer.fingerprint
-                )
-            )
-        );
-
-        address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
-
-        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISSMATCH");
-
-        // Verify that the caller and the signer are not the same address.
-        address lessor = _msgSender();
-
-        require(lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
-
-        // Verify that the nonces provided in the offer match the ones in the contract.
-        _verifyContractNonce(_offer.nonces[0]);
-        _verifySignerNonce(tenant, _offer.nonces[1]);
-        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
-
-        // Verify that the offer is not already expired.
-        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
-
-        // Verify that the rental days provided in the offer are valid.
-        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
-
-        _rent(lessor, tenant, _offer.contractAddress, _offer.tokenId, _offer.fingerprint, _offer.pricePerDay, _offer.rentalDays, _offer.operator);
+        _acceptOffer(_offer, _msgSender());
     }
 
     /// @notice The original owner of the asset can claim it back if said asset is not being rented.
@@ -313,15 +275,30 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
-    /// @dev The contract only allows safe transfers by itself made by the rent function.
-    /// @param _operator Caller of the safe transfer function.
+    /// Provides an alternative to acceptOffer by letting the asset holder send the asset to the contract
+    /// and accepting the offer at the same time.
+    /// @param _operator Caller of the safeTransfer function.
+    /// @param _from Address of the original holder of the token.
+    /// @param _data Bytes containing offer data.
     function onERC721Received(
         address _operator,
-        address, // _from,
+        address _from,
         uint256, // _tokenId,
-        bytes calldata // _data
-    ) external view override returns (bytes4) {
-        require(_operator == address(this), "Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
+        bytes memory _data
+    ) external override returns (bytes4) {
+        // When calling acceptListing or acceptOffer, this contract will transfer this asset from the holder to itself to initialize a rent.
+        // There is no need to do anything extra if that is the case.
+        if (_operator != address(this)) {
+            Offer memory offer = abi.decode(_data, (Offer));
+
+            require(_msgSender() == offer.contractAddress, "Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH");
+
+            // Set the lessor of the rental to track that the contract already has it.
+            rentals[offer.contractAddress][offer.tokenId].lessor = _from;
+
+            _acceptOffer(offer, _from);
+        }
+
         return InterfaceId_OnERC721Received;
     }
 
@@ -342,6 +319,45 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
         emit FeeUpdated(fee, fee = _fee, _msgSender());
+    }
+
+    function _acceptOffer(Offer memory _offer, address _lessor) private {
+        // Verify that the signer provided in the offer is the one that signed it.
+        bytes32 offerHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    OFFER_TYPE_HASH,
+                    _offer.signer,
+                    _offer.contractAddress,
+                    _offer.tokenId,
+                    _offer.expiration,
+                    keccak256(abi.encodePacked(_offer.nonces)),
+                    _offer.pricePerDay,
+                    _offer.rentalDays,
+                    _offer.operator,
+                    _offer.fingerprint
+                )
+            )
+        );
+
+        address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
+
+        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISSMATCH");
+
+        require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
+
+        // Verify that the nonces provided in the offer match the ones in the contract.
+        _verifyContractNonce(_offer.nonces[0]);
+        _verifySignerNonce(tenant, _offer.nonces[1]);
+        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
+
+        // Verify that the offer is not already expired.
+        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
+
+        // Verify that the rental days provided in the offer are valid.
+        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
+
+        _rent(_lessor, tenant, _offer.contractAddress, _offer.tokenId, _offer.fingerprint, _offer.pricePerDay, _offer.rentalDays, _offer.operator);
     }
 
     function _rent(
