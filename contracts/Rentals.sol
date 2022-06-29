@@ -9,8 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@dcl/common-contracts/meta-transactions/NativeMetaTransaction.sol";
 import "@dcl/common-contracts/signatures/NonceVerifiable.sol";
 
-import "./interfaces/IERC721Operable.sol";
-import "./interfaces/IERC721Verifiable.sol";
+import "./interfaces/IERC721Rentable.sol";
 
 contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @dev EIP712 type hashes for recovering the signer from a signature.
@@ -255,7 +254,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _tokenId,
         address _operator
     ) external {
-        IERC721Operable asset = IERC721Operable(_contractAddress);
+        IERC721Rentable asset = IERC721Rentable(_contractAddress);
 
         address sender = _msgSender();
 
@@ -292,9 +291,6 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             Offer memory offer = abi.decode(_data, (Offer));
 
             require(msg.sender == offer.contractAddress, "Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH");
-
-            // Set the lessor of the rental to track that the contract already has it.
-            rentals[offer.contractAddress][offer.tokenId].lessor = _from;
 
             _acceptOffer(offer, _from);
         }
@@ -370,23 +366,12 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         address _operator
     ) private {
-        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
-        IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
-
-        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
-        }
-
         // Verify that the asset is not already rented.
         require(!isRented(_contractAddress, _tokenId), "Rentals#_rent: CURRENTLY_RENTED");
 
-        IERC721Operable asset = IERC721Operable(_contractAddress);
-
         Rental storage rental = rentals[_contractAddress][_tokenId];
 
-        bool isAssetOwnedByContract = rental.lessor != address(0);
-
-        if (isAssetOwnedByContract) {
+        if (rental.lessor != address(0)) {
             // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
             require(rental.lessor == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         } else {
@@ -397,21 +382,29 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         // Set the rental finish timestamp in the rentals mapping.
         rental.endDate = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
+        // Track the new tenant in the mapping.
+        rental.tenant = _tenant;
+
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
         _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
         _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
 
+        // Transfer tokens
         if (_pricePerDay > 0) {
             _handleTokenTransfers(_lessor, _tenant, _pricePerDay, _rentalDays);
         }
 
-        // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (!isAssetOwnedByContract) {
-            asset.safeTransferFrom(_lessor, address(this), _tokenId);
+        IERC721Rentable asset = IERC721Rentable(_contractAddress);
+
+        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
+        if (asset.supportsInterface(InterfaceId_VerifyFingerprint)) {
+            require(asset.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
         }
 
-        // Track the new tenant in the mapping.
-        rental.tenant = _tenant;
+        // Only transfer the ERC721 to this contract if it doesn't already have it.
+        if (asset.ownerOf(_tokenId) != address(this)) {
+            asset.safeTransferFrom(_lessor, address(this), _tokenId);
+        }
 
         // Update the operator
         asset.setUpdateOperator(_tokenId, _operator);
