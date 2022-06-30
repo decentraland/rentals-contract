@@ -1571,6 +1571,7 @@ describe('Rentals', () => {
   describe('onERC721Received', () => {
     let offerEncodeType: string
     let offerEncodeValue: any
+    let encodedOffer: string
 
     const [
       signerIndex,
@@ -1578,9 +1579,9 @@ describe('Rentals', () => {
       tokenIdIndex,
       expirationIndex,
       noncesIndex,
-      _pricePerDayIndex,
+      pricePerDayIndex,
       rentalDaysIndex,
-      _operatorIndex,
+      operatorIndex,
       fingerprintIndex,
       signatureIndex,
     ] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -1602,6 +1603,33 @@ describe('Rentals', () => {
       ]
 
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
+    })
+
+    it('should emit a RentalStarted event', async () => {
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
+        .to.emit(rentals, 'RentalStarted')
+        .withArgs(
+          offerEncodeValue[contractAddressIndex],
+          offerEncodeValue[tokenIdIndex],
+          lessor.address,
+          offerEncodeValue[signerIndex],
+          offerEncodeValue[operatorIndex],
+          offerEncodeValue[rentalDaysIndex],
+          offerEncodeValue[pricePerDayIndex],
+          land.address
+        )
+    })
+
+    it('should emit an AssetNonceUpdated event for the lessor and the tenant', async () => {
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
+        .to.emit(rentals, 'AssetNonceUpdated')
+        .withArgs(0, 1, offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex], lessor.address, land.address)
+        .to.emit(rentals, 'AssetNonceUpdated')
+        .withArgs(0, 1, offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex], offerEncodeValue[signerIndex], land.address)
     })
 
     it('should allow the asset transfer from accepting an offer', async () => {
