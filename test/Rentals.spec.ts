@@ -1642,7 +1642,6 @@ describe('Rentals', () => {
     it('should consume less gas that acceptOffer', async () => {
       const newSnapshotId = await network.provider.send('evm_snapshot')
 
-      // Safe Transfer
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       const safeTransferResult = await land
         .connect(lessor)
