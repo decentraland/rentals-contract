@@ -1571,7 +1571,6 @@ describe('Rentals', () => {
   describe('onERC721Received', () => {
     let offerEncodeType: string
     let offerEncodeValue: any
-    let encodedOffer: string
 
     const [
       signerIndex,
