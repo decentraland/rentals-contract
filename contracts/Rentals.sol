@@ -369,6 +369,13 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         // Verify that the asset is not already rented.
         require(!isRented(_contractAddress, _tokenId), "Rentals#_rent: CURRENTLY_RENTED");
 
+        IERC721Rentable asset = IERC721Rentable(_contractAddress);
+
+        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
+        if (_supportsVerifyFingerprint(asset)) {
+            require(_verifyFingerprint(asset, _tokenId, _fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
+        }
+
         Rental storage rental = rentals[_contractAddress][_tokenId];
 
         if (rental.lessor != address(0)) {
@@ -394,13 +401,6 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             _handleTokenTransfers(_lessor, _tenant, _pricePerDay, _rentalDays);
         }
 
-        IERC721Rentable asset = IERC721Rentable(_contractAddress);
-
-        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
-        if (asset.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(asset.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
-        }
-
         // Only transfer the ERC721 to this contract if it doesn't already have it.
         if (asset.ownerOf(_tokenId) != address(this)) {
             asset.safeTransferFrom(_lessor, address(this), _tokenId);
@@ -410,6 +410,32 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.supportsInterface
+    function _supportsVerifyFingerprint(IERC721Rentable _asset) private view returns (bool) {
+        (bool success, bytes memory data) = address(_asset).staticcall(
+            abi.encodeWithSelector(_asset.supportsInterface.selector, InterfaceId_VerifyFingerprint)
+        );
+
+        require(success, "Rentals#_supportsVerifyFingerprint: SUPPORTS_INTERFACE_CALL_FAILURE");
+
+        return abi.decode(data, (bool));
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.verifyFingerprint
+    function _verifyFingerprint(
+        IERC721Rentable _asset,
+        uint256 _tokenId,
+        bytes32 _fingerprint
+    ) private view returns (bool) {
+        (bool success, bytes memory data) = address(_asset).staticcall(
+            abi.encodeWithSelector(_asset.verifyFingerprint.selector, _tokenId, abi.encode(_fingerprint))
+        );
+
+        require(success, "Rentals#_verifyFingerprint: VERIFY_FINGERPRINT_CALL_FAILURE");
+
+        return abi.decode(data, (bool));
     }
 
     /// @dev Transfer the erc20 tokens required to start a rent from the tenant to the lessor and the fee collector.
