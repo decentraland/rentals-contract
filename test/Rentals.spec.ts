@@ -1,9 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
-import { ParamType } from 'ethers/lib/utils'
 import { ethers, network } from 'hardhat'
-import { off } from 'process'
 import { EstateRegistry, LANDRegistry, MANAToken, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
@@ -1427,12 +1425,12 @@ describe('Rentals', () => {
     })
   })
 
-  describe('claim', () => {
+  describe.only('claim', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should set the lessor to address(0)', async () => {
+    it('should set the rental lessor to address(0)', async () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -1447,7 +1445,7 @@ describe('Rentals', () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
     })
 
-    it('should set tenant to address(0)', async () => {
+    it('should set the rental tenant to address(0)', async () => {
       expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -1462,7 +1460,24 @@ describe('Rentals', () => {
       expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
     })
 
-    it('should transfer the asset to the original owner', async () => {
+    it('should set the rental end date to 0', async () => {
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays))
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      await rentals.connect(lessor).claim(land.address, tokenId)
+
+      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
+    })
+
+    it('should transfer the asset back to its original owner when the caller is the original owner', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
@@ -1471,6 +1486,19 @@ describe('Rentals', () => {
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
 
       await rentals.connect(lessor).claim(land.address, tokenId)
+
+      expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
+    })
+
+    it('should transfer the asset back to its original owner when the caller is the owner of the rentals contract', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
+
+      await rentals.connect(owner).claim(land.address, tokenId)
 
       expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
     })
@@ -1508,13 +1536,13 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
-    it('should revert when the caller is not the original owner of the asset', async () => {
+    it('should revert when the caller is not the original owner of the asset or the owner of the rentals contract', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
+      await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR_NOR_CONTRACT_OWNER')
     })
   })
 
@@ -1673,11 +1701,11 @@ describe('Rentals', () => {
 
       rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
 
-      const latestBlockTime = await getLatestBlockTimestamp()
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
-      expect(rental.endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays))
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays))
     })
 
     it('should consume less gas that acceptOffer', async () => {

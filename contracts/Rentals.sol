@@ -217,7 +217,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         _acceptOffer(_offer, _msgSender());
     }
 
-    /// @notice The original owner of the asset can claim it back if said asset is not being rented.
+    /// @notice The original owner of an asset can claim it back by calling this function.
+    /// The owner of the Rentals contract can call this function as well to return the asset to it's original owner.
+    /// An asset cannot be claimed back if it is currently rented.
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
     function claim(address _contractAddress, uint256 _tokenId) external {
@@ -228,16 +230,16 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         Rental memory rental = rentals[_contractAddress][_tokenId];
 
-        // Verify that the caller is the original owner of the asset.
-        require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
+        // Verify that the caller is the original owner of the asset or the owner of this contract.
+        require(sender == rental.lessor || sender == owner(), "Rentals#claim: NOT_LESSOR_NOR_CONTRACT_OWNER");
 
-        // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
+        // Clean up the rental as it doesn't need to be tracked anymore.
         delete rentals[_contractAddress][_tokenId];
 
         // Transfer the asset back to its original owner.
         IERC721 asset = IERC721(_contractAddress);
 
-        asset.safeTransferFrom(address(this), sender, _tokenId);
+        asset.safeTransferFrom(address(this), rental.lessor, _tokenId);
 
         emit AssetClaimed(_contractAddress, _tokenId, sender);
     }
