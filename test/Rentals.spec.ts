@@ -1639,6 +1639,32 @@ describe('Rentals', () => {
       expect(rental.endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays))
     })
 
+    it('should consume less gas that acceptOffer', async () => {
+      const newSnapshotId = await network.provider.send('evm_snapshot')
+
+      // Safe Transfer
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+      const safeTransferResult = await land
+        .connect(lessor)
+        ['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      const safeTransferReceipt = await safeTransferResult.wait()
+
+      await network.provider.send('evm_revert', [newSnapshotId])
+
+      const acceptOfferResult = await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+      const acceptOfferReceipt = await acceptOfferResult.wait()
+
+      expect(safeTransferReceipt.gasUsed < acceptOfferReceipt.gasUsed).to.be.true
+    })
+
     it('should revert when the caller is different from the contract address provided in the offer', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
