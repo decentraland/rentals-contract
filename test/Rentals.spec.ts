@@ -1327,7 +1327,7 @@ describe('Rentals', () => {
         )
     })
 
-    it('should revert when the tenant signer does not match the signer provided in params', async () => {
+    it('should revert when the offer signer does not match the signer provided in params', async () => {
       await expect(
         rentals
           .connect(lessor)
@@ -1572,6 +1572,19 @@ describe('Rentals', () => {
     let offerEncodeType: string
     let offerEncodeValue: any
 
+    const [
+      signerIndex,
+      contractAddressIndex,
+      tokenIdIndex,
+      expirationIndex,
+      noncesIndex,
+      _pricePerDayIndex,
+      rentalDaysIndex,
+      _operatorIndex,
+      fingerprintIndex,
+      signatureIndex,
+    ] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
     beforeEach(async () => {
       offerEncodeType = 'tuple(address,address,uint256,uint256,uint256[3],uint256,uint256,address,bytes32,bytes)'
 
@@ -1669,6 +1682,141 @@ describe('Rentals', () => {
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
         'Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH'
       )
+    })
+
+    it('should revert when the sent asset is not the one in the offer', async () => {
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH')
+    })
+
+    it('should revert when the offer token id is different than the sent asset token id', async () => {
+      await land.connect(deployer).assignNewParcel(0, 1, lessor.address)
+
+      offerEncodeValue[tokenIdIndex] = await land.encodeTokenId(0, 1)
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, tokenId: offerEncodeValue[tokenIdIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#onERC721Received: TOKEN_ID_MISMATCH')
+    })
+
+    it('should revert when the offer signer does not match the signer provided in params', async () => {
+      offerEncodeValue[signerIndex] = lessor.address
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#acceptOffer: SIGNATURE_MISSMATCH')
+    })
+
+    it('should revert when lessor is same as tenant', async () => {
+      offerEncodeValue[signerIndex] = lessor.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(lessor, rentals, { ...offerParams, signer: offerEncodeValue[signerIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER')
+    })
+
+    it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
+      offerEncodeValue[expirationIndex] = now() - 1000
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, expiration: offerEncodeValue[expirationIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#acceptOffer: EXPIRED_SIGNATURE')
+    })
+
+    it('should revert when tenant rental days is zero', async () => {
+      offerEncodeValue[rentalDaysIndex] = 0
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, rentalDays: offerEncodeValue[rentalDaysIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO')
+    })
+
+    it('should revert when tenant contract nonce is not the same as the contract', async () => {
+      offerEncodeValue[noncesIndex] = [1, 0, 0]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, nonces: offerEncodeValue[noncesIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('NonceVerifiable#_verifyContractNonce: CONTRACT_NONCE_MISSMATCH')
+    })
+
+    it('should revert when tenant signer nonce is not the same as the contract', async () => {
+      offerEncodeValue[noncesIndex] = [0, 1, 0]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, nonces: offerEncodeValue[noncesIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('NonceVerifiable#_verifySignerNonce: SIGNER_NONCE_MISSMATCH')
+    })
+
+    it('should revert when tenant asset nonce is not the same as the contract', async () => {
+      offerEncodeValue[noncesIndex] = [0, 0, 1]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, nonces: offerEncodeValue[noncesIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
+    })
+
+    it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[tokenIdIndex] = estateId
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
+      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
+    })
+
+    it("should NOT revert when the provided contract address's `verifyFingerprint` returns true", async () => {
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[tokenIdIndex] = estateId
+      offerEncodeValue[fingerprintIndex] = await estate.connect(tenant).getFingerprint(estateId)
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+        fingerprint: offerEncodeValue[fingerprintIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
     })
   })
 })

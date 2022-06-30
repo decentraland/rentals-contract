@@ -282,7 +282,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     function onERC721Received(
         address _operator,
         address _from,
-        uint256, // _tokenId,
+        uint256 _tokenId,
         bytes memory _data
     ) external override returns (bytes4) {
         if (_operator != address(this)) {
@@ -291,6 +291,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             // Check that the caller is the contract defined in the offer to ensure the function is being
             // called through an ERC721.safeTransferFrom.
             require(msg.sender == offer.contractAddress, "Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH");
+
+            // Prevents the holder from sending another token than the one defined in the offer.
+            require(offer.tokenId == _tokenId, "Rentals#onERC721Received: TOKEN_ID_MISMATCH");
 
             _acceptOffer(offer, _from);
         }
