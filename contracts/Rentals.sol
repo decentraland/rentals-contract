@@ -214,6 +214,15 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
     function acceptOffer(Offer calldata _offer) external {
+        Rental memory rental = rentals[_offer.contractAddress][_offer.tokenId];
+        
+        // If the rentals contract has the asset provided in the offer and there is no previous record of it being rented,
+        // it is because it has been sent unsafely (ERC721.transferFrom).
+        // This condition prevents anyone from attempting to accept an offer for an asset that was sent unsafely.
+        if (rental.lessor == address(0) && _ownerOf(_offer.contractAddress, _offer.tokenId) != address(this)) {
+            revert("Rentals#_acceptOffer: ASSET_TRANSFERRED_UNSAFELY");
+        }
+
         _acceptOffer(_offer, _msgSender());
     }
 
@@ -408,7 +417,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (asset.ownerOf(_tokenId) != address(this)) {
+        if (_ownerOf(address(asset), _tokenId) != address(this)) {
             asset.safeTransferFrom(_lessor, address(this), _tokenId);
         }
 
@@ -416,6 +425,17 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.ownerOf
+    function _ownerOf(address _contractAddress, uint256 _tokenId) private view returns (address) {
+        (bool success, bytes memory data) = _contractAddress.staticcall(
+            abi.encodeWithSelector(IERC721Rentable(_contractAddress).ownerOf.selector, _tokenId)
+        );
+
+        require(success, "Rentals#_ownerOf: OWNER_OF_CALL_FAILURE");
+
+        return abi.decode(data, (address));
     }
 
     /// @dev Wrapper to static call IERC721Rentable.supportsInterface

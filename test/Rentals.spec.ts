@@ -1138,17 +1138,6 @@ describe('Rentals', () => {
         .withArgs(0, 1, offerParams.contractAddress, offerParams.tokenId, offerParams.signer, lessor.address)
     })
 
-    it('should allow anyone to accept an offer for an asset sent to the contract unsafely', async () => {
-      await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
-
-      await rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-
-      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
-      await evmMine()
-
-      await rentals.connect(extra).claim(offerParams.contractAddress, offerParams.tokenId)
-    })
-
     it('should update rentals mapping with lessor when the contract does not own the asset already', async () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
@@ -1435,6 +1424,14 @@ describe('Rentals', () => {
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
+    })
+
+    it('should revert when someone tries to accept an offer for an asset sent to the contract unsafely', async () => {
+      await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
+
+      await expect(
+        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_acceptOffer: UNSAFE_TRANSFER_ASSET')
     })
   })
 
