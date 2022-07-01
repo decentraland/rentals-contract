@@ -1021,7 +1021,7 @@ describe('Rentals', () => {
     })
 
     it('should revert if an asset is already being rented', async () => {
-      rentals
+      await rentals
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
@@ -1035,7 +1035,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals
-          .connect(tenant)
+          .connect(extra)
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
@@ -1421,13 +1421,13 @@ describe('Rentals', () => {
     })
 
     it('should revert if an asset is already being rented', async () => {
-      rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       listingParams = { ...listingParams, nonces: [0, 0, 1] }
       offerParams = { ...offerParams, nonces: [0, 0, 1] }
 
       await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
