@@ -276,6 +276,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
     /// Provides an alternative to acceptOffer by letting the asset holder send the asset to the contract
     /// and accepting the offer at the same time.
+    /// IMPORTANT: Addresses that have been given allowance to an asset can safely transfer said asset to this contract
+    /// to accept an offer. The address that has been given allowance will be considered the lessor, and will enjoy all of its benefits,
+    /// including the ability to claim the asset back to themselves after the rental period is over.
     /// @param _operator Caller of the safeTransfer function.
     /// @param _tokenId Id of the asset received.
     /// @param _data Bytes containing offer data.
