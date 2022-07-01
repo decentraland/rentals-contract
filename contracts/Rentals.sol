@@ -160,6 +160,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         bytes32 _fingerprint
     ) external {
+        _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
+
         // Verify that the signer provided in the listing is the one that signed it.
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
@@ -214,14 +216,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
     function acceptOffer(Offer calldata _offer) external {
-        Rental memory rental = rentals[_offer.contractAddress][_offer.tokenId];
-        
-        // If the rentals contract has the asset provided in the offer and there is no previous record of it being rented,
-        // it is because it has been sent unsafely (ERC721.transferFrom).
-        // This condition prevents anyone from attempting to accept an offer for an asset that was sent unsafely.
-        if (rental.lessor == address(0) && _ownerOf(_offer.contractAddress, _offer.tokenId) != address(this)) {
-            revert("Rentals#_acceptOffer: ASSET_TRANSFERRED_UNSAFELY");
-        }
+        _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
 
         _acceptOffer(_offer, _msgSender());
     }
@@ -330,6 +325,16 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
 
         emit FeeUpdated(fee, fee = _fee, _msgSender());
+    }
+
+    /// @dev Reverts if someone is trying to rent an asset that was unsafely sent to the rentals contract.
+    function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
+        address lessor = rentals[_contractAddress][_tokenId].lessor;
+        address assetOwner = _ownerOf(_contractAddress, _tokenId);
+
+        if (lessor == address(0) && assetOwner == address(this)) {
+            revert("Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY");
+        }
     }
 
     function _acceptOffer(Offer memory _offer, address _lessor) private {

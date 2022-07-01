@@ -1108,6 +1108,24 @@ describe('Rentals', () => {
 
       expect(decodedErrorMessage).to.be.equal('Rentals#claim: CURRENTLY_RENTED')
     })
+
+    it('should revert when someone tries to accept a listing for an asset sent to the contract unsafely', async () => {
+      await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
+
+      listingParams = { ...listingParams, signer: extra.address }
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(extra, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
+    })
   })
 
   describe('acceptOffer', () => {
@@ -1431,7 +1449,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_acceptOffer: UNSAFE_TRANSFER_ASSET')
+      ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
     })
   })
 
