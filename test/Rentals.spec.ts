@@ -1604,7 +1604,7 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should emit a RentalStarted event', async () => {
+    it('should emit a RentalStarted event with onERC721Received _operator as sender', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
@@ -1621,7 +1621,7 @@ describe('Rentals', () => {
         )
     })
 
-    it('should emit an AssetNonceUpdated event for the lessor and the tenant', async () => {
+    it('should emit an AssetNonceUpdated event for the lessor and the tenant with onERC721Received _operator as sender', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
@@ -1629,6 +1629,22 @@ describe('Rentals', () => {
         .withArgs(0, 1, offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex], lessor.address, land.address)
         .to.emit(rentals, 'AssetNonceUpdated')
         .withArgs(0, 1, offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex], offerEncodeValue[signerIndex], land.address)
+    })
+
+    it('should should set the _operator of the onERC721Received as lessor', async () => {
+      await land.connect(lessor).setApprovalForAll(extra.address, true)
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      let rental = await rentals.rentals(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+
+      expect(rental.lessor).to.equal(zeroAddress)
+
+      await land.connect(extra)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      rental = await rentals.rentals(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+
+      expect(rental.lessor).to.equal(extra.address)
     })
 
     it('should allow the asset transfer from accepting an offer', async () => {
@@ -1672,11 +1688,11 @@ describe('Rentals', () => {
 
       rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
 
-      const latestBlockTime = await getLatestBlockTimestamp()
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
-      expect(rental.endDate).to.equal(latestBlockTime + daysToSeconds(offerParams.rentalDays))
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays))
     })
 
     it('should consume less gas that acceptOffer', async () => {
