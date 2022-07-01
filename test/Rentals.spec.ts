@@ -1138,6 +1138,17 @@ describe('Rentals', () => {
         .withArgs(0, 1, offerParams.contractAddress, offerParams.tokenId, offerParams.signer, lessor.address)
     })
 
+    it('should allow anyone to accept an offer for an asset sent to the contract unsafely', async () => {
+      await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
+
+      await rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      await rentals.connect(extra).claim(offerParams.contractAddress, offerParams.tokenId)
+    })
+
     it('should update rentals mapping with lessor when the contract does not own the asset already', async () => {
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
