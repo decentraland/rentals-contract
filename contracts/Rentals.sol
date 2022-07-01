@@ -396,29 +396,32 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         Rental storage rental = rentals[_contractAddress][_tokenId];
 
         bool rented = isRented(_contractAddress, _tokenId);
-        bool isExtend = rented && rental.lessor == _lessor && rental.tenant == _tenant;
+        bool reRent = !rented && rental.lessor != address(0);
+        bool extend = rented && rental.lessor == _lessor && rental.tenant == _tenant;
 
-        if (isExtend) {
+        if (!extend && !reRent) {
+            // Verify that the asset is not already rented.
+            require(!rented, "Rentals#_rent: CURRENTLY_RENTED");
+        }
+
+        if (reRent) {
+            // The asset is being rented again wihout claiming it back first, so we need to check that the previous lessor
+            // is the same as the lessor this time to prevent anyone else from acting as the lessor.
+            require(rental.lessor == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
+        }
+
+        if (extend) {
             // Increase the current end date by the amount of provided rental days.
             rental.endDate = rental.endDate + _rentalDays * SECONDS_IN_A_DAY;
         } else {
-            // Verify that the asset is not already rented.
-            require(!rented, "Rentals#_rent: CURRENTLY_RENTED");
-
-            // If the rental has a lessor, its because the asset is currently owned by the contract.
-            if (rental.lessor != address(0)) {
-                // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
-                require(rental.lessor == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
-            } else {
-                // Track the original owner of the asset in the lessors map for future use.
-                rental.lessor = _lessor;
-            }
-
-            // Set te end date of the rental according to the provided rental days
-            rental.endDate = block.timestamp + _rentalDays * SECONDS_IN_A_DAY;
+            // Track the original owner of the asset in the lessors map for future use.
+            rental.lessor = _lessor;
 
             // Track the new tenant in the mapping.
             rental.tenant = _tenant;
+
+            // Set te end date of the rental according to the provided rental days
+            rental.endDate = block.timestamp + _rentalDays * SECONDS_IN_A_DAY;
         }
 
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
@@ -431,7 +434,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (_ownerOf(address(asset), _tokenId) != address(this)) {
+        if (!extend && !reRent && _ownerOf(address(asset), _tokenId) != address(this)) {
             asset.safeTransferFrom(_lessor, address(this), _tokenId);
         }
 
