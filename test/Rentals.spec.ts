@@ -1425,7 +1425,7 @@ describe('Rentals', () => {
     })
   })
 
-  describe.only('claim', () => {
+  describe('claim', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
