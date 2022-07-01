@@ -1645,6 +1645,17 @@ describe('Rentals', () => {
       rental = await rentals.rentals(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
 
       expect(rental.lessor).to.equal(extra.address)
+
+      await evmIncreaseTime(daysToSeconds(offerEncodeValue[rentalDaysIndex]))
+      await evmMine()
+
+      await expect(rentals.connect(lessor).claim(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])).to.be.revertedWith(
+        'Rentals#claim: NOT_LESSOR'
+      )
+
+      await rentals.connect(extra).claim(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+
+      expect(await land.ownerOf(offerEncodeValue[tokenIdIndex])).to.equal(extra.address)
     })
 
     it('should allow the asset transfer from accepting an offer', async () => {
