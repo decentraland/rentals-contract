@@ -277,11 +277,11 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// Provides an alternative to acceptOffer by letting the asset holder send the asset to the contract
     /// and accepting the offer at the same time.
     /// @param _operator Caller of the safeTransfer function.
-    /// @param _from Address of the original holder of the token.
+    /// @param _tokenId Id of the asset received.
     /// @param _data Bytes containing offer data.
     function onERC721Received(
         address _operator,
-        address _from,
+        address, // _from,
         uint256 _tokenId,
         bytes memory _data
     ) external override returns (bytes4) {
@@ -295,7 +295,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             // Prevents the holder from sending another token than the one defined in the offer.
             require(offer.tokenId == _tokenId, "Rentals#onERC721Received: TOKEN_ID_MISMATCH");
 
-            _acceptOffer(offer, _from);
+            _acceptOffer(offer, _operator);
         }
 
         return InterfaceId_OnERC721Received;
