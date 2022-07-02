@@ -160,6 +160,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         bytes32 _fingerprint
     ) external {
+        _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
+
         // Verify that the signer provided in the listing is the one that signed it.
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
@@ -214,6 +216,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
     function acceptOffer(Offer calldata _offer) external {
+        _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
+
         _acceptOffer(_offer, _msgSender());
     }
 
@@ -323,6 +327,16 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         emit FeeUpdated(fee, fee = _fee, _msgSender());
     }
 
+    /// @dev Reverts if someone is trying to rent an asset that was unsafely sent to the rentals contract.
+    function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
+        address lessor = rentals[_contractAddress][_tokenId].lessor;
+        address assetOwner = _ownerOf(_contractAddress, _tokenId);
+
+        if (lessor == address(0) && assetOwner == address(this)) {
+            revert("Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY");
+        }
+    }
+
     function _acceptOffer(Offer memory _offer, address _lessor) private {
         // Verify that the signer provided in the offer is the one that signed it.
         bytes32 offerHash = _hashTypedDataV4(
@@ -408,7 +422,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (asset.ownerOf(_tokenId) != address(this)) {
+        if (_ownerOf(address(asset), _tokenId) != address(this)) {
             asset.safeTransferFrom(_lessor, address(this), _tokenId);
         }
 
@@ -416,6 +430,17 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.ownerOf
+    function _ownerOf(address _contractAddress, uint256 _tokenId) private view returns (address) {
+        (bool success, bytes memory data) = _contractAddress.staticcall(
+            abi.encodeWithSelector(IERC721Rentable(_contractAddress).ownerOf.selector, _tokenId)
+        );
+
+        require(success, "Rentals#_ownerOf: OWNER_OF_CALL_FAILURE");
+
+        return abi.decode(data, (address));
     }
 
     /// @dev Wrapper to static call IERC721Rentable.supportsInterface
