@@ -1,9 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
-import { ParamType } from 'ethers/lib/utils'
 import { ethers, network } from 'hardhat'
-import { off } from 'process'
 import { EstateRegistry, LANDRegistry, MANAToken, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
