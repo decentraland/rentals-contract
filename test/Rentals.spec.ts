@@ -1760,7 +1760,7 @@ describe('Rentals', () => {
     it('should revert when the caller is different from the contract address provided in the offer', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
-        'Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH'
+        'Rentals#onERC721Received: ASSET_MISMATCH'
       )
     })
 
@@ -1775,7 +1775,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#onERC721Received: SENDER_CONTRACT_ADDRESS_MISMATCH')
+      ).to.be.revertedWith('Rentals#onERC721Received: ASSET_MISMATCH')
     })
 
     it('should revert when the offer token id is different than the sent asset token id', async () => {
@@ -1788,7 +1788,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#onERC721Received: TOKEN_ID_MISMATCH')
+      ).to.be.revertedWith('Rentals#onERC721Received: ASSET_MISMATCH')
     })
 
     it('should revert when the offer signer does not match the signer provided in params', async () => {
