@@ -395,8 +395,11 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         Rental storage rental = rentals[_contractAddress][_tokenId];
 
+        // True if the asset is currently rented.
         bool rented = isRented(_contractAddress, _tokenId);
+        // True if the asset rental period is over, but is has not been claimed back from the contract.
         bool reRent = !rented && rental.lessor != address(0);
+        // True if the asset rental period is not over yet, but the lessor and the tenant are the same.
         bool extend = rented && rental.lessor == _lessor && rental.tenant == _tenant;
 
         if (!extend && !reRent) {
