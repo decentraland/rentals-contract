@@ -421,7 +421,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             // Track the new tenant in the mapping.
             rental.tenant = _tenant;
 
-            // Set te end date of the rental according to the provided rental days
+            // Set the end date of the rental according to the provided rental days
             rental.endDate = block.timestamp + _rentalDays * 1 days;
         }
 
