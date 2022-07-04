@@ -603,6 +603,99 @@ describe('Rentals', () => {
       expect(rental.endDate).to.equal(endDate)
     })
 
+    it('should allow calling accept listing twice if the second is an extension in the same block', async () => {
+      const rentalDays1 = 10
+      const rentalDays2 = 100
+
+      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      await network.provider.send('evm_setAutomine', [false])
+
+      listingParams = { ...listingParams, maxDays: [rentalDays1], minDays: [rentalDays1] }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays1, index: 0 }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      await network.provider.send('evm_setAutomine', [true])
+
+      await evmMine()
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+    })
+
+    it('should allow calling accept listing then accept offer if the second is an extension in the same block', async () => {
+      const rentalDays1 = 10
+      const rentalDays2 = 100
+
+      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      await network.provider.send('evm_setAutomine', [false])
+
+      listingParams = { ...listingParams, maxDays: [rentalDays1], minDays: [rentalDays1] }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays1, index: 0 }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await network.provider.send('evm_setAutomine', [true])
+
+      await evmMine()
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+    })
+
     it('should not transfer erc20 when price per day is 0', async () => {
       const originalBalanceTenant = await mana.balanceOf(tenant.address)
       const originalBalanceLessor = await mana.balanceOf(lessor.address)
@@ -1338,6 +1431,81 @@ describe('Rentals', () => {
       expect(rental.endDate).to.equal(endDate)
     })
 
+    it('should allow calling accept offer twice if the second is an extension in the same block', async () => {
+      const rentalDays1 = 10
+      const rentalDays2 = 100
+
+      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      await network.provider.send('evm_setAutomine', [false])
+
+      offerParams = { ...offerParams, rentalDays: rentalDays1 }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await network.provider.send('evm_setAutomine', [true])
+
+      await evmMine()
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+    })
+
+    it('should allow calling accept offer then an accept listing if the second is an extension in the same block', async () => {
+      const rentalDays1 = 10
+      const rentalDays2 = 100
+
+      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      await network.provider.send('evm_setAutomine', [false])
+
+      offerParams = { ...offerParams, rentalDays: rentalDays1 }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      await network.provider.send('evm_setAutomine', [true])
+
+      await evmMine()
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+    })
+
     it('should not transfer erc20 when price per day is 0', async () => {
       const originalBalanceTenant = await mana.balanceOf(tenant.address)
       const originalBalanceLessor = await mana.balanceOf(lessor.address)
@@ -1964,6 +2132,87 @@ describe('Rentals', () => {
       endDate += daysToSeconds(acceptListingParams.rentalDays)
 
       expect(rental.endDate).to.equal(endDate)
+    })
+
+    it('should allow calling accept listing after sending the asset on the same block if it is an extension', async () => {
+      const rentalDays1 = 10
+      const rentalDays2 = 100
+
+      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      await network.provider.send('evm_setAutomine', [false])
+
+      offerEncodeValue[rentalDaysIndex] = rentalDays1
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, rentalDays: offerEncodeValue[rentalDaysIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      await network.provider.send('evm_setAutomine', [true])
+
+      await evmMine()
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+    })
+
+    it('should allow calling accept offer after sending the asset on the same block if it is an extension', async () => {
+      const rentalDays1 = 10
+      const rentalDays2 = 100
+
+      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      await network.provider.send('evm_setAutomine', [false])
+
+      offerEncodeValue[rentalDaysIndex] = rentalDays1
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, rentalDays: offerEncodeValue[rentalDaysIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await network.provider.send('evm_setAutomine', [true])
+
+      await evmMine()
+
+      const latestBlockTimestamp = await getLatestBlockTimestamp()
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
     })
 
     it('should consume less gas that acceptOffer', async () => {
