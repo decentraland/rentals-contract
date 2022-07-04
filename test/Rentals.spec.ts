@@ -656,6 +656,24 @@ describe('Rentals', () => {
       expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
     })
 
+    it('should accept the listing when the caller is the same as the target provided', async () => {
+      listingParams = { ...listingParams, target: tenant.address }
+
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
+    })
+
     it('should accept a meta tx', async () => {
       const abi = [
         {
@@ -1147,24 +1165,6 @@ describe('Rentals', () => {
             acceptListingParams.fingerprint
           )
       ).to.be.revertedWith('Rentals#acceptListing: TARGET_MISMATCH')
-    })
-
-    it('should accept the listing when the caller is the same as the target provided', async () => {
-      listingParams = { ...listingParams, target: tenant.address }
-
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
-
-      await rentals
-        .connect(tenant)
-        .acceptListing(
-          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          acceptListingParams.operator,
-          acceptListingParams.index,
-          acceptListingParams.rentalDays,
-          acceptListingParams.fingerprint
-        )
-
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
     })
   })
 
