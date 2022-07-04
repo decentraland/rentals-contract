@@ -112,6 +112,7 @@ describe('Rentals', () => {
       pricePerDay: [ether('100')],
       maxDays: [20],
       minDays: [10],
+      target: zeroAddress,
     }
 
     offerParams = {
@@ -702,6 +703,11 @@ describe('Rentals', () => {
                   type: 'uint256[]',
                 },
                 {
+                  internalType: 'address',
+                  name: 'target',
+                  type: 'address',
+                },
+                {
                   internalType: 'bytes',
                   name: 'signature',
                   type: 'bytes',
@@ -1125,6 +1131,40 @@ describe('Rentals', () => {
             acceptListingParams.fingerprint
           )
       ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
+    })
+
+    it('should revert when the caller is different from the target provided in the listing', async () => {
+      listingParams = { ...listingParams, target: extra.address }
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: TARGET_MISMATCH')
+    })
+
+    it('should NOT revert when the caller is the same as the one target provided in the listing', async () => {
+      listingParams = { ...listingParams, target: tenant.address }
+
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
     })
   })
 
