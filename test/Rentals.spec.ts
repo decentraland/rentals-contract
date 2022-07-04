@@ -1149,7 +1149,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: TARGET_MISMATCH')
     })
 
-    it('should NOT revert when the caller is the same as the target provided in the listing', async () => {
+    it('should accept the listing when the caller is the same as the target provided', async () => {
       listingParams = { ...listingParams, target: tenant.address }
 
       expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
