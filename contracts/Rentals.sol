@@ -33,8 +33,6 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @dev EIP165 hash used to detect if a contract supports the onERC721Received(address,address,uint256,bytes) function.
     bytes4 private constant InterfaceId_OnERC721Received = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
 
-    uint256 private constant SECONDS_IN_A_DAY = 86400;
-
     /// @notice ERC20 token used to pay for rent and fees.
     IERC20 public token;
 
@@ -415,7 +413,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
 
         if (extend) {
             // Increase the current end date by the amount of provided rental days.
-            rental.endDate = rental.endDate + _rentalDays * SECONDS_IN_A_DAY;
+            rental.endDate = rental.endDate + _rentalDays * 1 days;
         } else {
             // Track the original owner of the asset in the lessors map for future use.
             rental.lessor = _lessor;
@@ -424,7 +422,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             rental.tenant = _tenant;
 
             // Set te end date of the rental according to the provided rental days
-            rental.endDate = block.timestamp + _rentalDays * SECONDS_IN_A_DAY;
+            rental.endDate = block.timestamp + _rentalDays * 1 days;
         }
 
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
