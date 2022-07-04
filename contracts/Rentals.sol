@@ -16,7 +16,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     bytes32 private constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
-                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays)"
+                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays,address target)"
             )
         );
 
@@ -57,6 +57,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256[] pricePerDay;
         uint256[] maxDays;
         uint256[] minDays;
+        // Makes the listing acceptable only by the address defined as target. 
+        // Using address(0) as target will allow any address to accept it.
+        address target;
         bytes signature;
     }
 
@@ -174,7 +177,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
                     keccak256(abi.encodePacked(_listing.nonces)),
                     keccak256(abi.encodePacked(_listing.pricePerDay)),
                     keccak256(abi.encodePacked(_listing.maxDays)),
-                    keccak256(abi.encodePacked(_listing.minDays))
+                    keccak256(abi.encodePacked(_listing.minDays)),
+                    _listing.target
                 )
             )
         );
@@ -187,6 +191,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address tenant = _msgSender();
 
         require(tenant != lessor, "Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER");
+
+        // Verify that the targeted address in the listing is the caller of this function.
+        require(_listing.target == address(0) || _listing.target == tenant, "Rentals#acceptListing: TARGET_MISMATCH");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
         _verifyContractNonce(_listing.nonces[0]);

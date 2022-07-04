@@ -69,6 +69,10 @@ export const getListingSignature = (
           type: 'uint256[]',
           name: 'minDays',
         },
+        {
+          type: 'address',
+          name: 'target',
+        },
       ],
     },
     params
