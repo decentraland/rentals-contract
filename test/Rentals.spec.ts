@@ -697,43 +697,6 @@ describe('Rentals', () => {
       expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
     })
 
-    it('should revert when accepting a listing twice in the same block with the same nonces', async () => {
-      // Disable automine so the transactions are included in the same block.
-      await network.provider.send('evm_setAutomine', [false])
-
-      await rentals
-        .connect(tenant)
-        .acceptListing(
-          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          acceptListingParams.operator,
-          acceptListingParams.index,
-          acceptListingParams.rentalDays,
-          acceptListingParams.fingerprint
-        )
-
-      await rentals
-        .connect(tenant)
-        .acceptListing(
-          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          acceptListingParams.operator,
-          acceptListingParams.index,
-          acceptListingParams.rentalDays,
-          acceptListingParams.fingerprint
-        )
-
-      await evmMine()
-      await network.provider.send('evm_setAutomine', [true])
-
-      const latestBlock = await network.provider.send('eth_getBlockByNumber', ['latest', false])
-
-      const claimTrxHash = latestBlock.transactions[1]
-      const claimTrxTrace = await network.provider.send('debug_traceTransaction', [claimTrxHash])
-      const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
-      const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
-
-      expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
-    })
-
     it('should accept a meta tx', async () => {
       const abi = [
         {
@@ -1205,6 +1168,43 @@ describe('Rentals', () => {
           )
       ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
     })
+
+    it('should revert when accepting a listing twice in the same block with the same nonces', async () => {
+      // Disable automine so the transactions are included in the same block.
+      await network.provider.send('evm_setAutomine', [false])
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      await evmMine()
+      await network.provider.send('evm_setAutomine', [true])
+
+      const latestBlock = await network.provider.send('eth_getBlockByNumber', ['latest', false])
+
+      const claimTrxHash = latestBlock.transactions[1]
+      const claimTrxTrace = await network.provider.send('debug_traceTransaction', [claimTrxHash])
+      const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
+      const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
+
+      expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
+    })
   })
 
   describe('acceptOffer', () => {
@@ -1358,27 +1358,6 @@ describe('Rentals', () => {
       expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
       expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
-    })
-
-    it('should revert when accepting an offer twice in the same block with the same nonces', async () => {
-      // Disable automine so the transactions are included in the same block.
-      await network.provider.send('evm_setAutomine', [false])
-
-      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-
-      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-
-      await evmMine()
-      await network.provider.send('evm_setAutomine', [true])
-
-      const latestBlock = await network.provider.send('eth_getBlockByNumber', ['latest', false])
-
-      const claimTrxHash = latestBlock.transactions[1]
-      const claimTrxTrace = await network.provider.send('debug_traceTransaction', [claimTrxHash])
-      const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
-      const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
-
-      expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
     })
 
     it('should accept a meta tx', async () => {
@@ -1577,6 +1556,27 @@ describe('Rentals', () => {
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
+    })
+
+    it('should revert when accepting an offer twice in the same block with the same nonces', async () => {
+      // Disable automine so the transactions are included in the same block.
+      await network.provider.send('evm_setAutomine', [false])
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmMine()
+      await network.provider.send('evm_setAutomine', [true])
+
+      const latestBlock = await network.provider.send('eth_getBlockByNumber', ['latest', false])
+
+      const claimTrxHash = latestBlock.transactions[1]
+      const claimTrxTrace = await network.provider.send('debug_traceTransaction', [claimTrxHash])
+      const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
+      const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
+
+      expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
     })
   })
 
