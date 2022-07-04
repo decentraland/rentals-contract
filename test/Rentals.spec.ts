@@ -2092,5 +2092,45 @@ describe('Rentals', () => {
 
       await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
     })
+
+    it('should revert when accepting an offer by sending the estate and by calling acceptOffer on the same block', async () => {
+      // Disable automine so the transactions are included in the same block.
+      await network.provider.send('evm_setAutomine', [false])
+
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[tokenIdIndex] = estateId
+      offerEncodeValue[fingerprintIndex] = await estate.connect(tenant).getFingerprint(estateId)
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+        fingerprint: offerEncodeValue[fingerprintIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+        fingerprint: offerEncodeValue[fingerprintIndex],
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmMine()
+      await network.provider.send('evm_setAutomine', [true])
+
+      const latestBlock = await network.provider.send('eth_getBlockByNumber', ['latest', false])
+
+      const claimTrxHash = latestBlock.transactions[1]
+      const claimTrxTrace = await network.provider.send('debug_traceTransaction', [claimTrxHash])
+      const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
+      const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
+
+      expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
+    })
   })
 })
