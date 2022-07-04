@@ -58,7 +58,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256[] maxDays;
         uint256[] minDays;
         // Makes the listing acceptable only by the address defined as target. 
-        // Using address(0) as target will allow any other address to accept it.
+        // Using address(0) as target will allow any address to accept it.
         address target;
         bytes signature;
     }
