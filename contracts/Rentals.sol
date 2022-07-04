@@ -9,8 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@dcl/common-contracts/meta-transactions/NativeMetaTransaction.sol";
 import "@dcl/common-contracts/signatures/NonceVerifiable.sol";
 
-import "./interfaces/IERC721Operable.sol";
-import "./interfaces/IERC721Verifiable.sol";
+import "./interfaces/IERC721Rentable.sol";
 
 contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @dev EIP712 type hashes for recovering the signer from a signature.
@@ -161,6 +160,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         bytes32 _fingerprint
     ) external {
+        _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
+
         // Verify that the signer provided in the listing is the one that signed it.
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
@@ -215,45 +216,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
     function acceptOffer(Offer calldata _offer) external {
-        // Verify that the signer provided in the offer is the one that signed it.
-        bytes32 offerHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    OFFER_TYPE_HASH,
-                    _offer.signer,
-                    _offer.contractAddress,
-                    _offer.tokenId,
-                    _offer.expiration,
-                    keccak256(abi.encodePacked(_offer.nonces)),
-                    _offer.pricePerDay,
-                    _offer.rentalDays,
-                    _offer.operator,
-                    _offer.fingerprint
-                )
-            )
-        );
+        _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
 
-        address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
-
-        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISSMATCH");
-
-        // Verify that the caller and the signer are not the same address.
-        address lessor = _msgSender();
-
-        require(lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
-
-        // Verify that the nonces provided in the offer match the ones in the contract.
-        _verifyContractNonce(_offer.nonces[0]);
-        _verifySignerNonce(tenant, _offer.nonces[1]);
-        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
-
-        // Verify that the offer is not already expired.
-        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
-
-        // Verify that the rental days provided in the offer are valid.
-        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
-
-        _rent(lessor, tenant, _offer.contractAddress, _offer.tokenId, _offer.fingerprint, _offer.pricePerDay, _offer.rentalDays, _offer.operator);
+        _acceptOffer(_offer, _msgSender());
     }
 
     /// @notice The original owner of the asset can claim it back if said asset is not being rented.
@@ -293,7 +258,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _tokenId,
         address _operator
     ) external {
-        IERC721Operable asset = IERC721Operable(_contractAddress);
+        IERC721Rentable asset = IERC721Rentable(_contractAddress);
 
         address sender = _msgSender();
 
@@ -313,15 +278,31 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     }
 
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
-    /// @dev The contract only allows safe transfers by itself made by the rent function.
-    /// @param _operator Caller of the safe transfer function.
+    /// Provides an alternative to acceptOffer by letting the asset holder send the asset to the contract
+    /// and accepting the offer at the same time.
+    /// IMPORTANT: Addresses that have been given allowance to an asset can safely transfer said asset to this contract
+    /// to accept an offer. The address that has been given allowance will be considered the lessor, and will enjoy all of its benefits,
+    /// including the ability to claim the asset back to themselves after the rental period is over.
+    /// @param _operator Caller of the safeTransfer function.
+    /// @param _tokenId Id of the asset received.
+    /// @param _data Bytes containing offer data.
     function onERC721Received(
         address _operator,
         address, // _from,
-        uint256, // _tokenId,
-        bytes calldata // _data
-    ) external view override returns (bytes4) {
-        require(_operator == address(this), "Rentals#onERC721Received: ONLY_ACCEPT_TRANSFERS_FROM_THIS_CONTRACT");
+        uint256 _tokenId,
+        bytes memory _data
+    ) external override returns (bytes4) {
+        if (_operator != address(this)) {
+            Offer memory offer = abi.decode(_data, (Offer));
+
+            // Check that the caller is the contract defined in the offer to ensure the function is being
+            // called through an ERC721.safeTransferFrom.
+            // Also check that the token id is the same as the one provided in the offer.
+            require(msg.sender == offer.contractAddress && offer.tokenId == _tokenId, "Rentals#onERC721Received: ASSET_MISMATCH");
+
+            _acceptOffer(offer, _operator);
+        }
+
         return InterfaceId_OnERC721Received;
     }
 
@@ -344,6 +325,55 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         emit FeeUpdated(fee, fee = _fee, _msgSender());
     }
 
+    /// @dev Reverts if someone is trying to rent an asset that was unsafely sent to the rentals contract.
+    function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
+        address lessor = rentals[_contractAddress][_tokenId].lessor;
+        address assetOwner = _ownerOf(_contractAddress, _tokenId);
+
+        if (lessor == address(0) && assetOwner == address(this)) {
+            revert("Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY");
+        }
+    }
+
+    function _acceptOffer(Offer memory _offer, address _lessor) private {
+        // Verify that the signer provided in the offer is the one that signed it.
+        bytes32 offerHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    OFFER_TYPE_HASH,
+                    _offer.signer,
+                    _offer.contractAddress,
+                    _offer.tokenId,
+                    _offer.expiration,
+                    keccak256(abi.encodePacked(_offer.nonces)),
+                    _offer.pricePerDay,
+                    _offer.rentalDays,
+                    _offer.operator,
+                    _offer.fingerprint
+                )
+            )
+        );
+
+        address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
+
+        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISSMATCH");
+
+        require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
+
+        // Verify that the nonces provided in the offer match the ones in the contract.
+        _verifyContractNonce(_offer.nonces[0]);
+        _verifySignerNonce(tenant, _offer.nonces[1]);
+        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
+
+        // Verify that the offer is not already expired.
+        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
+
+        // Verify that the rental days provided in the offer are valid.
+        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
+
+        _rent(_lessor, tenant, _offer.contractAddress, _offer.tokenId, _offer.fingerprint, _offer.pricePerDay, _offer.rentalDays, _offer.operator);
+    }
+
     function _rent(
         address _lessor,
         address _tenant,
@@ -354,23 +384,19 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _rentalDays,
         address _operator
     ) private {
-        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
-        IERC721Verifiable verifiable = IERC721Verifiable(_contractAddress);
-
-        if (verifiable.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(verifiable.verifyFingerprint(_tokenId, abi.encodePacked(_fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
-        }
-
         // Verify that the asset is not already rented.
         require(!isRented(_contractAddress, _tokenId), "Rentals#_rent: CURRENTLY_RENTED");
 
-        IERC721Operable asset = IERC721Operable(_contractAddress);
+        IERC721Rentable asset = IERC721Rentable(_contractAddress);
+
+        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
+        if (_supportsVerifyFingerprint(asset)) {
+            require(_verifyFingerprint(asset, _tokenId, _fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
+        }
 
         Rental storage rental = rentals[_contractAddress][_tokenId];
 
-        bool isAssetOwnedByContract = rental.lessor != address(0);
-
-        if (isAssetOwnedByContract) {
+        if (rental.lessor != address(0)) {
             // The contract already has the asset, so we just need to validate that the original owner matches the provided lessor.
             require(rental.lessor == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         } else {
@@ -381,26 +407,64 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         // Set the rental finish timestamp in the rentals mapping.
         rental.endDate = block.timestamp + _rentalDays * 86400; // 86400 = seconds in a day
 
+        // Track the new tenant in the mapping.
+        rental.tenant = _tenant;
+
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
         _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
         _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
 
+        // Transfer tokens
         if (_pricePerDay > 0) {
             _handleTokenTransfers(_lessor, _tenant, _pricePerDay, _rentalDays);
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (!isAssetOwnedByContract) {
+        if (_ownerOf(address(asset), _tokenId) != address(this)) {
             asset.safeTransferFrom(_lessor, address(this), _tokenId);
         }
-
-        // Track the new tenant in the mapping.
-        rental.tenant = _tenant;
 
         // Update the operator
         asset.setUpdateOperator(_tokenId, _operator);
 
         emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.ownerOf
+    function _ownerOf(address _contractAddress, uint256 _tokenId) private view returns (address) {
+        (bool success, bytes memory data) = _contractAddress.staticcall(
+            abi.encodeWithSelector(IERC721Rentable(_contractAddress).ownerOf.selector, _tokenId)
+        );
+
+        require(success, "Rentals#_ownerOf: OWNER_OF_CALL_FAILURE");
+
+        return abi.decode(data, (address));
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.supportsInterface
+    function _supportsVerifyFingerprint(IERC721Rentable _asset) private view returns (bool) {
+        (bool success, bytes memory data) = address(_asset).staticcall(
+            abi.encodeWithSelector(_asset.supportsInterface.selector, InterfaceId_VerifyFingerprint)
+        );
+
+        require(success, "Rentals#_supportsVerifyFingerprint: SUPPORTS_INTERFACE_CALL_FAILURE");
+
+        return abi.decode(data, (bool));
+    }
+
+    /// @dev Wrapper to static call IERC721Rentable.verifyFingerprint
+    function _verifyFingerprint(
+        IERC721Rentable _asset,
+        uint256 _tokenId,
+        bytes32 _fingerprint
+    ) private view returns (bool) {
+        (bool success, bytes memory data) = address(_asset).staticcall(
+            abi.encodeWithSelector(_asset.verifyFingerprint.selector, _tokenId, abi.encode(_fingerprint))
+        );
+
+        require(success, "Rentals#_verifyFingerprint: VERIFY_FINGERPRINT_CALL_FAILURE");
+
+        return abi.decode(data, (bool));
     }
 
     /// @dev Transfer the erc20 tokens required to start a rent from the tenant to the lessor and the fee collector.
