@@ -99,7 +99,9 @@ describe('Rentals', () => {
     mana = await MANATokenFactory.connect(deployer).deploy()
 
     await mana.connect(deployer).mint(tenant.address, ether('100000'))
+    await mana.connect(deployer).mint(extra.address, ether('100000'))
     await mana.connect(tenant).approve(rentals.address, maxUint256)
+    await mana.connect(extra).approve(rentals.address, maxUint256)
 
     listingParams = {
       signer: lessor.address,
@@ -807,6 +809,39 @@ describe('Rentals', () => {
         )
 
       expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
+    })
+
+    it('should allow a re rent if the lessor is the same', async () => {
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
+
+      await evmIncreaseTime((await getLatestBlockTimestamp()) + daysToSeconds(acceptListingParams.rentalDays))
+      await evmMine()
+
+      listingParams = { ...listingParams, expiration: maxUint256, nonces: [0, 0, 1] }
+
+      await rentals
+        .connect(extra)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(extra.address)
     })
 
     it('should accept a meta tx', async () => {
