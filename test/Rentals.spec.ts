@@ -1338,6 +1338,61 @@ describe('Rentals', () => {
 
       expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
     })
+
+    it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      const increaseTime = Math.trunc(daysToSeconds(acceptListingParams.rentalDays) / 2)
+
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      acceptListingParams = { ...acceptListingParams, operator: extra.address }
+
+      await expect(
+        rentals
+          .connect(extra)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert when trying to extend the rental with accept offer while not being the lessor', async () => {
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      const increaseTime = Math.trunc(daysToSeconds(offerParams.rentalDays) / 2)
+
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+
+      await expect(
+        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
   })
 
   describe('acceptOffer', () => {
@@ -1785,6 +1840,45 @@ describe('Rentals', () => {
       const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
 
       expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
+    })
+
+    it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      const increaseTime = Math.trunc(daysToSeconds(offerParams.rentalDays) / 2)
+
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      acceptListingParams = { ...acceptListingParams, operator: extra.address }
+
+      await expect(
+        rentals
+          .connect(extra)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert when trying to extend the rental with accept offer while not being the lessor', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      const increaseTime = Math.trunc(daysToSeconds(offerParams.rentalDays) / 2)
+
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+
+      await expect(
+        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
   })
 
@@ -2443,6 +2537,49 @@ describe('Rentals', () => {
       const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
 
       expect(decodedErrorMessage).to.be.equal('NonceVerifiable#_verifyAssetNonce: ASSET_NONCE_MISSMATCH')
+    })
+
+    it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      const increaseTime = Math.trunc(daysToSeconds(acceptListingParams.rentalDays) / 2)
+
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      acceptListingParams = { ...acceptListingParams, operator: extra.address }
+
+      await expect(
+        rentals
+          .connect(extra)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert when trying to extend the rental with accept offer while not being the lessor', async () => {
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      const increaseTime = Math.trunc(daysToSeconds(offerParams.rentalDays) / 2)
+
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+
+      await expect(
+        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
   })
 })
