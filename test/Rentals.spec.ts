@@ -635,16 +635,16 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
@@ -659,16 +659,16 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(2)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -718,31 +718,31 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(2)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -1606,31 +1606,31 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(2)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -1671,16 +1671,16 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
@@ -1695,16 +1695,16 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(2)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -2415,16 +2415,16 @@ describe('Rentals', () => {
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
@@ -2439,16 +2439,16 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(2)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -2492,20 +2492,31 @@ describe('Rentals', () => {
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-      expect(rental.lessor).to.equal(zeroAddress)
-      expect(rental.tenant).to.equal(zeroAddress)
-      expect(rental.endDate).to.equal(0)
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
 
-      expect(await rentals.contractNonce()).to.equal(0)
-      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
-      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
-      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      expect(rental.lessor).to.equal(lessor.address)
+      expect(rental.tenant).to.equal(tenant.address)
+      expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
+
+      expect(await rentals.contractNonce({ blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address, { blockTag: 'pending' })).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(2)
 
       await network.provider.send('evm_setAutomine', [true])
 
