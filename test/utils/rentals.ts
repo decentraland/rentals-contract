@@ -21,6 +21,8 @@ export const evmIncreaseTime = (seconds: number) => network.provider.send('evm_i
 //@ts-ignore
 export const evmMine = () => network.provider.send('evm_mine')
 
+export const getLatestBlockTimestamp = async () => (await ethers.provider.getBlock('latest')).timestamp
+
 export const getListingSignature = (
   signer: SignerWithAddress,
   contract: Rentals,
@@ -66,6 +68,10 @@ export const getListingSignature = (
         {
           type: 'uint256[]',
           name: 'minDays',
+        },
+        {
+          type: 'address',
+          name: 'target',
         },
       ],
     },
