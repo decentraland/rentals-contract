@@ -610,10 +610,15 @@ describe('Rentals', () => {
       const rentalDays2 = 100
 
       let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [false])
 
@@ -629,6 +634,17 @@ describe('Rentals', () => {
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
@@ -643,6 +659,17 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+
       await network.provider.send('evm_setAutomine', [true])
 
       await evmMine()
@@ -650,10 +677,15 @@ describe('Rentals', () => {
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(2)
     })
 
     it('should allow calling accept listing then accept offer if the second is an extension in the same block', async () => {
@@ -661,10 +693,15 @@ describe('Rentals', () => {
       const rentalDays2 = 100
 
       let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [false])
 
@@ -681,9 +718,31 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+
       offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -692,10 +751,15 @@ describe('Rentals', () => {
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(2)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -1526,10 +1590,15 @@ describe('Rentals', () => {
       const rentalDays2 = 100
 
       let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [false])
 
@@ -1537,9 +1606,31 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+
       offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [true])
 
@@ -1548,10 +1639,15 @@ describe('Rentals', () => {
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(2)
     })
 
     it('should allow calling accept offer then an accept listing if the second is an extension in the same block', async () => {
@@ -1559,16 +1655,32 @@ describe('Rentals', () => {
       const rentalDays2 = 100
 
       let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [false])
 
       offerParams = { ...offerParams, rentalDays: rentalDays1 }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
@@ -1583,6 +1695,17 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+
       await network.provider.send('evm_setAutomine', [true])
 
       await evmMine()
@@ -1590,10 +1713,15 @@ describe('Rentals', () => {
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(2)
     })
 
     it('should not transfer erc20 when price per day is 0', async () => {
@@ -2268,10 +2396,15 @@ describe('Rentals', () => {
       const rentalDays2 = 100
 
       let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [false])
 
@@ -2281,6 +2414,17 @@ describe('Rentals', () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
@@ -2295,6 +2439,17 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
+
       await network.provider.send('evm_setAutomine', [true])
 
       await evmMine()
@@ -2302,10 +2457,15 @@ describe('Rentals', () => {
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(2)
     })
 
     it('should allow calling accept offer after sending the asset on the same block if it is an extension', async () => {
@@ -2313,10 +2473,15 @@ describe('Rentals', () => {
       const rentalDays2 = 100
 
       let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
-
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       await network.provider.send('evm_setAutomine', [false])
 
@@ -2326,6 +2491,17 @@ describe('Rentals', () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      expect(rental.lessor).to.equal(zeroAddress)
+      expect(rental.tenant).to.equal(zeroAddress)
+      expect(rental.endDate).to.equal(0)
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(0)
 
       offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
 
@@ -2339,9 +2515,16 @@ describe('Rentals', () => {
 
       rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
 
+      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
+
+      expect(await rentals.contractNonce()).to.equal(0)
+      expect(await rentals.signerNonce(lessor.address)).to.equal(0)
+      expect(await rentals.signerNonce(tenant.address)).to.equal(0)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, lessor.address)).to.equal(2)
+      expect(await rentals.assetNonce(listingParams.contractAddress, listingParams.tokenId, tenant.address)).to.equal(2)
     })
 
     it('should consume less gas that acceptOffer', async () => {
