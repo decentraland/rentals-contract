@@ -57,7 +57,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256[] pricePerDay;
         uint256[] maxDays;
         uint256[] minDays;
-        // Makes the listing acceptable only by the address defined as target. 
+        // Makes the listing acceptable only by the address defined as target.
         // Using address(0) as target will allow any address to accept it.
         address target;
         bytes signature;
@@ -87,9 +87,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
     event FeeCollectorUpdated(address _from, address _to, address _sender);
     event FeeUpdated(uint256 _from, uint256 _to, address _sender);
-    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
     event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
-    event RentalStarted(
+    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
+    event AssetRented(
         address _contractAddress,
         uint256 _tokenId,
         address _lessor,
@@ -97,6 +97,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address _operator,
         uint256 _rentalDays,
         uint256 _pricePerDay,
+        bool _isExtension,
         address _sender
     );
 
@@ -449,7 +450,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         // Update the operator
         asset.setUpdateOperator(_tokenId, _operator);
 
-        emit RentalStarted(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, _msgSender());
+        emit AssetRented(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, extend, _msgSender());
     }
 
     /// @dev Wrapper to static call IERC721Rentable.ownerOf
