@@ -416,7 +416,7 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should emit a RentalStarted event', async () => {
+    it('should emit a AssetRented event', async () => {
       await expect(
         rentals
           .connect(tenant)
@@ -428,7 +428,7 @@ describe('Rentals', () => {
             acceptListingParams.fingerprint
           )
       )
-        .to.emit(rentals, 'RentalStarted')
+        .to.emit(rentals, 'AssetRented')
         .withArgs(
           offerParams.contractAddress,
           offerParams.tokenId,
@@ -480,7 +480,7 @@ describe('Rentals', () => {
         )
 
       await expect(rent)
-        .to.emit(rentals, 'RentalStarted')
+        .to.emit(rentals, 'AssetRented')
         .withArgs(
           offerParams.contractAddress,
           offerParams.tokenId,
@@ -1010,7 +1010,7 @@ describe('Rentals', () => {
       const rent = rentals.connect(extra).executeMetaTransaction(tenant.address, functionData, metaTxSignature)
 
       await expect(rent)
-        .to.emit(rentals, 'RentalStarted')
+        .to.emit(rentals, 'AssetRented')
         .withArgs(
           offerParams.contractAddress,
           offerParams.tokenId,
@@ -1499,9 +1499,9 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should emit a RentalStarted event', async () => {
+    it('should emit a AssetRented event', async () => {
       await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) }))
-        .to.emit(rentals, 'RentalStarted')
+        .to.emit(rentals, 'AssetRented')
         .withArgs(
           offerParams.contractAddress,
           offerParams.tokenId,
@@ -1864,7 +1864,7 @@ describe('Rentals', () => {
       const rent = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
 
       await expect(rent)
-        .to.emit(rentals, 'RentalStarted')
+        .to.emit(rentals, 'AssetRented')
         .withArgs(
           offerParams.contractAddress,
           offerParams.tokenId,
@@ -2222,11 +2222,11 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should emit a RentalStarted event with onERC721Received _operator as sender', async () => {
+    it('should emit a AssetRented event with onERC721Received _operator as sender', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
-        .to.emit(rentals, 'RentalStarted')
+        .to.emit(rentals, 'AssetRented')
         .withArgs(
           offerEncodeValue[contractAddressIndex],
           offerEncodeValue[tokenIdIndex],
