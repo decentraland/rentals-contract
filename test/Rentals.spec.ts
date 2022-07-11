@@ -439,9 +439,9 @@ describe('Rentals', () => {
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
           listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-          signature,
           false,
-          tenant.address
+          tenant.address,
+          signature
         )
     })
 
@@ -468,9 +468,9 @@ describe('Rentals', () => {
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
           listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-          signature,
           false,
-          tenant.address
+          tenant.address,
+          signature
         )
 
       listingParams = { ...listingParams, nonces: [0, 0, 1] }
@@ -497,9 +497,9 @@ describe('Rentals', () => {
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
           listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-          signature,
           true,
-          tenant.address
+          tenant.address,
+          signature
         )
     })
 
@@ -551,9 +551,9 @@ describe('Rentals', () => {
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
           listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-          signature,
           false,
-          tenant.address
+          tenant.address,
+          signature
         )
     })
 
@@ -1084,9 +1084,9 @@ describe('Rentals', () => {
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
           listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-          signature,
           false,
-          tenant.address
+          tenant.address,
+          signature
         )
     })
 
@@ -1579,9 +1579,9 @@ describe('Rentals', () => {
           offerParams.operator,
           offerParams.rentalDays,
           offerParams.pricePerDay,
-          signature,
           false,
-          lessor.address
+          lessor.address,
+          signature
         )
     })
 
@@ -1598,9 +1598,9 @@ describe('Rentals', () => {
           offerParams.operator,
           offerParams.rentalDays,
           offerParams.pricePerDay,
-          signature,
           false,
-          lessor.address
+          lessor.address,
+          signature
         )
 
       offerParams = { ...offerParams, nonces: [0, 0, 1] }
@@ -1617,9 +1617,9 @@ describe('Rentals', () => {
           offerParams.operator,
           offerParams.rentalDays,
           offerParams.pricePerDay,
-          signature,
           true,
-          lessor.address
+          lessor.address,
+          signature
         )
     })
 
@@ -1981,9 +1981,9 @@ describe('Rentals', () => {
           offerParams.operator,
           offerParams.rentalDays,
           offerParams.pricePerDay,
-          signature,
           false,
-          lessor.address
+          lessor.address,
+          signature
         )
     })
 
@@ -2345,9 +2345,9 @@ describe('Rentals', () => {
           offerEncodeValue[operatorIndex],
           offerEncodeValue[rentalDaysIndex],
           offerEncodeValue[pricePerDayIndex],
-          offerEncodeValue[signatureIndex],
           false,
-          land.address
+          land.address,
+          offerEncodeValue[signatureIndex]
         )
     })
 

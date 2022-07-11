@@ -109,9 +109,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address _operator,
         uint256 _rentalDays,
         uint256 _pricePerDay,
-        bytes _signature,
         bool _isExtension,
-        address _sender
+        address _sender,
+        bytes _signature
     );
 
     /// @notice Initialize the contract.
@@ -486,9 +486,9 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
             _rentParams.operator,
             _rentParams.rentalDays,
             _rentParams.pricePerDay,
-            _rentParams.signature,
             extend,
-            _msgSender()
+            _msgSender(),
+            _rentParams.signature
         );
     }
 
