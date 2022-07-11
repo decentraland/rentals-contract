@@ -432,17 +432,14 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            listingParams.signer,
-            tenant.address,
-            listingParams.contractAddress,
-            listingParams.tokenId,
-            ethers.utils.hexlify(acceptListingParams.fingerprint),
-            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-            acceptListingParams.rentalDays,
-            acceptListingParams.operator,
-            signature,
-          ],
+          listingParams.contractAddress,
+          listingParams.tokenId,
+          listingParams.signer,
+          tenant.address,
+          acceptListingParams.operator,
+          acceptListingParams.rentalDays,
+          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          signature,
           false,
           tenant.address
         )
@@ -464,17 +461,14 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            listingParams.signer,
-            tenant.address,
-            listingParams.contractAddress,
-            listingParams.tokenId,
-            ethers.utils.hexlify(acceptListingParams.fingerprint),
-            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-            acceptListingParams.rentalDays,
-            acceptListingParams.operator,
-            signature,
-          ],
+          listingParams.contractAddress,
+          listingParams.tokenId,
+          listingParams.signer,
+          tenant.address,
+          acceptListingParams.operator,
+          acceptListingParams.rentalDays,
+          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          signature,
           false,
           tenant.address
         )
@@ -496,17 +490,14 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            listingParams.signer,
-            tenant.address,
-            listingParams.contractAddress,
-            listingParams.tokenId,
-            ethers.utils.hexlify(acceptListingParams.fingerprint),
-            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-            acceptListingParams.rentalDays,
-            acceptListingParams.operator,
-            signature,
-          ],
+          listingParams.contractAddress,
+          listingParams.tokenId,
+          listingParams.signer,
+          tenant.address,
+          acceptListingParams.operator,
+          acceptListingParams.rentalDays,
+          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          signature,
           true,
           tenant.address
         )
@@ -553,17 +544,14 @@ describe('Rentals', () => {
       await expect(rent)
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            listingParams.signer,
-            tenant.address,
-            listingParams.contractAddress,
-            listingParams.tokenId,
-            ethers.utils.hexlify(acceptListingParams.fingerprint),
-            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-            acceptListingParams.rentalDays,
-            acceptListingParams.operator,
-            signature,
-          ],
+          listingParams.contractAddress,
+          listingParams.tokenId,
+          listingParams.signer,
+          tenant.address,
+          acceptListingParams.operator,
+          acceptListingParams.rentalDays,
+          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          signature,
           false,
           tenant.address
         )
@@ -1089,17 +1077,14 @@ describe('Rentals', () => {
       await expect(rent)
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            listingParams.signer,
-            tenant.address,
-            listingParams.contractAddress,
-            listingParams.tokenId,
-            ethers.utils.hexlify(acceptListingParams.fingerprint),
-            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
-            acceptListingParams.rentalDays,
-            acceptListingParams.operator,
-            signature,
-          ],
+          listingParams.contractAddress,
+          listingParams.tokenId,
+          listingParams.signer,
+          tenant.address,
+          acceptListingParams.operator,
+          acceptListingParams.rentalDays,
+          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          signature,
           false,
           tenant.address
         )
@@ -1587,17 +1572,14 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature }))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            lessor.address,
-            offerParams.signer,
-            offerParams.contractAddress,
-            offerParams.tokenId,
-            ethers.utils.hexlify(offerParams.fingerprint),
-            offerParams.pricePerDay,
-            offerParams.rentalDays,
-            offerParams.operator,
-            signature,
-          ],
+          offerParams.contractAddress,
+          offerParams.tokenId,
+          lessor.address,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
+          signature,
           false,
           lessor.address
         )
@@ -1609,17 +1591,14 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature }))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            lessor.address,
-            offerParams.signer,
-            offerParams.contractAddress,
-            offerParams.tokenId,
-            ethers.utils.hexlify(offerParams.fingerprint),
-            offerParams.pricePerDay,
-            offerParams.rentalDays,
-            offerParams.operator,
-            signature,
-          ],
+          offerParams.contractAddress,
+          offerParams.tokenId,
+          lessor.address,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
+          signature,
           false,
           lessor.address
         )
@@ -1631,17 +1610,14 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature }))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            lessor.address,
-            offerParams.signer,
-            offerParams.contractAddress,
-            offerParams.tokenId,
-            ethers.utils.hexlify(offerParams.fingerprint),
-            offerParams.pricePerDay,
-            offerParams.rentalDays,
-            offerParams.operator,
-            signature,
-          ],
+          offerParams.contractAddress,
+          offerParams.tokenId,
+          lessor.address,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
+          signature,
           true,
           lessor.address
         )
@@ -1998,17 +1974,14 @@ describe('Rentals', () => {
       await expect(rent)
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            lessor.address,
-            offerParams.signer,
-            offerParams.contractAddress,
-            offerParams.tokenId,
-            ethers.utils.hexlify(offerParams.fingerprint),
-            offerParams.pricePerDay,
-            offerParams.rentalDays,
-            offerParams.operator,
-            signature,
-          ],
+          offerParams.contractAddress,
+          offerParams.tokenId,
+          lessor.address,
+          offerParams.signer,
+          offerParams.operator,
+          offerParams.rentalDays,
+          offerParams.pricePerDay,
+          signature,
           false,
           lessor.address
         )
@@ -2365,17 +2338,14 @@ describe('Rentals', () => {
       await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          [
-            lessor.address,
-            offerEncodeValue[signerIndex],
-            offerEncodeValue[contractAddressIndex],
-            offerEncodeValue[tokenIdIndex],
-            ethers.utils.hexlify(offerEncodeValue[fingerprintIndex]),
-            offerEncodeValue[pricePerDayIndex],
-            offerEncodeValue[rentalDaysIndex],
-            offerEncodeValue[operatorIndex],
-            offerEncodeValue[signatureIndex],
-          ],
+          offerEncodeValue[contractAddressIndex],
+          offerEncodeValue[tokenIdIndex],
+          lessor.address,
+          offerEncodeValue[signerIndex],
+          offerEncodeValue[operatorIndex],
+          offerEncodeValue[rentalDaysIndex],
+          offerEncodeValue[pricePerDayIndex],
+          offerEncodeValue[signatureIndex],
           false,
           land.address
         )
