@@ -84,22 +84,24 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 endDate;
     }
 
+    struct RentParams {
+        address lessor;
+        address tenant;
+        address contractAddress;
+        uint256 tokenId;
+        bytes32 fingerprint;
+        uint256 pricePerDay;
+        uint256 rentalDays;
+        address operator;
+        bytes signature;
+    }
+
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
     event FeeCollectorUpdated(address _from, address _to, address _sender);
     event FeeUpdated(uint256 _from, uint256 _to, address _sender);
     event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
     event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
-    event AssetRented(
-        address _contractAddress,
-        uint256 _tokenId,
-        address _lessor,
-        address _tenant,
-        address _operator,
-        uint256 _rentalDays,
-        uint256 _pricePerDay,
-        bool _isExtension,
-        address _sender
-    );
+    event AssetRented(RentParams _params, bool _isExtension, address _sender);
 
     /// @notice Initialize the contract.
     /// @dev This method should be called as soon as the contract is deployed.
@@ -218,7 +220,19 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         // Verify that the provided rental days is between min and max days range.
         require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
 
-        _rent(lessor, tenant, _listing.contractAddress, _listing.tokenId, _fingerprint, _listing.pricePerDay[_index], _rentalDays, _operator);
+        _rent(
+            RentParams(
+                lessor,
+                tenant,
+                _listing.contractAddress,
+                _listing.tokenId,
+                _fingerprint,
+                _listing.pricePerDay[_index],
+                _rentalDays,
+                _operator,
+                _listing.signature
+            )
+        );
     }
 
     /// @notice Accept an offer for rent of an asset owned by the caller.
@@ -379,34 +393,37 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         // Verify that the rental days provided in the offer are valid.
         require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
 
-        _rent(_lessor, tenant, _offer.contractAddress, _offer.tokenId, _offer.fingerprint, _offer.pricePerDay, _offer.rentalDays, _offer.operator);
+        _rent(
+            RentParams(
+                _lessor,
+                tenant,
+                _offer.contractAddress,
+                _offer.tokenId,
+                _offer.fingerprint,
+                _offer.pricePerDay,
+                _offer.rentalDays,
+                _offer.operator,
+                _offer.signature
+            )
+        );
     }
 
-    function _rent(
-        address _lessor,
-        address _tenant,
-        address _contractAddress,
-        uint256 _tokenId,
-        bytes32 _fingerprint,
-        uint256 _pricePerDay,
-        uint256 _rentalDays,
-        address _operator
-    ) private {
-        IERC721Rentable asset = IERC721Rentable(_contractAddress);
+    function _rent(RentParams memory params) private {
+        IERC721Rentable asset = IERC721Rentable(params.contractAddress);
 
         // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
         if (_supportsVerifyFingerprint(asset)) {
-            require(_verifyFingerprint(asset, _tokenId, _fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
+            require(_verifyFingerprint(asset, params.tokenId, params.fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
         }
 
-        Rental storage rental = rentals[_contractAddress][_tokenId];
+        Rental storage rental = rentals[params.contractAddress][params.tokenId];
 
         // True if the asset is currently rented.
-        bool rented = isRented(_contractAddress, _tokenId);
+        bool rented = isRented(params.contractAddress, params.tokenId);
         // True if the asset rental period is over, but is has not been claimed back from the contract.
         bool reRent = !rented && rental.lessor != address(0);
         // True if the asset rental period is not over yet, but the lessor and the tenant are the same.
-        bool extend = rented && rental.lessor == _lessor && rental.tenant == _tenant;
+        bool extend = rented && rental.lessor == params.lessor && rental.tenant == params.tenant;
 
         if (!extend && !reRent) {
             // Verify that the asset is not already rented.
@@ -416,41 +433,41 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         if (reRent) {
             // The asset is being rented again wihout claiming it back first, so we need to check that the previous lessor
             // is the same as the lessor this time to prevent anyone else from acting as the lessor.
-            require(rental.lessor == _lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
+            require(rental.lessor == params.lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         }
 
         if (extend) {
             // Increase the current end date by the amount of provided rental days.
-            rental.endDate = rental.endDate + _rentalDays * 1 days;
+            rental.endDate = rental.endDate + params.rentalDays * 1 days;
         } else {
             // Track the original owner of the asset in the lessors map for future use.
-            rental.lessor = _lessor;
+            rental.lessor = params.lessor;
 
             // Track the new tenant in the mapping.
-            rental.tenant = _tenant;
+            rental.tenant = params.tenant;
 
             // Set the end date of the rental according to the provided rental days
-            rental.endDate = block.timestamp + _rentalDays * 1 days;
+            rental.endDate = block.timestamp + params.rentalDays * 1 days;
         }
 
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
-        _bumpAssetNonce(_contractAddress, _tokenId, _lessor);
-        _bumpAssetNonce(_contractAddress, _tokenId, _tenant);
+        _bumpAssetNonce(params.contractAddress, params.tokenId, params.lessor);
+        _bumpAssetNonce(params.contractAddress, params.tokenId, params.tenant);
 
         // Transfer tokens
-        if (_pricePerDay > 0) {
-            _handleTokenTransfers(_lessor, _tenant, _pricePerDay, _rentalDays);
+        if (params.pricePerDay > 0) {
+            _handleTokenTransfers(params.lessor, params.tenant, params.pricePerDay, params.rentalDays);
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (!extend && !reRent && _ownerOf(address(asset), _tokenId) != address(this)) {
-            asset.safeTransferFrom(_lessor, address(this), _tokenId);
+        if (!extend && !reRent && _ownerOf(address(asset), params.tokenId) != address(this)) {
+            asset.safeTransferFrom(params.lessor, address(this), params.tokenId);
         }
 
         // Update the operator
-        asset.setUpdateOperator(_tokenId, _operator);
+        asset.setUpdateOperator(params.tokenId, params.operator);
 
-        emit AssetRented(_contractAddress, _tokenId, _lessor, _tenant, _operator, _rentalDays, _pricePerDay, extend, _msgSender());
+        emit AssetRented(params, extend, _msgSender());
     }
 
     /// @dev Wrapper to static call IERC721Rentable.ownerOf

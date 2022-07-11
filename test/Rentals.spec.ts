@@ -417,11 +417,13 @@ describe('Rentals', () => {
     })
 
     it('should emit a AssetRented event', async () => {
+      const signature = await getListingSignature(lessor, rentals, listingParams)
+
       await expect(
         rentals
           .connect(tenant)
           .acceptListing(
-            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            { ...listingParams, signature },
             acceptListingParams.operator,
             acceptListingParams.index,
             acceptListingParams.rentalDays,
@@ -430,24 +432,30 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            listingParams.signer,
+            tenant.address,
+            listingParams.contractAddress,
+            listingParams.tokenId,
+            ethers.utils.hexlify(acceptListingParams.fingerprint),
+            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+            acceptListingParams.rentalDays,
+            acceptListingParams.operator,
+            signature,
+          ],
           false,
           tenant.address
         )
     })
 
-    it.only('should emit a AssetRented event with isExtension param as true when it is an extension', async () => {
+    it('should emit a AssetRented event with isExtension param as true when it is an extension', async () => {
+      let signature = await getListingSignature(lessor, rentals, listingParams)
+
       await expect(
         rentals
           .connect(tenant)
           .acceptListing(
-            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            { ...listingParams, signature },
             acceptListingParams.operator,
             acceptListingParams.index,
             acceptListingParams.rentalDays,
@@ -456,24 +464,30 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            listingParams.signer,
+            tenant.address,
+            listingParams.contractAddress,
+            listingParams.tokenId,
+            ethers.utils.hexlify(acceptListingParams.fingerprint),
+            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+            acceptListingParams.rentalDays,
+            acceptListingParams.operator,
+            signature,
+          ],
           false,
           tenant.address
         )
 
       listingParams = { ...listingParams, nonces: [0, 0, 1] }
 
+      signature = await getListingSignature(lessor, rentals, listingParams)
+
       await expect(
         rentals
           .connect(tenant)
           .acceptListing(
-            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            { ...listingParams, signature },
             acceptListingParams.operator,
             acceptListingParams.index,
             acceptListingParams.rentalDays,
@@ -482,13 +496,17 @@ describe('Rentals', () => {
       )
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            listingParams.signer,
+            tenant.address,
+            listingParams.contractAddress,
+            listingParams.tokenId,
+            ethers.utils.hexlify(acceptListingParams.fingerprint),
+            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+            acceptListingParams.rentalDays,
+            acceptListingParams.operator,
+            signature,
+          ],
           true,
           tenant.address
         )
@@ -517,31 +535,35 @@ describe('Rentals', () => {
       listingParams.maxDays = [...listingParams.maxDays, 30]
       listingParams.minDays = [...listingParams.minDays, 20]
 
-      offerParams.pricePerDay = ether('20')
-      offerParams.rentalDays = 25
+      acceptListingParams.rentalDays = 25
+      acceptListingParams.index = 1
 
-      const index = 1
+      const signature = await getListingSignature(lessor, rentals, listingParams)
 
       const rent = rentals
         .connect(tenant)
         .acceptListing(
-          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          offerParams.operator,
-          index,
-          offerParams.rentalDays,
-          offerParams.fingerprint
+          { ...listingParams, signature },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
         )
 
       await expect(rent)
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            listingParams.signer,
+            tenant.address,
+            listingParams.contractAddress,
+            listingParams.tokenId,
+            ethers.utils.hexlify(acceptListingParams.fingerprint),
+            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+            acceptListingParams.rentalDays,
+            acceptListingParams.operator,
+            signature,
+          ],
           false,
           tenant.address
         )
@@ -1052,8 +1074,9 @@ describe('Rentals', () => {
       ]
 
       const iface = new ethers.utils.Interface(abi)
+      const signature = await getListingSignature(lessor, rentals, listingParams)
       const functionData = iface.encodeFunctionData('acceptListing', [
-        { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+        { ...listingParams, signature },
         acceptListingParams.operator,
         acceptListingParams.index,
         acceptListingParams.rentalDays,
@@ -1066,13 +1089,17 @@ describe('Rentals', () => {
       await expect(rent)
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            listingParams.signer,
+            tenant.address,
+            listingParams.contractAddress,
+            listingParams.tokenId,
+            ethers.utils.hexlify(acceptListingParams.fingerprint),
+            listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+            acceptListingParams.rentalDays,
+            acceptListingParams.operator,
+            signature,
+          ],
           false,
           tenant.address
         )
@@ -1555,48 +1582,66 @@ describe('Rentals', () => {
     })
 
     it('should emit a AssetRented event', async () => {
-      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) }))
+      const signature = await getOfferSignature(tenant, rentals, offerParams)
+
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature }))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            lessor.address,
+            offerParams.signer,
+            offerParams.contractAddress,
+            offerParams.tokenId,
+            ethers.utils.hexlify(offerParams.fingerprint),
+            offerParams.pricePerDay,
+            offerParams.rentalDays,
+            offerParams.operator,
+            signature,
+          ],
           false,
           lessor.address
         )
     })
 
-    it.only('should emit a AssetRented event with isExtension param as true when it is an extension', async () => {
-      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) }))
+    it('should emit a AssetRented event with isExtension param as true when it is an extension', async () => {
+      let signature = await getOfferSignature(tenant, rentals, offerParams)
+
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature }))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            lessor.address,
+            offerParams.signer,
+            offerParams.contractAddress,
+            offerParams.tokenId,
+            ethers.utils.hexlify(offerParams.fingerprint),
+            offerParams.pricePerDay,
+            offerParams.rentalDays,
+            offerParams.operator,
+            signature,
+          ],
           false,
           lessor.address
         )
 
       offerParams = { ...offerParams, nonces: [0, 0, 1] }
 
-      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) }))
+      signature = await getOfferSignature(tenant, rentals, offerParams)
+
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature }))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            lessor.address,
+            offerParams.signer,
+            offerParams.contractAddress,
+            offerParams.tokenId,
+            ethers.utils.hexlify(offerParams.fingerprint),
+            offerParams.pricePerDay,
+            offerParams.rentalDays,
+            offerParams.operator,
+            signature,
+          ],
           true,
           lessor.address
         )
@@ -1944,23 +1989,26 @@ describe('Rentals', () => {
       ]
 
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('acceptOffer', [
-        { ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) },
-      ])
+      const signature = await getOfferSignature(tenant, rentals, offerParams)
+      const functionData = iface.encodeFunctionData('acceptOffer', [{ ...offerParams, signature }])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
-      const rent = rentals.connect(lessor).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
+      const rent = rentals.connect(extra).executeMetaTransaction(lessor.address, functionData, metaTxSignature)
 
       await expect(rent)
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerParams.contractAddress,
-          offerParams.tokenId,
-          listingParams.signer,
-          offerParams.signer,
-          offerParams.operator,
-          offerParams.rentalDays,
-          offerParams.pricePerDay,
+          [
+            lessor.address,
+            offerParams.signer,
+            offerParams.contractAddress,
+            offerParams.tokenId,
+            ethers.utils.hexlify(offerParams.fingerprint),
+            offerParams.pricePerDay,
+            offerParams.rentalDays,
+            offerParams.operator,
+            signature,
+          ],
           false,
           lessor.address
         )
@@ -2317,13 +2365,17 @@ describe('Rentals', () => {
       await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes))
         .to.emit(rentals, 'AssetRented')
         .withArgs(
-          offerEncodeValue[contractAddressIndex],
-          offerEncodeValue[tokenIdIndex],
-          lessor.address,
-          offerEncodeValue[signerIndex],
-          offerEncodeValue[operatorIndex],
-          offerEncodeValue[rentalDaysIndex],
-          offerEncodeValue[pricePerDayIndex],
+          [
+            lessor.address,
+            offerEncodeValue[signerIndex],
+            offerEncodeValue[contractAddressIndex],
+            offerEncodeValue[tokenIdIndex],
+            ethers.utils.hexlify(offerEncodeValue[fingerprintIndex]),
+            offerEncodeValue[pricePerDayIndex],
+            offerEncodeValue[rentalDaysIndex],
+            offerEncodeValue[operatorIndex],
+            offerEncodeValue[signatureIndex],
+          ],
           false,
           land.address
         )
