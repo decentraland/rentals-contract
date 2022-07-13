@@ -1,20 +1,20 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0x7A0fAD6854de8DF1245DA952cD3ae7F6893154C1",
-    "txHash": "0x994f76fd18d53a7aa3456271daed4f9e9907bd5a068ec80796c3d58fc52e70e0"
+    "address": "0x6AD9Fb3F07A6013e6db2327E27ad0A38E858d88d",
+    "txHash": "0x8446a95d914fd4e6aa88f97dbfa8babf07b6f74bfc6eed17eae1914f9fc9834b"
   },
   "proxies": [
     {
-      "address": "0xA63fD08ac61F89B8dbD0EE279922675Aa9130445",
-      "txHash": "0x7cc63c22a52b84bfbfeb1051f93af720f35fb3d9d53ad29007a4385e4dae9d16",
+      "address": "0xBB2A03bf5f525734Cb0536bE4bE61BA788d7Ee01",
+      "txHash": "0x00f3f183a649581d62eed96ff9c2860df5f2f45452900b749c53bb3b256fa8ae",
       "kind": "transparent"
     }
   ],
   "impls": {
-    "b7b149a650f9fdcb005c981d74583bfd27701f1e1bced328f2732ed3e1c6c2c8": {
-      "address": "0x41e07f9d48586dF0Ac59a09a940FfDF4AF306a13",
-      "txHash": "0xc8acccc0cf24c29031f1a1ae1e10835e7d6043f7c86ddc52f802aaf6834b7663",
+    "811131cabc430b8e21a2ec8242b646ca5707cf9c5bfd3a8929a38b15cf8ee2af": {
+      "address": "0xe70dB6319E9cee3F604909BDADE58D1f5c1cF702",
+      "txHash": "0xcb6b9ad7e7bb59c45469fba09a24a3d055ebfeeed28169eb6f5f5e1eb58b4b32",
       "layout": {
         "storage": [
           {
@@ -119,15 +119,15 @@
             "slot": "157",
             "type": "t_contract(IERC20)1741",
             "contract": "Rentals",
-            "src": "contracts/Rentals.sol:38"
+            "src": "contracts/Rentals.sol:37"
           },
           {
             "label": "rentals",
             "offset": 0,
             "slot": "158",
-            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Rental)2009_storage))",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Rental)2010_storage))",
             "contract": "Rentals",
-            "src": "contracts/Rentals.sol:42"
+            "src": "contracts/Rentals.sol:41"
           },
           {
             "label": "feeCollector",
@@ -135,7 +135,7 @@
             "slot": "159",
             "type": "t_address",
             "contract": "Rentals",
-            "src": "contracts/Rentals.sol:45"
+            "src": "contracts/Rentals.sol:44"
           },
           {
             "label": "fee",
@@ -143,7 +143,7 @@
             "slot": "160",
             "type": "t_uint256",
             "contract": "Rentals",
-            "src": "contracts/Rentals.sol:48"
+            "src": "contracts/Rentals.sol:47"
           }
         ],
         "types": {
@@ -175,7 +175,7 @@
             "label": "mapping(address => mapping(uint256 => mapping(address => uint256)))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_mapping(t_uint256,t_struct(Rental)2009_storage))": {
+          "t_mapping(t_address,t_mapping(t_uint256,t_struct(Rental)2010_storage))": {
             "label": "mapping(address => mapping(uint256 => struct Rentals.Rental))",
             "numberOfBytes": "32"
           },
@@ -187,11 +187,11 @@
             "label": "mapping(uint256 => mapping(address => uint256))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(Rental)2009_storage)": {
+          "t_mapping(t_uint256,t_struct(Rental)2010_storage)": {
             "label": "mapping(uint256 => struct Rentals.Rental)",
             "numberOfBytes": "32"
           },
-          "t_struct(Rental)2009_storage": {
+          "t_struct(Rental)2010_storage": {
             "label": "struct Rentals.Rental",
             "members": [
               {

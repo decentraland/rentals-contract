@@ -6,7 +6,7 @@ const configByNetwork = new Map([
     {
       owner: '0xb919da06d5f81777B13Fc5CBd48635E19500Fbf5',
       token: '0xe7fDae84ACaba2A5Ba817B6E6D8A2d415DBFEdbe',
-      feeCollector: '0x24e5F44999c151f08609F8e27b2238c773C4D020',
+      feeCollector: '0xb919da06d5f81777B13Fc5CBd48635E19500Fbf5',
       fee: '10000',
     },
   ],
