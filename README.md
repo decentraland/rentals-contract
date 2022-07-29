@@ -51,15 +51,16 @@ struct Listing {
 - maxDays: max amount of days the LAND can be rented for a given index.
 - minDays: min amount of days the LAND can be rented for a given index.
 - target: If defined, only the target address can use the signature, if not, anyone can do.
+- signature: The signature created by signing all the previous data
 
 There are various ways of signing these conditions. One of them can be achieved by using ethers as seen in the [./test/utlils/rentals.ts](https://github.com/decentraland/rentals-contract/blob/main/test/utils/rentals.ts#L26) utility file.
 
-Once both the signature and the listings conditions are ready, I or whichever off-chain system will be handling this, can store them to make them 
+Once both the signature and the listings conditions are ready, I, or whichever off-chain system will be handling this, can store them to make them 
 available for interested users that want to rent my LAND.
 
-The interested user can interact with the Rentals contract via `acceptListing` with this data to initialize the rent. You can see more about [Accept Listing](#accept-listing) in its corresponding section.
+The interested user can interact with the Rentals contract via `acceptListing` with this data to initialize the rent. You can see more about [Accept Listing](#accepting-a-listing) in its corresponding section.
 
-## Accept Listing
+## Accepting a Listing
 
 In the case that I am interested in renting a LAND I have to do the following:
 
@@ -91,8 +92,48 @@ function acceptListing(
 - operator: The address that will be given operator permitions via the `setUpdateOperator` in the LAND contract. In other words, the user that I want being able to deploy scenes in that LAND, it could be myself if I wanted to but maybe I want someone else to do it.
 - index: Remember that the Listing contains arrays for pricePerDay, maxDays and minDays? This value determines which index of those arrays I want to choose for this rental.
 - rentalDays: The amount of days I want to rent this LAND. It has to be in range between the min and max days of the index I choose or else it fails.
+- fingerprint: In the case of an Estate, this indicates the fingerprint it should have when renting it to me. This prevents the owner to front run me and remove LAND from it before renting it.
 
 If everything is correct, MANA equivalent to the pricePerDay index I've selected, times the rentalDays I provided will be transfered from my address to the lessor (and a fee to the DAO) and the provided operator will start being able to deploy scenes to that LAND.
+
+## Offers
+
+This is the contrary of a [Listing](#listing). In this case, me, as a user interested of renting a certain LAND, would like to sign an Offer for said LAND so the owner can choose to rent it to me.
+
+Similar to the Listing, I would need to sign the Offer conditions. These conditions can be seen in the Offer struct of the Rentals contract:
+
+```
+struct Offer {
+    address signer;
+    address contractAddress;
+    uint256 tokenId;
+    uint256 expiration;
+    uint256[3] nonces;
+    uint256 pricePerDay;
+    uint256 rentalDays;
+    address operator;
+    bytes32 fingerprint;
+    bytes signature;
+}
+```
+
+- signer: The address of the signer, in this case, my address.
+- contractAddress: The address of the LAND contract.
+- tokenId: The token id of the LAND I want to rent.
+- expiration: The timestamp from which the signature will not be valid anymore.
+- nonces: The three of them have to match the current nonces in the Rentals contract to be valid. Find more about it in the [Nonces](#nonces) section.
+- pricePerDay: Defines the price per day I'm willing to pay for renting the LAND
+- rentalDays: The amount of days I want to rent the LAND
+- operator: The address that will be given operator permissions to deploy scenes to that LAND
+- fingerprint: If the asset would be an Estate, the fingerprint of that Estate should match the one I'm providing so the owner cannot remove LAND from it before renting it to me.
+- signature: The signature created by signing all the previous data
+
+There are various ways of signing these conditions. One of them can be achieved by using ethers as seen in the [./test/utlils/rentals.ts](https://github.com/decentraland/rentals-contract/blob/main/test/utils/rentals.ts#L81) utility file.
+
+Once both the signature and the listings conditions are ready, I, or whichever off-chain system will be handling this, can store them to make them 
+available for the interested owner of that LAND to accept it.
+
+If the owner of the the LAND is interested in the offer, they can interact with the Rentals contract via `acceptOffer` or by sending the asset to RentalsContract via the `safeTransferFrom` function in the LAND contract, providing the Offer in the last `bytes` parameter.
 
 ## Nonces
 
@@ -126,6 +167,28 @@ const listing = {
 ```
 
 ## Invalidating Signatures
+
+Users can invalidate signatures in different ways by updating the contractNonce, the signerNonce and the assetNonce.
+
+They can do so by calling the following functions in the Rentals contract.
+
+```
+function bumpContractNonce() external onlyOwner
+function bumpSignerNonce() external
+function bumpAssetNonce(address _contractAddress, uint256 _tokenId) external
+```
+
+`bumpContractNonce` can only be called by the owner of the Rentals contract, and will be used only on an emergency to invalidate all signatures created with the current nonce.
+
+`bumpSignerNonce` can be called by any user, and will invalidate all signatures created by that user with the current nonce.
+
+`bumpAssetNonce` can be called by any user, and will invalidate all signatures created by that user for a given asset with the current nonce.
+
+The asset nonce is always bumped for both the lessor and the tenant once a rent is initialized to prevent any other listings or offers with the current nonce to be usable. This is a safety meassure to ensure that the least amount of usable signatures are available off-chain in the case of a signature storage breach.
+
+In the case of the signer nonce, imagine that I signed a lot of listings or offers with the current nonce but for some reason I don't trust the way they are stored, I could just call the asset nonce bump to invalidate them all at once.
+
+The case with the asset nonce is similar but targeted to a certain asset.
 
 ## Running Tests
 
