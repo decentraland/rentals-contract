@@ -14,6 +14,7 @@ For example, if I wanted to become the tenant of a LAND, I would have to call th
 
 If I wanted to rent my LAND in order to accrue an extra income from it, I could do it with the following steps:
 
+<a id="authorize-rentals-contract"></a>
 1 - Authorize the Rentals contract to operate LAND
 
 You can do so by calling `approve` with the address of the Rentals contract and the token id of the LAND you want to rent.
@@ -102,6 +103,7 @@ This is the contrary of a [Listing](#listing). In this case, me, as a user inter
 
 Similar to the Listing, I would need to sign the Offer conditions. These conditions can be seen in the Offer struct of the Rentals contract:
 
+<a id="offer-struct"></a>
 ```
 struct Offer {
     address signer;
@@ -133,7 +135,44 @@ There are various ways of signing these conditions. One of them can be achieved 
 Once both the signature and the listings conditions are ready, I, or whichever off-chain system will be handling this, can store them to make them 
 available for the interested owner of that LAND to accept it.
 
-If the owner of the the LAND is interested in the offer, they can interact with the Rentals contract via `acceptOffer` or by sending the asset to RentalsContract via the `safeTransferFrom` function in the LAND contract, providing the Offer in the last `bytes` parameter.
+If the owner of the the LAND is interested in the offer, they can interact with the Rentals contract via `acceptOffer` or by sending the asset to RentalsContract via the `safeTransferFrom` function in the LAND contract, providing the Offer in the last `bytes` parameter. More info on this can be found in the [Accepting an Offer](#accepting-an-offer) section.
+
+## Accepting an Offer
+
+Me, as the current owner of a LAND, see that there is an offer by a much generous user that wants to rent my LAND for a year and for a lot of MANA.
+
+There are 2 ways in which, with the Offer condition and the offer signature in my possesion, can initialize the rent.
+
+1 - Calling the `acceptListing` function in the Rentals contract. 
+
+This function, similarly to Listing, requires that I, as the owner, [authorize](#authorize-rentals-contract) the Rentals contract to transfer the LAND.
+
+Once that is out of the way, I can call `acceptListing` function to initialize the rent.
+
+This function only receives one parameter as you can see in the following line:
+
+```
+function acceptOffer(Offer calldata _offer) external
+```
+
+- offer: [Offer](#offer-struct) containing the conditions and the signature of the offer.
+
+2 - Sending the LAND to the Rentals cotract via LAND's `safeTransferFrom` function
+
+Using this method allows me to bypass the authorization requirement, saving some gas fees in the process.
+
+```
+function safeTransferFrom(address from, address to, uint256 assetId, bytes userData) external;
+```
+
+- from: My address
+- to: The Rentals contract address
+- assetId: The token id of my LAND
+- userData: The [Offer](#offer-struct) in bytes
+
+There are many examples on how to create an Offer with ethers in various [onERC721Received](https://github.com/decentraland/rentals-contract/blob/main/test/Rentals.spec.ts#L2299) tests.
+
+If everything is correct after using any of the 2 previous options to accept an offer, MANA equivalent to the pricePerDay times the rentalDays provided in the offer will be transfered from the tenant to my address (minus a fee for the DAO) and the provided operator in the offer will start being able to deploy scenes to that LAND.
 
 ## Nonces
 
