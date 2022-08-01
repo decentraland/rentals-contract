@@ -85,7 +85,7 @@ To do this, I can simply call the `approve` function in the MANA contract with t
 
 2 - Obtain a listing and its corresponding signature
 
-In order to accept a listing, I would need to get the listing conditions as well as a signature created by the onwer of the LAND I want to rent. The way I do this depends on the off-chain system the owner has used to store this information. But once I obtain them, I'm good to call the `acceptListing` function and start the rental.
+In order to accept a listing, I would need to get the listing conditions as well as a signature created by the owner of the LAND I want to rent. This depends on the off-chain system the owner has used to store the information. But once I obtain them, I'm good to call the `acceptListing` function and start the rental.
 
 2 - Call `acceptListing` in the Rentals contract
 
