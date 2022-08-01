@@ -111,7 +111,7 @@ If everything is correct, MANA equivalent to the pricePerDay index I've selected
 
 ## Offers
 
-This is the contrary of a [Listing](#listing). In this case, me, as a user interested of renting a certain LAND, would like to sign an Offer for said LAND so the owner has the possibility of renting it to me.
+This is the opposite of a [Listing](#listing). In this case, me, as a user interested in renting a certain LAND, would like to sign an Offer for said LAND so the owner has the possibility of renting it to me.
 
 Similar to the Listing, I would need to sign the Offer conditions. These conditions can be seen in the Offer struct of the Rentals contract:
 
