@@ -144,7 +144,7 @@ struct Offer {
 
 There are various ways of signing these conditions. One of them can be achieved by using ethers as seen in the [./test/utlils/rentals.ts](https://github.com/decentraland/rentals-contract/blob/main/test/utils/rentals.ts#L81) utility file.
 
-Once both the signature and the listings conditions are ready, I, or whichever off-chain handling this, can store them to make them 
+Once both the signature and the listings conditions are ready, I, or whichever off-chain system handling this, can store them to make them 
 available for the interested owner of that LAND to accept it.
 
 If the owner of the the LAND is interested in the offer, they can interact with the Rentals contract via `acceptOffer` or by sending the asset to the Rentals contract via the `safeTransferFrom` function in the LAND contract, providing the Offer in the last `bytes` parameter. More info on this can be found in the [Accepting an Offer](#accepting-an-offer) section.
