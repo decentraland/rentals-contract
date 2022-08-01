@@ -174,6 +174,45 @@ There are many examples on how to create an Offer with ethers in various [onERC7
 
 If everything is correct after using any of the 2 previous options to accept an offer, MANA equivalent to the pricePerDay times the rentalDays provided in the offer will be transfered from the tenant to my address (minus a fee for the DAO) and the provided operator in the offer will start being able to deploy scenes to that LAND.
 
+## Claiming back the Asset
+
+Using LAND as an example, when a rental starts, that rented LAND is transfered to the Rentals contract.
+
+I can get my LAND back ONLY when the rental has finished by calling the `claim` function. 
+
+```
+function claim(address _contractAddress, uint256 _tokenId) external
+```
+
+- contractAddress: The address of the LAND contract.
+- tokenId: The id of the LAND.
+
+Once the transaction finishes successfuly, the LAND will be transfered back to me.
+
+Due to how the LAND contract works, claiming the asset back will remove the update operator role from the user that had it during the rent.
+
+## Changing the Update Operator of the Asset
+
+When accepting an offer or a listing, the tenant provides an address that will act as the update operator of the LAND. This allows that address, once the rental starts, to be able to deploy scenes to the LAND.
+
+As the tenant (The one that pays for the rental), while the rental is ongoing, I can call the `setOperator` function operator in the Rentals contract to change the address of the operator.
+
+```
+function setOperator(
+    address _contractAddress,
+    uint256 _tokenId,
+    address _operator
+) external
+```
+
+- contractAddress: Address of the LAND contract
+- tokenId: Id of the rented LAND
+- operator: Address of the new address that will have an update operator role for that LAND.
+
+As the tenant, I can only call this funtion when the rental is ongoing.
+
+As the lessor, I can call this function after the rental is over.
+
 ## Nonces
 
 The Rentals contract contains various nonces of different types used to verify if a signature is valid. They can be modified used to [Invalidate Signatures](#invalidating-signatures) in many levels.
