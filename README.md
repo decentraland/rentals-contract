@@ -10,6 +10,20 @@ There are various ways to initialize a rent. What all of them have in common is 
 
 For example, if I wanted to become the tenant of a LAND, I would have to call the `acceptListing` with the listing conditions and a signature created by the owner of said LAND to verify that both users are in agreement of the rental.
 
+## Index
+
+- [Listing](#listing)
+- [Accepting a Listing](#accepting-a-listing)
+- [Offers](#offers)
+- [Accepting an Offer](#accepting-an-offer)
+- [Claiming back the Asset](#claiming-back-the-asset)
+- [Changing the Update Operator of the Asset](#changing-the-update-operator-of-the-asset)
+- [What happens when the rental ends?](#what-happens-when-the-rental-ends)
+- [Extending a rental](#extending-a-rental)
+- [Nonces](#nonces)
+- [Invalidating Signatures](#invalidating-signatures)
+- [Development](#development)
+
 ## Listing
 
 If I wanted to rent my LAND in order to accrue an extra income from it, I could do it with the following steps:
@@ -291,8 +305,12 @@ In the case of the signer nonce, imagine that I signed a lot of listings or offe
 
 The case with the asset nonce is similar but targeted to a certain asset.
 
-## Running Tests
+## Development
 
 Install dependencies with `npm ci`
 
-Run tests with `npx hardhat test`
+Compile contracts with `npm run compile`
+
+Run tests with `npm run test`
+
+Run tests with coverage with `npm run test:coverage`
