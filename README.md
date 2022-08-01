@@ -213,6 +213,29 @@ As the tenant, I can only call this funtion when the rental is ongoing.
 
 As the lessor, I can call this function after the rental is over.
 
+## What happens when the rental ends?
+
+Once of the most important things to keep in mind when a rental ends, is that the update operator defined by the tenant will still be able to deploy scenes to the LAND.
+
+This is because in order to change or remove the update operator from a LAND, the `setUpdateOperator` function of the asset has to be manually called.
+
+As the original owner of the asset, once the rental is over and I really don't want the operator defined by the tenant to keep deploying stuff after the rental period ends, I could do the following:
+
+- Set the update operator manually to one of my liking as instructed [here](#changing-the-update-operator-of-the-asset).
+- Claim the asset back as instructed [here](#claiming-back-the-asset).
+- Accept a new Offer as instructed [here](#accepting-an-offer), changing the operator of the LAND to the new tenant's operator.
+- Having a Listing accepted by a new tenant as instructed [here](#accepting-a-listing), changing the operator of the LAND to the new tenant's operator.
+
+Another important thing to keep in mind is that there is NO need to claim the asset back once the rental is over to rent it again. 
+
+After the rent of a LAND is over, the lessor can accept and offer or have a listing accepted and the LAND will be re-rented. This is useful because it saves the original owner from some extra transactions.
+
+## Extending a rental
+
+BEFORE a rental is over, a new listing or offer for the LAND can be accepted as long as the lessor and tenant in said offer/listing are the same as the ongoing rental.
+
+Doing so will extend the end date of the rental by the amount of rental days defined.
+
 ## Nonces
 
 The Rentals contract contains various nonces of different types used to verify if a signature is valid. They can be modified used to [Invalidate Signatures](#invalidating-signatures) in many levels.
