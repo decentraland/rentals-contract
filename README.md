@@ -250,7 +250,7 @@ Doing so will extend the end date of the rental by the amount of rental days def
 
 ## Nonces
 
-The Rentals contract contains various nonces of different types used to verify if a signature is valid. They can be modified used to [Invalidate Signatures](#invalidating-signatures) in many levels.
+The Rentals contract contains various nonces of different types used to verify if a signature is valid. They can be used to [Invalidate Signatures](#invalidating-signatures) in many levels.
 
 - contractNonce: A nonce that once its changed by the owner of the contract, will make all signatures signed with the previous value invalid.
 - signerNonce: A nonce that once its changed by the sender of the transaction, will make all signatures signed by the sender invalid.
@@ -268,7 +268,7 @@ mapping(address => mapping(uint256 => mapping(address => uint256))) public asset
 
 In pseudo js code, if I wanted to rent a LAND, I would need to obtain the nonces doing something like this:
 
-```
+```ts
 const contractNonce = await rentalsContract.contractNonce();
 const signerNonce = await rentalsContract.signerNonce(myAddress);
 const assetNonce = await rentalsContract.contractNonce(landContractAddress, landTokenId, myAddress);
