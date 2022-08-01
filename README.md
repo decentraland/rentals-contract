@@ -62,7 +62,7 @@ struct Listing {
 - nonces: The three of them have to match the current nonces in the Rentals contract to be valid. Find more about it in the [Nonces](#nonces) section.
 - pricePerDay: Defines the price per day for the min and max days range in the same index.
 - maxDays: max amount of days the LAND can be rented for a given index.
-- minDays: min amount of days the LAND can be rented for a given index.
+- minDays: min amount of days the LAND has to be be rented for a given index.
 - target: If defined, only the target address can use the signature, if not, anyone can.
 - signature: The signature created by signing all the previous data
 
