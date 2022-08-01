@@ -1,14 +1,12 @@
 # Rentals Contract
 
-This contract provides an on-chain renting capabilities for Decentraland's LAND and Estates.
+This contract provides on-chain renting capabilities for Decentraland's LAND and Estates.
 
-By capitalizing on off-chain signatures, users only need to spend gas on critical transactions and avoid operations that can be done safely off-chain like handling listings or bids.
+By capitalizing on off-chain signatures, users only need to spend gas on critical transactions and avoid operations that can be done safely off-chain like handling listings or offers.
 
-This contract is intended for Decentraland's LAND and Estates but can be used with any ERC721 that has a `setUpdateOperator` function to give operator permissions to an address.
+This contract is intended for Decentraland's LAND and Estates but can be used with any ERC721 that has a `setUpdateOperator` function to give operator permissions to an address. For both of these assets, the update operator is the one that can deploy scenes on them.
 
 There are various ways to initialize a rent. What all of them have in common is that a user has to send a transaction to initialize the rent using a signature created off-chain by another user as verification of the rental conditions.
-
-For example, if I wanted to become the tenant of a LAND, I would have to call the `acceptListing` with the listing conditions and a signature created by the owner of said LAND to verify that both users are in agreement of the rental.
 
 ## Index
 
@@ -26,16 +24,16 @@ For example, if I wanted to become the tenant of a LAND, I would have to call th
 
 ## Listing
 
-If I wanted to rent my LAND in order to accrue an extra income from it, I could do it with the following steps:
+If I wanted to rent my LAND in order to accrue an extra income from it, I could do so by:
 
 <a id="authorize-rentals-contract"></a>
-1 - Authorize the Rentals contract to operate LAND
+1 - Authorizing the Rentals contract to operate LAND
 
-You can do so by calling `approve` with the address of the Rentals contract and the token id of the LAND you want to rent.
+You can do so by calling `approve` on the LAND contract with the address of the Rentals contract and the token id of the LAND you want to rent.
 
-You can also do it with `setApprovalForAll` with the address of the Rentals contract.
+You can also do it with `setApprovalForAll` on the LAND contract with the address of the Rentals contract.
 
-The difference between one and the other is that you will need to call `approve` for each individual LAND you want to rent, while with `setApprovalForAll` you only have to do it once and never again.
+The difference between one and the other is that you will need to call `approve` for each individual LAND you want to rent, while with `setApprovalForAll` you only have to do it once for all your assets in the contract.
 
 2 - Sign the rental conditions
 
@@ -70,14 +68,14 @@ struct Listing {
 
 There are various ways of signing these conditions. One of them can be achieved by using ethers as seen in the [./test/utlils/rentals.ts](https://github.com/decentraland/rentals-contract/blob/main/test/utils/rentals.ts#L26) utility file.
 
-Once both the signature and the listings conditions are ready, I, or whichever off-chain system will be handling this, can store them to make them 
+Once both the signature and the listings conditions are ready, I, or whichever off-chain system handling this, can store them to make them 
 available for interested users that want to rent my LAND.
 
 The interested user can interact with the Rentals contract via `acceptListing` with this data to initialize the rent. You can see more about [Accept Listing](#accepting-a-listing) in its corresponding section.
 
 ## Accepting a Listing
 
-In the case that I am interested in renting a LAND I have to do the following:
+In the case that I am interested in renting a LAND as a tenant I can do the following:
 
 1 - Authorize the Rentals contract to transfer my MANA
 
@@ -113,7 +111,7 @@ If everything is correct, MANA equivalent to the pricePerDay index I've selected
 
 ## Offers
 
-This is the contrary of a [Listing](#listing). In this case, me, as a user interested of renting a certain LAND, would like to sign an Offer for said LAND so the owner can choose to rent it to me.
+This is the contrary of a [Listing](#listing). In this case, me, as a user interested of renting a certain LAND, would like to sign an Offer for said LAND so the owner has the possibility of renting it to me.
 
 Similar to the Listing, I would need to sign the Offer conditions. These conditions can be seen in the Offer struct of the Rentals contract:
 
@@ -146,10 +144,10 @@ struct Offer {
 
 There are various ways of signing these conditions. One of them can be achieved by using ethers as seen in the [./test/utlils/rentals.ts](https://github.com/decentraland/rentals-contract/blob/main/test/utils/rentals.ts#L81) utility file.
 
-Once both the signature and the listings conditions are ready, I, or whichever off-chain system will be handling this, can store them to make them 
+Once both the signature and the listings conditions are ready, I, or whichever off-chain handling this, can store them to make them 
 available for the interested owner of that LAND to accept it.
 
-If the owner of the the LAND is interested in the offer, they can interact with the Rentals contract via `acceptOffer` or by sending the asset to RentalsContract via the `safeTransferFrom` function in the LAND contract, providing the Offer in the last `bytes` parameter. More info on this can be found in the [Accepting an Offer](#accepting-an-offer) section.
+If the owner of the the LAND is interested in the offer, they can interact with the Rentals contract via `acceptOffer` or by sending the asset to the Rentals contract via the `safeTransferFrom` function in the LAND contract, providing the Offer in the last `bytes` parameter. More info on this can be found in the [Accepting an Offer](#accepting-an-offer) section.
 
 ## Accepting an Offer
 
@@ -209,7 +207,7 @@ Due to how the LAND contract works, claiming the asset back will remove the upda
 
 When accepting an offer or a listing, the tenant provides an address that will act as the update operator of the LAND. This allows that address, once the rental starts, to be able to deploy scenes to the LAND.
 
-As the tenant (The one that pays for the rental), while the rental is ongoing, I can call the `setOperator` function operator in the Rentals contract to change the address of the operator.
+As the tenant (The one that pays for the rental), while the rental is ongoing, I can call the `setOperator` function in the Rentals contract to change the address of the asset's update operator.
 
 ```
 function setOperator(
@@ -246,7 +244,7 @@ After the rent of a LAND is over, the lessor can accept and offer or have a list
 
 ## Extending a rental
 
-BEFORE a rental is over, a new listing or offer for the LAND can be accepted as long as the lessor and tenant in said offer/listing are the same as the ongoing rental.
+BEFORE a rental is over, a new listing or offer for the LAND can be accepted as long as the lessor and tenant in said offer/listing are the same.
 
 Doing so will extend the end date of the rental by the amount of rental days defined.
 
