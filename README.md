@@ -151,7 +151,7 @@ If the owner of the the LAND is interested in the offer, they can interact with 
 
 ## Accepting an Offer
 
-Me, as the current owner of a LAND, see that there is an offer by a much generous user that wants to rent my LAND for a year and for a lot of MANA.
+When I, as the current owner of a LAND, see that there is an offer by a much generous user that wants to rent my LAND for a year and for a lot of MANA.
 
 There are 2 ways in which, with the Offer condition and the offer signature in my possesion, can initialize the rent.
 
