@@ -4,7 +4,7 @@ This contract provides on-chain renting capabilities for Decentraland's LAND and
 
 By capitalizing on off-chain signatures, users only need to spend gas on critical transactions and avoid operations that can be done safely off-chain like handling listings or offers.
 
-This contract is intended for Decentraland's LAND and Estates but can be used with any ERC721 that has a `setUpdateOperator` function to give operator permissions to an address. For both of these assets, the update operator is the one that can deploy scenes on them.
+This contract is intended for Decentraland's LAND and Estates but can be used with any ERC721 that has a `setUpdateOperator` function to give operator permissions to an address. For both of these assets, the update operator can deploy scenes on them.
 
 There are various ways to initialize a rent. What all of them have in common is that a user has to send a transaction to initialize the rent using a signature created off-chain by another user as verification of the rental conditions.
 
