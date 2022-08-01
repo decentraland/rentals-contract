@@ -63,7 +63,7 @@ struct Listing {
 - pricePerDay: Defines the price per day for the min and max days range in the same index.
 - maxDays: max amount of days the LAND can be rented for a given index.
 - minDays: min amount of days the LAND can be rented for a given index.
-- target: If defined, only the target address can use the signature, if not, anyone can do.
+- target: If defined, only the target address can use the signature, if not, anyone can.
 - signature: The signature created by signing all the previous data
 
 There are various ways of signing these conditions. One of them can be achieved by using ethers as seen in the [./test/utlils/rentals.ts](https://github.com/decentraland/rentals-contract/blob/main/test/utils/rentals.ts#L26) utility file.
