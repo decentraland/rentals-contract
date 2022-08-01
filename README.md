@@ -256,7 +256,7 @@ The Rentals contract contains various nonces of different types used to verify i
 - signerNonce: A nonce that once its changed by the sender of the transaction, will make all signatures signed by the sender invalid.
 - assetNonce: A nonce that once its changed by the sender of the transaction, will make all signatures signed by the sender for a given asset invalid.
 
-The `uint256[3] nonces;` field in the [Listing](#listing-struct) struct, in order to be valid. must be conformed by the current [contactNonce, signerNonce, assetNonce].
+The `uint256[3] nonces;` field in the [Listing](#listing-struct) struct, in order to be valid, must be conformed by the current [contactNonce, signerNonce, assetNonce].
 
 For example, if I wanted to sign a listing, I would need to ask the Rentals contract for these values via the public variables exposed:
 
