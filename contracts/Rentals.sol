@@ -214,12 +214,14 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         _verifySignerNonce(lessor, _listing.nonces[1]);
         _verifyAssetNonce(_listing.contractAddress, _listing.tokenId, lessor, _listing.nonces[2]);
 
+        uint256 pricePerDayLength = _listing.pricePerDay.length;
+
         // Verify that pricePerDay, maxDays and minDays have the same length
-        require(_listing.pricePerDay.length == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH");
-        require(_listing.pricePerDay.length == _listing.minDays.length, "Rentals#acceptListing: MIN_DAYS_LENGTH_MISSMATCH");
+        require(pricePerDayLength == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH");
+        require(pricePerDayLength == _listing.minDays.length, "Rentals#acceptListing: MIN_DAYS_LENGTH_MISSMATCH");
 
         // Verify that the provided index is not out of bounds of the listing conditions.
-        require(_index < _listing.pricePerDay.length, "Rentals#acceptListing: INDEX_OUT_OF_BOUNDS");
+        require(_index < pricePerDayLength, "Rentals#acceptListing: INDEX_OUT_OF_BOUNDS");
 
         // Verify that the listing is not already expired.
         require(_listing.expiration > block.timestamp, "Rentals#acceptListing: EXPIRED_SIGNATURE");
