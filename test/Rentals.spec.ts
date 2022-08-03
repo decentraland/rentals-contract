@@ -2244,6 +2244,17 @@ describe('Rentals', () => {
 
       await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
+
+    it('should revert when the contract is reentered through the claim function', async () => {
+      const ReentrantERC721ThroughClaimFactory = await ethers.getContractFactory('ReentrantERC721ThroughClaim')
+      const reentrantERC721 = await ReentrantERC721ThroughClaimFactory.connect(deployer).deploy(rentals.address, offerParams.tokenId)
+
+      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
+    })
   })
 
   describe('setOperator', () => {
