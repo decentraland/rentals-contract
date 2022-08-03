@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { EstateRegistry, LANDRegistry, MANAToken, ReentrantERC721, Rentals } from '../typechain-types'
+import { EstateRegistry, ExtendedRentals, LANDRegistry, MANAToken, ReentrantERC721, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
   ether,
@@ -200,6 +200,21 @@ describe('Rentals', () => {
 
     it('should set the fee', async () => {
       expect(await rentals.fee()).to.be.equal(fee)
+    })
+
+    it('should set eip712 name and version hashes', async () => {
+      const ExtendedRentals = await ethers.getContractFactory('ExtendedRentals')
+      const rentals: ExtendedRentals = await ExtendedRentals.connect(deployer).deploy()
+
+      const zeroBytes32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
+
+      expect(await rentals.getEIP712NameHash()).to.be.equal(zeroBytes32)
+      expect(await rentals.getEIP712VersionHash()).to.be.equal(zeroBytes32)
+
+      await rentals.initialize(owner.address, mana.address, collector.address, fee)
+
+      expect(await rentals.getEIP712NameHash()).to.be.equal('0x526328c90effb1bbd8a6214c34e2aee6f9bb0729918f1497e731e4d0acc00329')
+      expect(await rentals.getEIP712VersionHash()).to.be.equal('0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6')
     })
 
     it('should revert when initialized more than once', async () => {

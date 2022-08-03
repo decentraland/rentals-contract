@@ -129,7 +129,8 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
         uint256 _fee
     ) external initializer {
         __ReentrancyGuard_init();
-        __EIP712_init("Rentals", "1");
+        __NativeMetaTransaction_init("Rentals", "1");
+        __NonceVerifiable_init();
         _setToken(_token);
         _transferOwnership(_owner);
         _setFeeCollector(_feeCollector);
