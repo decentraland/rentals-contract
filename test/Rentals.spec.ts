@@ -2246,10 +2246,15 @@ describe('Rentals', () => {
     })
 
     it('should revert when the contract is reentered through the claim function', async () => {
-      const ReentrantERC721ThroughClaimFactory = await ethers.getContractFactory('ReentrantERC721ThroughClaim')
-      const reentrantERC721 = await ReentrantERC721ThroughClaimFactory.connect(deployer).deploy(rentals.address, offerParams.tokenId)
+      const ReentrantERC721Factory = await ethers.getContractFactory('ReentrantERC721')
+      const reentrantERC721 = await ReentrantERC721Factory.connect(deployer).deploy(rentals.address)
 
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+
+      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionData = iface.encodeFunctionData('claim', [reentrantERC721.address, offerParams.tokenId])
+      await reentrantERC721.setData(functionData)
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
