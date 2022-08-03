@@ -178,7 +178,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
         uint256 _index,
         uint256 _rentalDays,
         bytes32 _fingerprint
-    ) external {
+    ) external nonReentrant {
         _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
 
         // Verify that the signer provided in the listing is the one that signed it.
@@ -372,7 +372,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
         }
     }
 
-    function _acceptOffer(Offer memory _offer, address _lessor) private {
+    function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant {
         // Verify that the signer provided in the offer is the one that signed it.
         bytes32 offerHash = _hashTypedDataV4(
             keccak256(
@@ -423,7 +423,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
         );
     }
 
-    function _rent(RentParams memory _rentParams) private nonReentrant {
+    function _rent(RentParams memory _rentParams) private {
         IERC721Rentable asset = IERC721Rentable(_rentParams.contractAddress);
 
         // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
