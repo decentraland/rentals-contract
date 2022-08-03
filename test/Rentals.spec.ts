@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { EstateRegistry, LANDRegistry, MANAToken, Rentals } from '../typechain-types'
+import { EstateRegistry, LANDRegistry, MANAToken, ReentrantERC721, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
   ether,
@@ -14,6 +14,8 @@ import {
   evmMine,
   evmIncreaseTime,
   getLatestBlockTimestamp,
+  acceptListingABI,
+  acceptOfferABI,
 } from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
@@ -38,6 +40,18 @@ describe('Rentals', () => {
   let offerParams: Omit<Rentals.OfferStruct, 'signature'>
   let acceptListingParams: Pick<typeof offerParams, 'operator' | 'rentalDays' | 'fingerprint'> & { index: BigNumberish }
   let snapshotId: any
+  let offerEncodeType: string
+  let offerEncodeValue: any
+  const signerIndex = 0
+  const contractAddressIndex = 1
+  const tokenIdIndex = 2
+  const expirationIndex = 3
+  const noncesIndex = 4
+  const pricePerDayIndex = 5
+  const rentalDaysIndex = 6
+  const operatorIndex = 7
+  const fingerprintIndex = 8
+  const signatureIndex = 9
 
   beforeEach(async () => {
     snapshotId = await network.provider.send('evm_snapshot')
@@ -133,6 +147,34 @@ describe('Rentals', () => {
       rentalDays: offerParams.rentalDays,
       fingerprint: offerParams.fingerprint,
     }
+
+    offerEncodeType = 'tuple(address,address,uint256,uint256,uint256[3],uint256,uint256,address,bytes32,bytes)'
+
+    offerEncodeValue = [
+      offerParams.signer,
+      offerParams.contractAddress,
+      offerParams.tokenId,
+      offerParams.expiration,
+      offerParams.nonces,
+      offerParams.pricePerDay,
+      offerParams.rentalDays,
+      offerParams.operator,
+      offerParams.fingerprint,
+      await getOfferSignature(tenant, rentals, offerParams),
+    ]
+
+    const [
+      signerIndex,
+      contractAddressIndex,
+      tokenIdIndex,
+      expirationIndex,
+      noncesIndex,
+      pricePerDayIndex,
+      rentalDaysIndex,
+      operatorIndex,
+      fingerprintIndex,
+      signatureIndex,
+    ] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   })
 
   afterEach(async () => {
@@ -973,95 +1015,7 @@ describe('Rentals', () => {
     })
 
     it('should accept a meta tx', async () => {
-      const abi = [
-        {
-          inputs: [
-            {
-              components: [
-                {
-                  internalType: 'address',
-                  name: 'signer',
-                  type: 'address',
-                },
-                {
-                  internalType: 'address',
-                  name: 'contractAddress',
-                  type: 'address',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'tokenId',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'expiration',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256[3]',
-                  name: 'nonces',
-                  type: 'uint256[3]',
-                },
-                {
-                  internalType: 'uint256[]',
-                  name: 'pricePerDay',
-                  type: 'uint256[]',
-                },
-                {
-                  internalType: 'uint256[]',
-                  name: 'maxDays',
-                  type: 'uint256[]',
-                },
-                {
-                  internalType: 'uint256[]',
-                  name: 'minDays',
-                  type: 'uint256[]',
-                },
-                {
-                  internalType: 'address',
-                  name: 'target',
-                  type: 'address',
-                },
-                {
-                  internalType: 'bytes',
-                  name: 'signature',
-                  type: 'bytes',
-                },
-              ],
-              internalType: 'struct Rentals.Listing',
-              name: '_listing',
-              type: 'tuple',
-            },
-            {
-              internalType: 'address',
-              name: '_operator',
-              type: 'address',
-            },
-            {
-              internalType: 'uint256',
-              name: '_index',
-              type: 'uint256',
-            },
-            {
-              internalType: 'uint256',
-              name: '_rentalDays',
-              type: 'uint256',
-            },
-            {
-              internalType: 'bytes32',
-              name: '_fingerprint',
-              type: 'bytes32',
-            },
-          ],
-          name: 'acceptListing',
-          outputs: [],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-      ]
-
-      const iface = new ethers.utils.Interface(abi)
+      const iface = new ethers.utils.Interface(acceptListingABI)
       const signature = await getListingSignature(lessor, rentals, listingParams)
       const functionData = iface.encodeFunctionData('acceptListing', [
         { ...listingParams, signature },
@@ -1896,75 +1850,7 @@ describe('Rentals', () => {
     })
 
     it('should accept a meta tx', async () => {
-      const abi = [
-        {
-          inputs: [
-            {
-              components: [
-                {
-                  internalType: 'address',
-                  name: 'signer',
-                  type: 'address',
-                },
-                {
-                  internalType: 'address',
-                  name: 'contractAddress',
-                  type: 'address',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'tokenId',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'expiration',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256[3]',
-                  name: 'nonces',
-                  type: 'uint256[3]',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'pricePerDay',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'rentalDays',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'address',
-                  name: 'operator',
-                  type: 'address',
-                },
-                {
-                  internalType: 'bytes32',
-                  name: 'fingerprint',
-                  type: 'bytes32',
-                },
-                {
-                  internalType: 'bytes',
-                  name: 'signature',
-                  type: 'bytes',
-                },
-              ],
-              internalType: 'struct Rentals.Offer',
-              name: '_offer',
-              type: 'tuple',
-            },
-          ],
-          name: 'acceptOffer',
-          outputs: [],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-      ]
-
-      const iface = new ethers.utils.Interface(abi)
+      const iface = new ethers.utils.Interface(acceptOfferABI)
       const signature = await getOfferSignature(tenant, rentals, offerParams)
       const functionData = iface.encodeFunctionData('acceptOffer', [{ ...offerParams, signature }])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
@@ -2244,22 +2130,6 @@ describe('Rentals', () => {
 
       await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
-
-    it('should revert when the contract is reentered through the claim function', async () => {
-      const ReentrantERC721Factory = await ethers.getContractFactory('ReentrantERC721')
-      const reentrantERC721 = await ReentrantERC721Factory.connect(deployer).deploy(rentals.address)
-
-      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
-
-      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
-      const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('claim', [reentrantERC721.address, offerParams.tokenId])
-      await reentrantERC721.setData(functionData)
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
-    })
   })
 
   describe('setOperator', () => {
@@ -2313,38 +2183,7 @@ describe('Rentals', () => {
   })
 
   describe('onERC721Received', () => {
-    let offerEncodeType: string
-    let offerEncodeValue: any
-
-    const [
-      signerIndex,
-      contractAddressIndex,
-      tokenIdIndex,
-      expirationIndex,
-      noncesIndex,
-      pricePerDayIndex,
-      rentalDaysIndex,
-      operatorIndex,
-      fingerprintIndex,
-      signatureIndex,
-    ] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
     beforeEach(async () => {
-      offerEncodeType = 'tuple(address,address,uint256,uint256,uint256[3],uint256,uint256,address,bytes32,bytes)'
-
-      offerEncodeValue = [
-        offerParams.signer,
-        offerParams.contractAddress,
-        offerParams.tokenId,
-        offerParams.expiration,
-        offerParams.nonces,
-        offerParams.pricePerDay,
-        offerParams.rentalDays,
-        offerParams.operator,
-        offerParams.fingerprint,
-        await getOfferSignature(tenant, rentals, offerParams),
-      ]
-
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
@@ -2937,6 +2776,96 @@ describe('Rentals', () => {
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
+  })
+
+  describe('nonReentrant', () => {
+    let reentrantERC721: ReentrantERC721
+
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
+      const ReentrantERC721Factory = await ethers.getContractFactory('ReentrantERC721')
+      reentrantERC721 = await ReentrantERC721Factory.connect(deployer).deploy(rentals.address)
+    })
+
+    it('should revert when the contract is reentered through the claim function', async () => {
+      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+
+      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionData = iface.encodeFunctionData('claim', [reentrantERC721.address, offerParams.tokenId])
+      await reentrantERC721.setData(functionData)
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
+    })
+
+    it('should revert when the contract is reentered through the setOperator function', async () => {
+      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+
+      const abi = ['function setOperator(address _contractAddress,uint256 _tokenId,address _operator)']
+      const iface = new ethers.utils.Interface(abi)
+      const functionData = iface.encodeFunctionData('setOperator', [reentrantERC721.address, offerParams.tokenId, extra.address])
+      await reentrantERC721.setData(functionData)
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
+    })
+
+    it('should revert when the contract is reentered through the acceptListing function', async () => {
+      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+
+      const iface = new ethers.utils.Interface(acceptListingABI)
+      const signature = await getListingSignature(tenant, rentals, listingParams)
+      const functionData = iface.encodeFunctionData('acceptListing', [
+        { ...listingParams, signature },
+        acceptListingParams.operator,
+        acceptListingParams.index,
+        acceptListingParams.rentalDays,
+        acceptListingParams.fingerprint,
+      ])
+
+      await reentrantERC721.setData(functionData)
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
+    })
+
+    it('should revert when the contract is reentered through the acceptOffer function', async () => {
+      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+
+      const iface = new ethers.utils.Interface(acceptOfferABI)
+      const signature = await getOfferSignature(tenant, rentals, offerParams)
+      const functionData = iface.encodeFunctionData('acceptOffer', [{ ...offerParams, signature }])
+
+      await reentrantERC721.setData(functionData)
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
+    })
+
+    it('should revert when the contract is reentered through the onERC721Received function', async () => {
+      offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
+      offerEncodeValue[contractAddressIndex] = reentrantERC721.address
+
+      const abi = ['function onERC721Received(address,address,uint256,bytes)']
+      const iface = new ethers.utils.Interface(abi)
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+      const functionData = iface.encodeFunctionData('onERC721Received', [
+        reentrantERC721.address,
+        reentrantERC721.address,
+        offerParams.tokenId,
+        bytes,
+      ])
+      await reentrantERC721.setData(functionData)
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call')
     })
   })
 })
