@@ -162,3 +162,159 @@ export const getMetaTxSignature = async (signer: SignerWithAddress, contract: Re
     params
   )
 }
+
+export const acceptListingABI = [
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: 'address',
+            name: 'signer',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'contractAddress',
+            type: 'address',
+          },
+          {
+            internalType: 'uint256',
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'expiration',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256[3]',
+            name: 'nonces',
+            type: 'uint256[3]',
+          },
+          {
+            internalType: 'uint256[]',
+            name: 'pricePerDay',
+            type: 'uint256[]',
+          },
+          {
+            internalType: 'uint256[]',
+            name: 'maxDays',
+            type: 'uint256[]',
+          },
+          {
+            internalType: 'uint256[]',
+            name: 'minDays',
+            type: 'uint256[]',
+          },
+          {
+            internalType: 'address',
+            name: 'target',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes',
+            name: 'signature',
+            type: 'bytes',
+          },
+        ],
+        internalType: 'struct Rentals.Listing',
+        name: '_listing',
+        type: 'tuple',
+      },
+      {
+        internalType: 'address',
+        name: '_operator',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: '_index',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '_rentalDays',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: '_fingerprint',
+        type: 'bytes32',
+      },
+    ],
+    name: 'acceptListing',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]
+
+export const acceptOfferABI = [
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: 'address',
+            name: 'signer',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'contractAddress',
+            type: 'address',
+          },
+          {
+            internalType: 'uint256',
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'expiration',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256[3]',
+            name: 'nonces',
+            type: 'uint256[3]',
+          },
+          {
+            internalType: 'uint256',
+            name: 'pricePerDay',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'rentalDays',
+            type: 'uint256',
+          },
+          {
+            internalType: 'address',
+            name: 'operator',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes32',
+            name: 'fingerprint',
+            type: 'bytes32',
+          },
+          {
+            internalType: 'bytes',
+            name: 'signature',
+            type: 'bytes',
+          },
+        ],
+        internalType: 'struct Rentals.Offer',
+        name: '_offer',
+        type: 'tuple',
+      },
+    ],
+    name: 'acceptOffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]

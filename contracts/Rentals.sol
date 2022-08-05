@@ -5,13 +5,14 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "@dcl/common-contracts/meta-transactions/NativeMetaTransaction.sol";
 import "@dcl/common-contracts/signatures/NonceVerifiable.sol";
 
 import "./interfaces/IERC721Rentable.sol";
 
-contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
+contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, ReentrancyGuardUpgradeable {
     /// @dev EIP712 type hashes for recovering the signer from a signature.
     bytes32 private constant LISTING_TYPE_HASH =
         keccak256(
@@ -127,6 +128,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address _feeCollector,
         uint256 _fee
     ) external initializer {
+        __ReentrancyGuard_init();
         __NativeMetaTransaction_init("Rentals", "1");
         __NonceVerifiable_init();
         _setToken(_token);
@@ -177,7 +179,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         uint256 _index,
         uint256 _rentalDays,
         bytes32 _fingerprint
-    ) external {
+    ) external nonReentrant {
         _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
 
         // Verify that the signer provided in the listing is the one that signed it.
@@ -260,7 +262,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
     /// @notice The original owner of the asset can claim it back if said asset is not being rented.
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
-    function claim(address _contractAddress, uint256 _tokenId) external {
+    function claim(address _contractAddress, uint256 _tokenId) external nonReentrant {
         address sender = _msgSender();
 
         // Verify that the rent has finished.
@@ -293,7 +295,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         address _contractAddress,
         uint256 _tokenId,
         address _operator
-    ) external {
+    ) external nonReentrant {
         IERC721Rentable asset = IERC721Rentable(_contractAddress);
 
         address sender = _msgSender();
@@ -371,7 +373,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver {
         }
     }
 
-    function _acceptOffer(Offer memory _offer, address _lessor) private {
+    function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant {
         // Verify that the signer provided in the offer is the one that signed it.
         bytes32 offerHash = _hashTypedDataV4(
             keccak256(
