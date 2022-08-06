@@ -327,6 +327,28 @@ contract Rentals is
         emit UpdateOperatorUpdated(_contractAddress, _tokenId, _operator, sender);
     }
 
+    /// @notice Set the operator of various individual LANDs inside an Estate
+    /// @dev Differently from the update operator role of the estate, when the asset is transfered to the rentals contract,
+    /// LAND update operators set previously through the Estate contract will remain. 
+    /// Using this function will allow a tenant to override them. 
+    function setManyLandUpdateOperator(
+        address _contractAddress,
+        uint256 _tokenId,
+        uint256[] memory _landTokenIds,
+        address _operator
+    ) external nonReentrant {
+        Rental memory rental = rentals[_contractAddress][_tokenId];
+        bool rented = isRented(_contractAddress, _tokenId);
+        address sender = _msgSender();
+
+        require(
+            (rented && sender == rental.tenant) || (!rented && sender == rental.lessor),
+            "Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR"
+        );
+
+        IERC721Rentable(_contractAddress).setManyLandUpdateOperator(_tokenId, _landTokenIds, _operator);
+    }
+
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
     /// Provides an alternative to acceptOffer by letting the asset holder send the asset to the contract
     /// and accepting the offer at the same time.
