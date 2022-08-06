@@ -2249,6 +2249,223 @@ describe('Rentals', () => {
     })
   })
 
+  describe('setManyLandUpdateOperator', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
+    })
+
+    it('should allow the tenant to update land update operators while the estate is rented :: acceptOffer', async () => {
+      const landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      await estate.connect(lessor).setManyLandUpdateOperator(estateId, landIds, extra.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(tenant).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+    })
+
+    it('should allow the tenant to update land update operators while the estate is rented :: acceptListing', async () => {
+      const landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      await estate.connect(lessor).setManyLandUpdateOperator(estateId, landIds, extra.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      listingParams = {
+        ...listingParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+      }
+
+      acceptListingParams = { ...acceptListingParams, fingerprint: await estate.connect(tenant).getFingerprint(estateId) }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+    })
+
+    it('should allow the tenant to update land update operators while the estate is rented :: onERC721Received', async () => {
+      const landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      await estate.connect(lessor).setManyLandUpdateOperator(estateId, landIds, extra.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[tokenIdIndex] = estateId
+      offerEncodeValue[fingerprintIndex] = await estate.connect(tenant).getFingerprint(estateId)
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+        fingerprint: offerEncodeValue[fingerprintIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+    })
+
+    it('should allow the lessor to update land update operators while the estate is NOT rented :: acceptOffer', async () => {
+      const landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      await estate.connect(lessor).setManyLandUpdateOperator(estateId, landIds, extra.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(tenant).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+    })
+
+    it('should allow the lessor to update land update operators while the estate is NOT rented :: acceptListing', async () => {
+      const landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      await estate.connect(lessor).setManyLandUpdateOperator(estateId, landIds, extra.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      listingParams = {
+        ...listingParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+      }
+
+      acceptListingParams = { ...acceptListingParams, fingerprint: await estate.connect(tenant).getFingerprint(estateId) }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.index,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+    })
+
+    it('should allow the lessor to update land update operators while the estate is NOT rented :: onERC721Received', async () => {
+      const landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      await estate.connect(lessor).setManyLandUpdateOperator(estateId, landIds, extra.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[tokenIdIndex] = estateId
+      offerEncodeValue[fingerprintIndex] = await estate.connect(tenant).getFingerprint(estateId)
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+        fingerprint: offerEncodeValue[fingerprintIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+    })
+  })
+
   describe('onERC721Received', () => {
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
