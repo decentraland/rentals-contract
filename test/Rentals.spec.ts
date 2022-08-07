@@ -2249,7 +2249,7 @@ describe('Rentals', () => {
     })
   })
 
-  describe.only('setManyLandUpdateOperator', () => {
+  describe('setManyLandUpdateOperator', () => {
     let landIds: BigNumber[]
 
     beforeEach(async () => {
