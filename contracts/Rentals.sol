@@ -229,12 +229,15 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
         // Verify that the listing is not already expired.
         require(_listing.expiration > block.timestamp, "Rentals#acceptListing: EXPIRED_SIGNATURE");
 
+        uint256 maxDays = _listing.maxDays[_index];
+        uint256 minDays = _listing.minDays[_index];
+
         // Verify that minDays and maxDays have valid values.
-        require(_listing.minDays[_index] <= _listing.maxDays[_index], "Rentals#acceptListing: MAX_DAYS_LOWER_THAN_MIN_DAYS");
-        require(_listing.minDays[_index] > 0, "Rentals#acceptListing: MIN_DAYS_IS_ZERO");
+        require(minDays <= maxDays, "Rentals#acceptListing: MAX_DAYS_LOWER_THAN_MIN_DAYS");
+        require(minDays > 0, "Rentals#acceptListing: MIN_DAYS_IS_ZERO");
 
         // Verify that the provided rental days is between min and max days range.
-        require(_rentalDays >= _listing.minDays[_index] && _rentalDays <= _listing.maxDays[_index], "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
+        require(_rentalDays >= minDays && _rentalDays <= maxDays, "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
 
         _rent(
             RentParams(
