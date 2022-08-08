@@ -329,8 +329,8 @@ contract Rentals is
 
     /// @notice Set the operator of various individual LANDs inside an Estate
     /// @dev Differently from the update operator role of the estate, when the asset is transfered to the rentals contract,
-    /// LAND update operators set previously through the Estate contract will remain. 
-    /// Using this function will allow a tenant to override them. 
+    /// LAND update operators can be set to assign granular permissions. LAND update operators will remain if they are inside an Estate when it is transferred.
+    /// They are only cleared once the LAND is transferred.
     function setManyLandUpdateOperator(
         address _contractAddress,
         uint256 _tokenId,
