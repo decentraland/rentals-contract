@@ -162,19 +162,6 @@ describe('Rentals', () => {
       offerParams.fingerprint,
       await getOfferSignature(tenant, rentals, offerParams),
     ]
-
-    const [
-      signerIndex,
-      contractAddressIndex,
-      tokenIdIndex,
-      expirationIndex,
-      noncesIndex,
-      pricePerDayIndex,
-      rentalDaysIndex,
-      operatorIndex,
-      fingerprintIndex,
-      signatureIndex,
-    ] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   })
 
   afterEach(async () => {
