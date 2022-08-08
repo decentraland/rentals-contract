@@ -1515,6 +1515,63 @@ describe('Rentals', () => {
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
+
+    it('should revert when the listing was signed with arrays in a different order than the ones provided', async () => {
+      listingParams.pricePerDay = [ether('10'), ether('20'), ether('30')]
+      listingParams.maxDays = [10, 20, 30]
+      listingParams.minDays = [5, 15, 25]
+      listingParams.nonces = [1, 2, 3]
+
+      const signature = await getListingSignature(lessor, rentals, listingParams)
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, pricePerDay: listingParams.pricePerDay.reverse(), signature },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, minDays: listingParams.minDays.reverse(), signature },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, maxDays: listingParams.maxDays.reverse(), signature },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, nonces: listingParams.nonces.reverse() as [BigNumberish, BigNumberish, BigNumberish], signature },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+    })
   })
 
   describe('acceptOffer', () => {
