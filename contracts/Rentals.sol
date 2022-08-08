@@ -100,7 +100,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
     event FeeCollectorUpdated(address _from, address _to, address _sender);
     event FeeUpdated(uint256 _from, uint256 _to, address _sender);
-    event OperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
+    event UpdateOperatorUpdated(address _contractAddress, uint256 _tokenId, address _to, address _sender);
     event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
     event AssetRented(
         address _contractAddress,
@@ -294,7 +294,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
     /// @param _operator The address that will have operator privileges over the asset.
-    function setOperator(
+    function setUpdateOperator(
         address _contractAddress,
         uint256 _tokenId,
         address _operator
@@ -308,14 +308,14 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
         bool rented = isRented(_contractAddress, _tokenId);
         // If rented, only the tenant can change the operator.
         // If not, only the original owner can.
-        bool canSetOperator = (rental.tenant == sender && rented) || (rental.lessor == sender && !rented);
+        bool canSetUpdateOperator = (rental.tenant == sender && rented) || (rental.lessor == sender && !rented);
 
-        require(canSetOperator, "Rentals#setOperator: CANNOT_UPDATE_OPERATOR");
+        require(canSetUpdateOperator, "Rentals#setUpdateOperator: CANNOT_UPDATE_OPERATOR");
 
         // Update the operator.
         asset.setUpdateOperator(_tokenId, _operator);
 
-        emit OperatorUpdated(_contractAddress, _tokenId, _operator, sender);
+        emit UpdateOperatorUpdated(_contractAddress, _tokenId, _operator, sender);
     }
 
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
