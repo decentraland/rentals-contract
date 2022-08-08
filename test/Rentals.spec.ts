@@ -2258,6 +2258,32 @@ describe('Rentals', () => {
       landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
     })
 
+    it('should allow the tenant to set multiple land operators to estate lands in a single transaction', async () => {
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(tenant).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      const landIds1 = landIds.slice(0, 2)
+      const landIds2 = landIds.slice(2, 2)
+
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [landIds1, landIds2], [operator.address, extra.address])
+
+      expect((await Promise.all(landIds1.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
+      expect((await Promise.all(landIds2.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+    })
+
     it('should allow the tenant to update land update operators while the estate is rented :: acceptOffer', async () => {
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
@@ -2279,7 +2305,7 @@ describe('Rentals', () => {
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
 
-      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])
 
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
@@ -2315,7 +2341,7 @@ describe('Rentals', () => {
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
 
-      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])
 
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
@@ -2347,7 +2373,7 @@ describe('Rentals', () => {
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === extra.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
 
-      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])
 
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
@@ -2377,7 +2403,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])
 
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
@@ -2416,7 +2442,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])
 
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
@@ -2451,7 +2477,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)
+      await rentals.connect(lessor).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])
 
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === operator.address)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
@@ -2467,14 +2493,14 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)).to.be.revertedWith(
+      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])).to.be.revertedWith(
         'Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR'
       )
     })
 
     it('should revert when the sender is not the lessor and the rental is NOT ongoing', async () => {
       // Check that it reverts before a rental for the given asset is made.
-      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)).to.be.revertedWith(
+      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])).to.be.revertedWith(
         'Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR'
       )
 
@@ -2493,8 +2519,26 @@ describe('Rentals', () => {
       // Check that it reverts after the rental.
       expect(await rentals.isRented(offerParams.contractAddress, offerParams.tokenId)).to.be.false
 
-      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, landIds, operator.address)).to.be.revertedWith(
+      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])).to.be.revertedWith(
         'Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR'
+      )
+    })
+
+    it('should revert when the landTokenIds and operators arrays dont have the same length', async () => {
+      await expect(
+        rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address, operator.address])
+      ).to.be.revertedWith('Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH')
+
+      await expect(
+        rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds, landIds], [operator.address])
+      ).to.be.revertedWith('Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [], [operator.address])).to.be.revertedWith(
+        'Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH'
+      )
+
+      await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [])).to.be.revertedWith(
+        'Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH'
       )
     })
   })

@@ -331,12 +331,18 @@ contract Rentals is
     /// @dev Differently from the update operator role of the estate, when the asset is transfered to the rentals contract,
     /// LAND update operators can be set to assign granular permissions. LAND update operators will remain if they are inside an Estate when it is transferred.
     /// They are only cleared once the LAND is transferred.
+    /// @param _contractAddress The address of the Estate contract containing the LANDs that will have their update operators updated.
+    /// @param _tokenId The Estate id.
+    /// @param _landTokenIds An array of LAND token id arrays. Each array corresponds to the operator of the same index.
+    /// @param _operators An array of addresses that will be set as update operators of the provided LAND token ids.
     function setManyLandUpdateOperator(
         address _contractAddress,
         uint256 _tokenId,
-        uint256[] memory _landTokenIds,
-        address _operator
+        uint256[][] memory _landTokenIds,
+        address[] memory _operators
     ) external nonReentrant {
+        require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
+
         Rental memory rental = rentals[_contractAddress][_tokenId];
         bool rented = isRented(_contractAddress, _tokenId);
         address sender = _msgSender();
@@ -346,7 +352,9 @@ contract Rentals is
             "Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR"
         );
 
-        IERC721Rentable(_contractAddress).setManyLandUpdateOperator(_tokenId, _landTokenIds, _operator);
+        for (uint256 i = 0; i < _landTokenIds.length; i++) {
+            IERC721Rentable(_contractAddress).setManyLandUpdateOperator(_tokenId, _landTokenIds[i], _operators[i]);
+        }
     }
 
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
