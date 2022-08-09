@@ -2284,6 +2284,28 @@ describe('Rentals', () => {
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
     })
 
+    it('should allow the tenant to send empty arrays without the transaction reverting', async () => {
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(tenant).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+
+      await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [], [])
+
+      expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
+    })
+
     it('should allow the tenant to update land update operators while the estate is rented :: acceptOffer', async () => {
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
