@@ -2159,6 +2159,71 @@ describe('Rentals', () => {
         .withArgs(land.address, tokenId, lessor.address)
     })
 
+    it('should allow claiming two assets back in the same trx', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      await rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+    })
+
+    it('should emit an asset claimed event for each asset claimed in the same trx', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB]))
+        .to.emit(rentals, 'AssetClaimed')
+        .withArgs(contractAddressA, tokenIdA, lessor.address)
+        .and.to.emit(rentals, 'AssetClaimed')
+        .withArgs(contractAddressB, tokenIdB, lessor.address)
+    })
+
     it('should accept a meta tx', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -2188,6 +2253,24 @@ describe('Rentals', () => {
       await evmMine()
 
       await expect(rentals.connect(tenant).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
+    })
+
+    it('should revert when the contract address array and token ids array length dont match', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA])).to.be.revertedWith(
+        'Rentals#claim: LENGTH_MISMATCH'
+      )
+
+      await expect(rentals.connect(lessor).claim([contractAddressA], [tokenIdA, tokenIdB])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(lessor).claim([], [tokenIdA, tokenIdB])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
     })
   })
 
