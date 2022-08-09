@@ -271,28 +271,36 @@ contract Rentals is
     }
 
     /// @notice The original owner of the asset can claim it back if said asset is not being rented.
-    /// @param _contractAddress The contract address of the asset.
-    /// @param _tokenId The token id of the asset.
-    function claim(address _contractAddress, uint256 _tokenId) external nonReentrant {
+    /// @param _contractAddresses The contract address of the assets to be claimed.
+    /// @param _tokenIds The token ids of the assets to be claimed.
+    /// Each tokenId corresponds to a contract address in the same index.
+    function claim(address[] memory _contractAddresses, uint256[] memory _tokenIds) external nonReentrant {
         address sender = _msgSender();
 
-        // Verify that the rent has finished.
-        require(!isRented(_contractAddress, _tokenId), "Rentals#claim: CURRENTLY_RENTED");
+        require(_contractAddresses.length == _tokenIds.length, "Rentals#claim: LENGTH_MISMATCH");
 
-        Rental memory rental = rentals[_contractAddress][_tokenId];
+        for (uint256 i = 0; i < _contractAddresses.length; i++) {
+            address contractAddress = _contractAddresses[i];
+            uint256 tokenId = _tokenIds[i];
 
-        // Verify that the caller is the original owner of the asset.
-        require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
+            // Verify that the rent has finished.
+            require(!isRented(contractAddress, tokenId), "Rentals#claim: CURRENTLY_RENTED");
 
-        // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
-        delete rentals[_contractAddress][_tokenId];
+            Rental memory rental = rentals[contractAddress][tokenId];
 
-        // Transfer the asset back to its original owner.
-        IERC721 asset = IERC721(_contractAddress);
+            // Verify that the caller is the original owner of the asset.
+            require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
 
-        asset.safeTransferFrom(address(this), sender, _tokenId);
+            // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
+            delete rentals[contractAddress][tokenId];
 
-        emit AssetClaimed(_contractAddress, _tokenId, sender);
+            // Transfer the asset back to its original owner.
+            IERC721 asset = IERC721(contractAddress);
+
+            asset.safeTransferFrom(address(this), sender, tokenId);
+
+            emit AssetClaimed(contractAddress, tokenId, sender);
+        }
     }
 
     /// @notice Set the operator of a given asset.

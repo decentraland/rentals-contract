@@ -1370,7 +1370,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      await rentals.connect(lessor).claim(listingParams.contractAddress, listingParams.tokenId)
+      await rentals.connect(lessor).claim([listingParams.contractAddress], [listingParams.tokenId])
 
       const pendingBlock = await network.provider.send('eth_getBlockByNumber', ['pending', false])
       expect(pendingBlock.transactions.length).to.be.equal(2)
@@ -2115,7 +2115,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).claim(land.address, tokenId)
+      await rentals.connect(lessor).claim([land.address], [tokenId])
 
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
     })
@@ -2130,7 +2130,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).claim(land.address, tokenId)
+      await rentals.connect(lessor).claim([land.address], [tokenId])
 
       expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
     })
@@ -2143,7 +2143,7 @@ describe('Rentals', () => {
 
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
 
-      await rentals.connect(lessor).claim(land.address, tokenId)
+      await rentals.connect(lessor).claim([land.address], [tokenId])
 
       expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
     })
@@ -2154,7 +2154,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(lessor).claim(land.address, tokenId))
+      await expect(rentals.connect(lessor).claim([land.address], [tokenId]))
         .to.emit(rentals, 'AssetClaimed')
         .withArgs(land.address, tokenId, lessor.address)
     })
@@ -2165,9 +2165,9 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const abi = ['function claim(address[] _contractAddress, uint256[] _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('claim', [land.address, tokenId])
+      const functionData = iface.encodeFunctionData('claim', [[land.address], [tokenId]])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
@@ -2178,7 +2178,7 @@ describe('Rentals', () => {
     it('should revert when the asset is currently being rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await expect(rentals.connect(lessor).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
+      await expect(rentals.connect(lessor).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
     it('should revert when the caller is not the original owner of the asset', async () => {
@@ -2187,7 +2187,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
+      await expect(rentals.connect(tenant).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
   })
 
@@ -2658,11 +2658,11 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerEncodeValue[rentalDaysIndex]))
       await evmMine()
 
-      await expect(rentals.connect(lessor).claim(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])).to.be.revertedWith(
+      await expect(rentals.connect(lessor).claim([offerEncodeValue[contractAddressIndex]], [offerEncodeValue[tokenIdIndex]])).to.be.revertedWith(
         'Rentals#claim: NOT_LESSOR'
       )
 
-      await rentals.connect(extra).claim(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+      await rentals.connect(extra).claim([offerEncodeValue[contractAddressIndex]], [offerEncodeValue[tokenIdIndex]])
 
       expect(await land.ownerOf(offerEncodeValue[tokenIdIndex])).to.equal(extra.address)
     })
@@ -3215,9 +3215,9 @@ describe('Rentals', () => {
     it('should revert when the contract is reentered through the claim function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
-      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const abi = ['function claim(address[] _contractAddress, uint256[] _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('claim', [reentrantERC721.address, offerParams.tokenId])
+      const functionData = iface.encodeFunctionData('claim', [[reentrantERC721.address], [offerParams.tokenId]])
       await reentrantERC721.setData(functionData)
 
       await expect(
