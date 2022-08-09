@@ -2182,13 +2182,53 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
       expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
       expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+    })
+
+    it('should allow claiming two assets back in different trx', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
       await evmMine()
 
-      await rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await rentals.connect(lessor).claim([contractAddressA], [tokenIdA])
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await rentals.connect(lessor).claim([contractAddressB], [tokenIdB])
 
       expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
       expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
@@ -2222,6 +2262,38 @@ describe('Rentals', () => {
         .withArgs(contractAddressA, tokenIdA, lessor.address)
         .and.to.emit(rentals, 'AssetClaimed')
         .withArgs(contractAddressB, tokenIdB, lessor.address)
+    })
+
+    it('should nor revert when sending empty arrays', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await expect(rentals.connect(lessor).claim([], [])).to.not.emit(rentals, 'AssetClaimed')
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
     })
 
     it('should accept a meta tx', async () => {
