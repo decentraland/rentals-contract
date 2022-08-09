@@ -6,7 +6,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "test:coverage": "hardhat coverage"
+    "test:coverage": "hardhat coverage",
+    "lint": "solhint 'contracts/**/*.sol'"
   },
   "keywords": [],
   "author": "",
@@ -27,7 +28,10 @@
     "ethers": "^5.5.4",
     "hardhat": "^2.8.3",
     "hardhat-gas-reporter": "^1.0.8",
-    "prettier": "^2.5.1",
+    "prettier": "^2.7.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.24",
+    "solhint": "^3.3.7",
+    "solhint-plugin-prettier": "^0.0.5",
     "solidity-coverage": "^0.7.20",
     "ts-node": "^10.5.0",
     "typechain": "^7.0.0",
