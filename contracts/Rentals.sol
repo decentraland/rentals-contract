@@ -332,7 +332,10 @@ contract Rentals is
             Rental memory rental = rentals[contractAddress][tokenId];
             bool rented = isRented(contractAddress, tokenId);
 
-            require((rented && sender == rental.tenant) || (!rented && sender == rental.lessor), "Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR");
+            require(
+                (rented && sender == rental.tenant) || (!rented && sender == rental.lessor),
+                "Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR"
+            );
 
             IERC721Rentable(contractAddress).setUpdateOperator(tokenId, _operators[i]);
         }
