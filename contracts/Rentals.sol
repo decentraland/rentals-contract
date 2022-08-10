@@ -109,10 +109,10 @@ contract Rentals is
     event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
     event FeeCollectorUpdated(address _from, address _to, address _sender);
     event FeeUpdated(uint256 _from, uint256 _to, address _sender);
-    event AssetClaimed(address _contractAddress, uint256 _tokenId, address _sender);
+    event AssetClaimed(address indexed _contractAddress, uint256 indexed _tokenId, address _sender);
     event AssetRented(
-        address _contractAddress,
-        uint256 _tokenId,
+        address indexed _contractAddress,
+        uint256 indexed _tokenId,
         address _lessor,
         address _tenant,
         address _operator,
