@@ -2206,6 +2206,21 @@ describe('Rentals', () => {
         .withArgs(offerParams.tokenId, newOperator)
     })
 
+    it('should emit an UpdateOperator event from the Estate contract', async () => {
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await expect(rentals.connect(tenant).setUpdateOperator(estate.address, estateId, newOperator))
+        .to.emit(estate, 'UpdateOperator')
+        .withArgs(offerParams.tokenId, newOperator)
+    })
+
     it('should allow the tenant to update the asset operator', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
