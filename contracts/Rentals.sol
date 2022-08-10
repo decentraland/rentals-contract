@@ -309,11 +309,11 @@ contract Rentals is
     /// @dev Only when the rent is active a tenant can change the operator of an asset.
     /// When the rent is over, the lessor is the one that can change the operator.
     /// In the case of the lessor, this is useful to update the operator without having to claim the asset back once the rent is over.
+    /// Elements in the param arrays correspond to each other in the same index.
+    /// For example, asset with address _contractAddresses[0] and token id _tokenIds[0] will be set _operators[0] as operator.
     /// @param _contractAddresses The contract addresses of the assets.
     /// @param _tokenIds The token ids of the assets.
-    /// Each element in the array corresponds to the element in the same index of _contractAddresses.
     /// @param _operators The addresses that will have operator privileges over the given assets.
-    /// Each element in the array corresponds to the element in the same index of _contractAddresses.
     function setUpdateOperator(
         address[] memory _contractAddresses,
         uint256[] memory _tokenIds,
