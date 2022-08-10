@@ -302,7 +302,7 @@ describe('Rentals', () => {
       await expect(rentals.connect(owner).setFee(newFee)).to.emit(rentals, 'FeeUpdated').withArgs(oldFee, newFee, owner.address)
     })
 
-    it('should accept the maximum fee of 1_000_000', async () => {
+    it('should accept the maximum fee of MAX_FEE', async () => {
       const maximumFee = '1000000'
       await rentals.connect(owner).setFee(maximumFee)
       expect(await rentals.fee()).to.be.equal(maximumFee)
@@ -323,9 +323,9 @@ describe('Rentals', () => {
       await expect(rentals.connect(tenant).setFee(newFee)).to.be.revertedWith('Ownable: caller is not the owner')
     })
 
-    it('should revert when fee is higher than 1_000_000', async () => {
+    it('should revert when fee is higher than MAX_FEE', async () => {
       const invalidFee = '1000001'
-      await expect(rentals.connect(owner).setFee(invalidFee)).to.be.revertedWith('Rentals#_setFee: HIGHER_THAN_1000000')
+      await expect(rentals.connect(owner).setFee(invalidFee)).to.be.revertedWith('Rentals#_setFee: HIGHER_THAN_MAX_FEE')
     })
   })
 
@@ -941,7 +941,7 @@ describe('Rentals', () => {
       expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector)
     })
 
-    it('should not transfer erc20 to lessor when fee is 1_000_000', async () => {
+    it('should not transfer erc20 to lessor when fee is MAX_FEE', async () => {
       const originalBalanceTenant = await mana.balanceOf(tenant.address)
       const originalBalanceLessor = await mana.balanceOf(lessor.address)
       const originalBalanceCollector = await mana.balanceOf(collector.address)
@@ -1892,7 +1892,7 @@ describe('Rentals', () => {
       expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector)
     })
 
-    it('should not transfer erc20 to lessor when fee is 1_000_000', async () => {
+    it('should not transfer erc20 to lessor when fee is MAX_FEE', async () => {
       const originalBalanceTenant = await mana.balanceOf(tenant.address)
       const originalBalanceLessor = await mana.balanceOf(lessor.address)
       const originalBalanceCollector = await mana.balanceOf(collector.address)
