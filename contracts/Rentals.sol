@@ -8,11 +8,20 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "@dcl/common-contracts/meta-transactions/NativeMetaTransaction.sol";
-import "@dcl/common-contracts/signatures/NonceVerifiable.sol";
+import "@dcl/common-contracts/signatures/ContractNonceVerifiable.sol";
+import "@dcl/common-contracts/signatures/SignerNonceVerifiable.sol";
+import "@dcl/common-contracts/signatures/AssetNonceVerifiable.sol";
 
 import "./interfaces/IERC721Rentable.sol";
 
-contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, ReentrancyGuardUpgradeable {
+contract Rentals is
+    ContractNonceVerifiable,
+    SignerNonceVerifiable,
+    AssetNonceVerifiable,
+    NativeMetaTransaction,
+    IERC721Receiver,
+    ReentrancyGuardUpgradeable
+{
     /// @dev EIP712 type hashes for recovering the signer from a signature.
     bytes32 private constant LISTING_TYPE_HASH =
         keccak256(
@@ -130,7 +139,7 @@ contract Rentals is NonceVerifiable, NativeMetaTransaction, IERC721Receiver, Ree
     ) external initializer {
         __ReentrancyGuard_init();
         __NativeMetaTransaction_init("Rentals", "1");
-        __NonceVerifiable_init();
+        __ContractNonceVerifiable_init();
         _setToken(_token);
         _transferOwnership(_owner);
         _setFeeCollector(_feeCollector);
