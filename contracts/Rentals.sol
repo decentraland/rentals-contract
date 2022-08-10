@@ -305,33 +305,37 @@ contract Rentals is
         }
     }
 
-    /// @notice Set the operator of a given asset.
+    /// @notice Set the update operator of the provided assets.
     /// @dev Only when the rent is active a tenant can change the operator of an asset.
     /// When the rent is over, the lessor is the one that can change the operator.
     /// In the case of the lessor, this is useful to update the operator without having to claim the asset back once the rent is over.
-    /// @param _contractAddress The contract address of the asset.
-    /// @param _tokenId The token id of the asset.
-    /// @param _operator The address that will have operator privileges over the asset.
+    /// @param _contractAddresses The contract addresses of the assets.
+    /// @param _tokenIds The token ids of the assets.
+    /// Each element in the array corresponds to the element in the same index of _contractAddresses.
+    /// @param _operators The addresses that will have operator privileges over the given assets.
+    /// Each element in the array corresponds to the element in the same index of _contractAddresses.
     function setUpdateOperator(
-        address _contractAddress,
-        uint256 _tokenId,
-        address _operator
+        address[] memory _contractAddresses,
+        uint256[] memory _tokenIds,
+        address[] memory _operators
     ) external nonReentrant {
-        IERC721Rentable asset = IERC721Rentable(_contractAddress);
+        require(
+            _contractAddresses.length == _tokenIds.length && _contractAddresses.length == _operators.length,
+            "Rentals#setUpdateOperator: LENGTH_MISMATCH"
+        );
 
         address sender = _msgSender();
 
-        Rental memory rental = rentals[_contractAddress][_tokenId];
+        for (uint256 i = 0; i < _tokenIds.length; i++) {
+            address contractAddress = _contractAddresses[i];
+            uint256 tokenId = _tokenIds[i];
+            Rental memory rental = rentals[contractAddress][tokenId];
+            bool rented = isRented(contractAddress, tokenId);
 
-        bool rented = isRented(_contractAddress, _tokenId);
-        // If rented, only the tenant can change the operator.
-        // If not, only the original owner can.
-        bool canSetUpdateOperator = (rental.tenant == sender && rented) || (rental.lessor == sender && !rented);
+            require((rented && sender == rental.tenant) || (!rented && sender == rental.lessor), "Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR");
 
-        require(canSetUpdateOperator, "Rentals#setUpdateOperator: CANNOT_UPDATE_OPERATOR");
-
-        // Update the operator.
-        asset.setUpdateOperator(_tokenId, _operator);
+            IERC721Rentable(contractAddress).setUpdateOperator(tokenId, _operators[i]);
+        }
     }
 
     /// @notice Set the operator of LANDs inside an Estate
