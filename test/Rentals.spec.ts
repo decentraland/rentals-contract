@@ -2344,6 +2344,68 @@ describe('Rentals', () => {
 
       await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
     })
+
+    it('should revert when one of the assets to be claimed is currently rented', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      const rentalDays = 15
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA, rentalDays }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        rentalDays: rentalDays * 2,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(rentalDays) + 1)
+      await evmMine()
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])).to.be.revertedWith(
+        'Rentals#claim: CURRENTLY_RENTED'
+      )
+    })
+
+    it('should revert when one of the assets to be claimed is not owned (as lessor) by the sender', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      // Send the asset to another address to change ownership
+      await estate.connect(lessor).transferFrom(lessor.address, extra.address, estateId)
+      await estate.connect(extra).setApprovalForAll(rentals.address, true)
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+      await rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      // Reverts because as "lessor" I'm trying to claim an asset rented by "extra"
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])).to.be.revertedWith(
+        'Rentals#claim: NOT_LESSOR'
+      )
+    })
   })
 
   describe('setUpdateOperator', () => {
