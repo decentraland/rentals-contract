@@ -1370,7 +1370,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      await rentals.connect(lessor).claim(listingParams.contractAddress, listingParams.tokenId)
+      await rentals.connect(lessor).claim([listingParams.contractAddress], [listingParams.tokenId])
 
       const pendingBlock = await network.provider.send('eth_getBlockByNumber', ['pending', false])
       expect(pendingBlock.transactions.length).to.be.equal(2)
@@ -2115,7 +2115,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).claim(land.address, tokenId)
+      await rentals.connect(lessor).claim([land.address], [tokenId])
 
       expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
     })
@@ -2130,7 +2130,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).claim(land.address, tokenId)
+      await rentals.connect(lessor).claim([land.address], [tokenId])
 
       expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
     })
@@ -2143,7 +2143,7 @@ describe('Rentals', () => {
 
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
 
-      await rentals.connect(lessor).claim(land.address, tokenId)
+      await rentals.connect(lessor).claim([land.address], [tokenId])
 
       expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
     })
@@ -2154,9 +2154,146 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(lessor).claim(land.address, tokenId))
+      await expect(rentals.connect(lessor).claim([land.address], [tokenId]))
         .to.emit(rentals, 'AssetClaimed')
         .withArgs(land.address, tokenId, lessor.address)
+    })
+
+    it('should allow claiming two assets back in the same trx', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+    })
+
+    it('should allow claiming two assets back in different trx', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await rentals.connect(lessor).claim([contractAddressA], [tokenIdA])
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await rentals.connect(lessor).claim([contractAddressB], [tokenIdB])
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(lessor.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(lessor.address)
+    })
+
+    it('should emit an asset claimed event for each asset claimed in the same trx', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB]))
+        .to.emit(rentals, 'AssetClaimed')
+        .withArgs(contractAddressA, tokenIdA, lessor.address)
+        .and.to.emit(rentals, 'AssetClaimed')
+        .withArgs(contractAddressB, tokenIdB, lessor.address)
+    })
+
+    it('should nor revert when sending empty arrays', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
+
+      await expect(rentals.connect(lessor).claim([], [])).to.not.emit(rentals, 'AssetClaimed')
+
+      expect(await land.ownerOf(tokenIdA)).to.be.equal(rentals.address)
+      expect(await estate.connect(extra).ownerOf(tokenIdB)).to.be.equal(rentals.address)
     })
 
     it('should accept a meta tx', async () => {
@@ -2165,9 +2302,9 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const abi = ['function claim(address[] _contractAddress, uint256[] _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('claim', [land.address, tokenId])
+      const functionData = iface.encodeFunctionData('claim', [[land.address], [tokenId]])
       const metaTxSignature = await getMetaTxSignature(lessor, rentals, functionData)
 
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
@@ -2178,7 +2315,7 @@ describe('Rentals', () => {
     it('should revert when the asset is currently being rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await expect(rentals.connect(lessor).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
+      await expect(rentals.connect(lessor).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
     it('should revert when the caller is not the original owner of the asset', async () => {
@@ -2187,7 +2324,87 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await expect(rentals.connect(tenant).claim(land.address, tokenId)).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
+      await expect(rentals.connect(tenant).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
+    })
+
+    it('should revert when the contract address array and token ids array length dont match', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA])).to.be.revertedWith(
+        'Rentals#claim: LENGTH_MISMATCH'
+      )
+
+      await expect(rentals.connect(lessor).claim([contractAddressA], [tokenIdA, tokenIdB])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(lessor).claim([], [tokenIdA, tokenIdB])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
+    })
+
+    it('should revert when one of the assets to be claimed is currently rented', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      const rentalDays = 15
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA, rentalDays }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        rentalDays: rentalDays * 2,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(rentalDays) + 1)
+      await evmMine()
+
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])).to.be.revertedWith(
+        'Rentals#claim: CURRENTLY_RENTED'
+      )
+    })
+
+    it('should revert when one of the assets to be claimed is not owned (as lessor) by the sender', async () => {
+      const contractAddressA = land.address
+      const tokenIdA = tokenId
+
+      const contractAddressB = estate.address
+      const tokenIdB = estateId
+
+      // Send the asset to another address to change ownership
+      await estate.connect(lessor).transferFrom(lessor.address, extra.address, estateId)
+      await estate.connect(extra).setApprovalForAll(rentals.address, true)
+
+      offerParams = { ...offerParams, contractAddress: contractAddressA, tokenId: tokenIdA }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: contractAddressB,
+        tokenId: tokenIdB,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+      await rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
+      await evmMine()
+
+      // Reverts because as "lessor" I'm trying to claim an asset rented by "extra"
+      await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [tokenIdA, tokenIdB])).to.be.revertedWith(
+        'Rentals#claim: NOT_LESSOR'
+      )
     })
   })
 
@@ -2658,11 +2875,11 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerEncodeValue[rentalDaysIndex]))
       await evmMine()
 
-      await expect(rentals.connect(lessor).claim(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])).to.be.revertedWith(
+      await expect(rentals.connect(lessor).claim([offerEncodeValue[contractAddressIndex]], [offerEncodeValue[tokenIdIndex]])).to.be.revertedWith(
         'Rentals#claim: NOT_LESSOR'
       )
 
-      await rentals.connect(extra).claim(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+      await rentals.connect(extra).claim([offerEncodeValue[contractAddressIndex]], [offerEncodeValue[tokenIdIndex]])
 
       expect(await land.ownerOf(offerEncodeValue[tokenIdIndex])).to.equal(extra.address)
     })
@@ -3215,9 +3432,9 @@ describe('Rentals', () => {
     it('should revert when the contract is reentered through the claim function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
-      const abi = ['function claim(address _contractAddress, uint256 _tokenId)']
+      const abi = ['function claim(address[] _contractAddress, uint256[] _tokenId)']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('claim', [reentrantERC721.address, offerParams.tokenId])
+      const functionData = iface.encodeFunctionData('claim', [[reentrantERC721.address], [offerParams.tokenId]])
       await reentrantERC721.setData(functionData)
 
       await expect(
