@@ -36,6 +36,12 @@ contract ReentrantERC721 is IERC721Rentable {
 
     // Ignored
 
+    function setManyLandUpdateOperator(
+        uint256 _tokenId,
+        uint256[] memory _landTokenIds,
+        address _operator
+    ) external override {}
+
     function supportsInterface(bytes4 interfaceId) external view override returns (bool) {}
 
     function balanceOf(address owner) external view override returns (uint256 balance) {}
