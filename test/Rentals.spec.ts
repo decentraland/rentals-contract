@@ -3193,7 +3193,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when the offer signer does not match the signer provided in params', async () => {
-      offerEncodeValue[signerIndex] = lessor.address
+      offerEncodeValue[signerIndex] = extra.address
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
