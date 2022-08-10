@@ -192,27 +192,7 @@ contract Rentals is
     ) external nonReentrant {
         _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
 
-        // Verify that the signer provided in the listing is the one that signed it.
-        bytes32 listingHash = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    LISTING_TYPE_HASH,
-                    _listing.signer,
-                    _listing.contractAddress,
-                    _listing.tokenId,
-                    _listing.expiration,
-                    keccak256(abi.encodePacked(_listing.nonces)),
-                    keccak256(abi.encodePacked(_listing.pricePerDay)),
-                    keccak256(abi.encodePacked(_listing.maxDays)),
-                    keccak256(abi.encodePacked(_listing.minDays)),
-                    _listing.target
-                )
-            )
-        );
-
-        address lessor = ECDSAUpgradeable.recover(listingHash, _listing.signature);
-
-        require(lessor == _listing.signer, "Rentals#acceptListing: SIGNATURE_MISMATCH");
+        address lessor = _listing.signer;
 
         // Verify that the caller and the signer are not the same address.
         address tenant = _msgSender();
@@ -248,6 +228,8 @@ contract Rentals is
 
         // Verify that the provided rental days is between min and max days range.
         require(_rentalDays >= minDays && _rentalDays <= maxDays, "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
+
+        _verifyListingSigner(_listing);
 
         _rent(
             RentParams(
@@ -423,7 +405,64 @@ contract Rentals is
     }
 
     function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant {
-        // Verify that the signer provided in the offer is the one that signed it.
+        address tenant = _offer.signer;
+
+        require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
+
+        // Verify that the nonces provided in the offer match the ones in the contract.
+        _verifyContractNonce(_offer.nonces[0]);
+        _verifySignerNonce(tenant, _offer.nonces[1]);
+        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
+
+        // Verify that the offer is not already expired.
+        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
+
+        // Verify that the rental days provided in the offer are valid.
+        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
+
+        _verifyOfferSigner(_offer);
+
+        _rent(
+            RentParams(
+                _lessor,
+                tenant,
+                _offer.contractAddress,
+                _offer.tokenId,
+                _offer.fingerprint,
+                _offer.pricePerDay,
+                _offer.rentalDays,
+                _offer.operator,
+                _offer.signature
+            )
+        );
+    }
+
+    /// @dev Verify that the signer provided in the listing is the address that created the provided signature.
+    function _verifyListingSigner(Listing calldata _listing) private view {
+        bytes32 listingHash = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    LISTING_TYPE_HASH,
+                    _listing.signer,
+                    _listing.contractAddress,
+                    _listing.tokenId,
+                    _listing.expiration,
+                    keccak256(abi.encodePacked(_listing.nonces)),
+                    keccak256(abi.encodePacked(_listing.pricePerDay)),
+                    keccak256(abi.encodePacked(_listing.maxDays)),
+                    keccak256(abi.encodePacked(_listing.minDays)),
+                    _listing.target
+                )
+            )
+        );
+
+        address signer = ECDSAUpgradeable.recover(listingHash, _listing.signature);
+
+        require(signer == _listing.signer, "Rentals#_verifyListingSigner: SIGNER_MISMATCH");
+    }
+
+    /// @dev Verify that the signer provided in the offer is the address that created the provided signature.
+    function _verifyOfferSigner(Offer memory _offer) private view {
         bytes32 offerHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
@@ -441,36 +480,9 @@ contract Rentals is
             )
         );
 
-        address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
+        address signer = ECDSAUpgradeable.recover(offerHash, _offer.signature);
 
-        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISMATCH");
-
-        require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
-
-        // Verify that the nonces provided in the offer match the ones in the contract.
-        _verifyContractNonce(_offer.nonces[0]);
-        _verifySignerNonce(tenant, _offer.nonces[1]);
-        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
-
-        // Verify that the offer is not already expired.
-        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
-
-        // Verify that the rental days provided in the offer are valid.
-        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
-
-        _rent(
-            RentParams(
-                _lessor,
-                tenant,
-                _offer.contractAddress,
-                _offer.tokenId,
-                _offer.fingerprint,
-                _offer.pricePerDay,
-                _offer.rentalDays,
-                _offer.operator,
-                _offer.signature
-            )
-        );
+        require(signer == _offer.signer, "Rentals#_verifyOfferSigner: SIGNER_MISMATCH");
     }
 
     function _rent(RentParams memory _rentParams) private {
