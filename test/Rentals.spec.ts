@@ -2258,6 +2258,32 @@ describe('Rentals', () => {
       landIds = [await land.encodeTokenId(1, 1), await land.encodeTokenId(1, 2), await land.encodeTokenId(2, 1), await land.encodeTokenId(2, 2)]
     })
 
+    it('should emit an UpdateOperator event from the LAND contract for each operator being updated', async () => {
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(tenant).getFingerprint(estateId),
+      }
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      const landIds1 = landIds.slice(0, 2)
+      const landIds2 = landIds.slice(2)
+
+      await expect(
+        rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [landIds1, landIds2], [operator.address, extra.address])
+      )
+        .to.emit(land, 'UpdateOperator')
+        .withArgs(landIds1[0], operator.address)
+        .and.to.emit(land, 'UpdateOperator')
+        .withArgs(landIds1[1], operator.address)
+        .and.to.emit(land, 'UpdateOperator')
+        .withArgs(landIds2[0], extra.address)
+        .and.to.emit(land, 'UpdateOperator')
+        .withArgs(landIds2[1], extra.address)
+    })
+
     it('should allow the tenant to set multiple land operators to estate lands in a single transaction', async () => {
       expect((await Promise.all(landIds.map((id) => land.updateOperator(id)))).every((op) => op === zeroAddress)).to.be.true
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(zeroAddress)
@@ -2275,7 +2301,7 @@ describe('Rentals', () => {
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(operator.address)
 
       const landIds1 = landIds.slice(0, 2)
-      const landIds2 = landIds.slice(2, 2)
+      const landIds2 = landIds.slice(2)
 
       await rentals.connect(tenant).setManyLandUpdateOperator(estate.address, estateId, [landIds1, landIds2], [operator.address, extra.address])
 
