@@ -2198,12 +2198,12 @@ describe('Rentals', () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
     })
 
-    it('should emit an UpdateOperatorUpdated event', async () => {
+    it('should emit an UpdateOperator event from the LAND contract', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await expect(rentals.connect(tenant).setUpdateOperator(land.address, tokenId, newOperator))
-        .to.emit(rentals, 'UpdateOperatorUpdated')
-        .withArgs(offerParams.contractAddress, offerParams.tokenId, newOperator, tenant.address)
+        .to.emit(land, 'UpdateOperator')
+        .withArgs(offerParams.tokenId, newOperator)
     })
 
     it('should allow the tenant to update the asset operator', async () => {
