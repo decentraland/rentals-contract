@@ -594,10 +594,10 @@ contract Rentals is
         uint256 forCollector = (totalPrice * fee) / MAX_FEE;
 
         // Save the reference in memory so it doesn't access storage twice.
-        IERC20 tokenM = token;
+        IERC20 mToken = token;
 
         // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
-        tokenM.transferFrom(_tenant, _lessor, totalPrice - forCollector);
-        tokenM.transferFrom(_tenant, feeCollector, forCollector);
+        mToken.transferFrom(_tenant, _lessor, totalPrice - forCollector);
+        mToken.transferFrom(_tenant, feeCollector, forCollector);
     }
 }
