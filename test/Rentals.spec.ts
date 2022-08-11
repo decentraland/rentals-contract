@@ -2508,7 +2508,7 @@ describe('Rentals', () => {
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(anotherOperator)
     })
 
-    it('should not revert the arrays are empty', async () => {
+    it('should not revert when the arrays are empty', async () => {
       await expect(rentals.connect(lessor).setUpdateOperator([], [], [])).to.not.be.reverted
     })
 
