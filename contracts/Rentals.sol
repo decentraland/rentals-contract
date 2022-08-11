@@ -37,6 +37,8 @@ contract Rentals is
             )
         );
 
+    uint256 private constant MAX_FEE = 1_000_000;
+
     /// @dev EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 private constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
 
@@ -405,7 +407,7 @@ contract Rentals is
     }
 
     function _setFee(uint256 _fee) private {
-        require(_fee <= 1_000_000, "Rentals#_setFee: HIGHER_THAN_1000000");
+        require(_fee <= MAX_FEE, "Rentals#_setFee: HIGHER_THAN_MAX_FEE");
 
         emit FeeUpdated(fee, fee = _fee, _msgSender());
     }
@@ -589,7 +591,7 @@ contract Rentals is
         uint256 _rentalDays
     ) private {
         uint256 totalPrice = _pricePerDay * _rentalDays;
-        uint256 forCollector = (totalPrice * fee) / 1_000_000;
+        uint256 forCollector = (totalPrice * fee) / MAX_FEE;
 
         // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
         token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
