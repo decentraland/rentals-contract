@@ -2565,6 +2565,59 @@ describe('Rentals', () => {
         'Rentals#setUpdateOperator: LENGTH_MISMATCH'
       )
     })
+
+    it('should revert when one of the assets to update operator is currently rented :: as lessor', async () => {
+      const rentDays = 15
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+        rentalDays: rentDays * 2,
+      }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(rentDays))
+      await evmMine()
+
+      await expect(
+        rentals.connect(lessor).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])
+      ).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
+
+      await evmIncreaseTime(daysToSeconds(rentDays))
+      await evmMine()
+
+      await expect(rentals.connect(lessor).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])).to
+        .not.be.reverted
+    })
+
+    it('should revert when one of the assets to update operator is currently not rented :: as tenant', async () => {
+      const rentDays = 15
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+        rentalDays: rentDays * 2,
+      }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await expect(rentals.connect(tenant).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])).to
+        .not.be.reverted
+
+      await evmIncreaseTime(daysToSeconds(rentDays))
+      await evmMine()
+
+      await expect(
+        rentals.connect(tenant).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])
+      ).to.to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
+    })
   })
 
   describe('setManyLandUpdateOperator', () => {
