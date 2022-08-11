@@ -131,7 +131,7 @@ contract Rentals is
     /// @param _owner The address of the owner of the contract.
     /// @param _token The address of the ERC20 token used by tenants to pay rent.
     /// @param _feeCollector Address that will receive rental fees
-    /// @param _fee Value per million wei that will be transfered from the rental price to the fee collector.
+    /// @param _fee Value per million wei that will be transferred from the rental price to the fee collector.
     function initialize(
         address _owner,
         IERC20 _token,
@@ -212,7 +212,7 @@ contract Rentals is
 
         address lessor = ECDSAUpgradeable.recover(listingHash, _listing.signature);
 
-        require(lessor == _listing.signer, "Rentals#acceptListing: SIGNATURE_MISSMATCH");
+        require(lessor == _listing.signer, "Rentals#acceptListing: SIGNATURE_MISMATCH");
 
         // Verify that the caller and the signer are not the same address.
         address tenant = _msgSender();
@@ -230,8 +230,8 @@ contract Rentals is
         uint256 pricePerDayLength = _listing.pricePerDay.length;
 
         // Verify that pricePerDay, maxDays and minDays have the same length
-        require(pricePerDayLength == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH");
-        require(pricePerDayLength == _listing.minDays.length, "Rentals#acceptListing: MIN_DAYS_LENGTH_MISSMATCH");
+        require(pricePerDayLength == _listing.maxDays.length, "Rentals#acceptListing: MAX_DAYS_LENGTH_MISMATCH");
+        require(pricePerDayLength == _listing.minDays.length, "Rentals#acceptListing: MIN_DAYS_LENGTH_MISMATCH");
 
         // Verify that the provided index is not out of bounds of the listing conditions.
         require(_index < pricePerDayLength, "Rentals#acceptListing: INDEX_OUT_OF_BOUNDS");
@@ -335,7 +335,7 @@ contract Rentals is
     }
 
     /// @notice Set the operator of LANDs inside an Estate
-    /// @dev Differently from the update operator role of the estate, when the asset is transfered to the rentals contract,
+    /// @dev Differently from the update operator role of the estate, when the asset is transferred to the rentals contract,
     /// LAND update operators can be set to assign granular permissions. LAND update operators will remain if they are inside an Estate when it is transferred.
     /// They are only cleared once the LAND is transferred.
     /// @param _contractAddress The address of the Estate contract containing the LANDs that will have their update operators updated.
@@ -443,7 +443,7 @@ contract Rentals is
 
         address tenant = ECDSAUpgradeable.recover(offerHash, _offer.signature);
 
-        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISSMATCH");
+        require(tenant == _offer.signer, "Rentals#acceptOffer: SIGNATURE_MISMATCH");
 
         require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
 
@@ -476,7 +476,7 @@ contract Rentals is
     function _rent(RentParams memory _rentParams) private {
         IERC721Rentable asset = IERC721Rentable(_rentParams.contractAddress);
 
-        // If the provided contract support the verifyFingerpint function, validate the provided fingerprint.
+        // If the provided contract support the verifyFingerprint function, validate the provided fingerprint.
         if (_supportsVerifyFingerprint(asset)) {
             require(_verifyFingerprint(asset, _rentParams.tokenId, _rentParams.fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
         }
@@ -593,7 +593,7 @@ contract Rentals is
         uint256 totalPrice = _pricePerDay * _rentalDays;
         uint256 forCollector = (totalPrice * fee) / MAX_FEE;
 
-        // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
+        // Transfer the rental payment to the lessor minus the fee which is transferred to the collector.
         token.transferFrom(_tenant, _lessor, totalPrice - forCollector);
         token.transferFrom(_tenant, feeCollector, forCollector);
     }

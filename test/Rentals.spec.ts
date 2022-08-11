@@ -1073,7 +1073,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISMATCH')
     })
 
     it('should revert when pricePerDay maxDays and minDays length is 0', async () => {
@@ -1107,7 +1107,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: MAX_DAYS_LENGTH_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: MAX_DAYS_LENGTH_MISMATCH')
     })
 
     it('should revert when minDays length is different than pricePerDay length', async () => {
@@ -1123,7 +1123,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: MIN_DAYS_LENGTH_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: MIN_DAYS_LENGTH_MISMATCH')
     })
 
     it('should revert when tenant index is outside the pricePerDay length', async () => {
@@ -1534,7 +1534,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISMATCH')
 
       await expect(
         rentals
@@ -1546,7 +1546,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISMATCH')
 
       await expect(
         rentals
@@ -1558,7 +1558,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISMATCH')
 
       await expect(
         rentals
@@ -1570,7 +1570,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptListing: SIGNATURE_MISMATCH')
     })
   })
 
@@ -1937,7 +1937,7 @@ describe('Rentals', () => {
         rentals
           .connect(lessor)
           .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: lessor.address }) })
-      ).to.be.revertedWith('Rentals#acceptOffer: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptOffer: SIGNATURE_MISMATCH')
     })
 
     it('should revert when lessor is same as tenant', async () => {
@@ -3212,7 +3212,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#acceptOffer: SIGNATURE_MISSMATCH')
+      ).to.be.revertedWith('Rentals#acceptOffer: SIGNATURE_MISMATCH')
     })
 
     it('should revert when lessor is same as tenant', async () => {
