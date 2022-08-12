@@ -2409,7 +2409,7 @@ describe('Rentals', () => {
   })
 
   describe('setUpdateOperator', () => {
-    const newOperator = zeroAddress
+    const newOperator = ethers.Wallet.createRandom().address
 
     beforeEach(async () => {
       await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
@@ -2418,7 +2418,7 @@ describe('Rentals', () => {
     it('should emit an UpdateOperator event from the LAND contract', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await expect(rentals.connect(tenant).setUpdateOperator(land.address, tokenId, newOperator))
+      await expect(rentals.connect(tenant).setUpdateOperator([land.address], [tokenId], [newOperator]))
         .to.emit(land, 'UpdateOperator')
         .withArgs(offerParams.tokenId, newOperator)
     })
@@ -2433,7 +2433,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await expect(rentals.connect(tenant).setUpdateOperator(estate.address, estateId, newOperator))
+      await expect(rentals.connect(tenant).setUpdateOperator([estate.address], [estateId], [newOperator]))
         .to.emit(estate, 'UpdateOperator')
         .withArgs(offerParams.tokenId, newOperator)
     })
@@ -2441,24 +2441,98 @@ describe('Rentals', () => {
     it('should allow the tenant to update the asset operator', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      await rentals.connect(tenant).setUpdateOperator(land.address, tokenId, newOperator)
+      expect(await land.updateOperator(tokenId)).to.be.equal(offerParams.operator)
+
+      await rentals.connect(tenant).setUpdateOperator([land.address], [tokenId], [newOperator])
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(newOperator)
+    })
+
+    it('should allow the tenant to update multiple assets operators in a single call', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(offerParams.operator)
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+
+      const anotherOperator = ethers.Wallet.createRandom().address
+
+      await rentals.connect(tenant).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [newOperator, anotherOperator])
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(newOperator)
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(anotherOperator)
     })
 
     it('should allow the lessor to update the asset operator after the rent is over', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
+      expect(await land.updateOperator(tokenId)).to.be.equal(offerParams.operator)
+
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      await rentals.connect(lessor).setUpdateOperator(land.address, tokenId, newOperator)
+      await rentals.connect(lessor).setUpdateOperator([land.address], [tokenId], [newOperator])
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(newOperator)
+    })
+
+    it('should allow the lessor to update multiple assets operators in a single call', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+      }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(offerParams.operator)
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
+
+      await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
+      await evmMine()
+
+      const anotherOperator = ethers.Wallet.createRandom().address
+
+      await rentals.connect(lessor).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [newOperator, anotherOperator])
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(newOperator)
+      expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(anotherOperator)
+    })
+
+    it('should not revert when the arrays are empty', async () => {
+      await expect(rentals.connect(lessor).setUpdateOperator([], [], [])).to.not.be.reverted
+    })
+
+    it('should accept a meta tx', async () => {
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(offerParams.operator)
+
+      const abi = ['function setUpdateOperator(address[], uint256[], address[])']
+      const iface = new ethers.utils.Interface(abi)
+      const functionData = iface.encodeFunctionData('setUpdateOperator', [[offerParams.contractAddress], [offerParams.tokenId], [newOperator]])
+      const metaTxSignature = await getMetaTxSignature(tenant, rentals, functionData)
+
+      await rentals.connect(owner).executeMetaTransaction(tenant.address, functionData, metaTxSignature)
+
+      expect(await land.updateOperator(tokenId)).to.be.equal(newOperator)
     })
 
     it('should revert when the asset has never been rented', async () => {
-      const setUpdateOperatorByLessor = rentals.connect(lessor).setUpdateOperator(land.address, tokenId, newOperator)
-      const setUpdateOperatorByTenant = rentals.connect(tenant).setUpdateOperator(land.address, tokenId, newOperator)
+      const setUpdateOperatorByLessor = rentals.connect(lessor).setUpdateOperator([land.address], [tokenId], [newOperator])
+      const setUpdateOperatorByTenant = rentals.connect(tenant).setUpdateOperator([land.address], [tokenId], [newOperator])
 
-      await expect(setUpdateOperatorByLessor).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_UPDATE_OPERATOR')
-      await expect(setUpdateOperatorByTenant).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_UPDATE_OPERATOR')
+      await expect(setUpdateOperatorByLessor).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
+      await expect(setUpdateOperatorByTenant).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
     })
 
     it('should revert when the tenant tries to update the operator after the rent is over', async () => {
@@ -2467,17 +2541,82 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      const setUpdateOperator = rentals.connect(tenant).setUpdateOperator(land.address, tokenId, newOperator)
+      const setUpdateOperator = rentals.connect(tenant).setUpdateOperator([land.address], [tokenId], [newOperator])
 
-      await expect(setUpdateOperator).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_UPDATE_OPERATOR')
+      await expect(setUpdateOperator).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
     })
 
     it('should revert when the lessor tries to update the operator before the rental ends', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      const setUpdateOperator = rentals.connect(lessor).setUpdateOperator(land.address, tokenId, newOperator)
+      const setUpdateOperator = rentals.connect(lessor).setUpdateOperator([land.address], [tokenId], [newOperator])
 
-      await expect(setUpdateOperator).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_UPDATE_OPERATOR')
+      await expect(setUpdateOperator).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
+    })
+
+    it('should revert when the provided param arrays have different lengths', async () => {
+      await expect(rentals.connect(lessor).setUpdateOperator([], [tokenId], [newOperator])).to.be.revertedWith(
+        'Rentals#setUpdateOperator: LENGTH_MISMATCH'
+      )
+      await expect(rentals.connect(lessor).setUpdateOperator([land.address], [], [newOperator])).to.be.revertedWith(
+        'Rentals#setUpdateOperator: LENGTH_MISMATCH'
+      )
+      await expect(rentals.connect(lessor).setUpdateOperator([land.address], [tokenId], [])).to.be.revertedWith(
+        'Rentals#setUpdateOperator: LENGTH_MISMATCH'
+      )
+    })
+
+    it('should revert when one of the assets to update operator is currently rented :: as lessor', async () => {
+      const rentDays = 15
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+        rentalDays: rentDays * 2,
+      }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await evmIncreaseTime(daysToSeconds(rentDays))
+      await evmMine()
+
+      await expect(
+        rentals.connect(lessor).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])
+      ).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
+
+      await evmIncreaseTime(daysToSeconds(rentDays))
+      await evmMine()
+
+      await expect(rentals.connect(lessor).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])).to
+        .not.be.reverted
+    })
+
+    it('should revert when one of the assets to update operator is currently not rented :: as tenant', async () => {
+      const rentDays = 15
+
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      offerParams = {
+        ...offerParams,
+        contractAddress: estate.address,
+        tokenId: estateId,
+        fingerprint: await estate.connect(extra).getFingerprint(estateId),
+        rentalDays: rentDays * 2,
+      }
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+
+      await expect(rentals.connect(tenant).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])).to
+        .not.be.reverted
+
+      await evmIncreaseTime(daysToSeconds(rentDays))
+      await evmMine()
+
+      await expect(
+        rentals.connect(tenant).setUpdateOperator([land.address, estate.address], [tokenId, estateId], [extra.address, extra.address])
+      ).to.to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
     })
   })
 
@@ -3445,9 +3584,9 @@ describe('Rentals', () => {
     it('should revert when the contract is reentered through the setUpdateOperator function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
-      const abi = ['function setUpdateOperator(address _contractAddress,uint256 _tokenId,address _operator)']
+      const abi = ['function setUpdateOperator(address[],uint256[],address[])']
       const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('setUpdateOperator', [reentrantERC721.address, offerParams.tokenId, extra.address])
+      const functionData = iface.encodeFunctionData('setUpdateOperator', [[reentrantERC721.address], [offerParams.tokenId], [extra.address]])
       await reentrantERC721.setData(functionData)
 
       await expect(
