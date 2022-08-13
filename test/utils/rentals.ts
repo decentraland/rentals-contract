@@ -23,6 +23,12 @@ export const evmMine = () => network.provider.send('evm_mine')
 
 export const getLatestBlockTimestamp = async () => (await ethers.provider.getBlock('latest')).timestamp
 
+export const getPendingBlockTimestamp = async () => {
+  //@ts-ignore
+  const pendingBlock = await network.provider.send('eth_getBlockByNumber', ['pending', false])
+  return Number(pendingBlock.timestamp)
+}
+
 export const getListingSignature = (
   signer: SignerWithAddress,
   contract: Rentals,
