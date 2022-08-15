@@ -544,7 +544,7 @@ contract Rentals is
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (!extend && !reRent && _ownerOf(address(asset), _rentParams.tokenId) != address(this)) {
+        if (_ownerOf(address(asset), _rentParams.tokenId) != address(this)) {
             asset.safeTransferFrom(_rentParams.lessor, address(this), _rentParams.tokenId);
         }
 
