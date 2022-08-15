@@ -1578,6 +1578,25 @@ describe('Rentals', () => {
           )
       ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
     })
+
+    it('should revert when rentalDays has a value that overflows when converted to seconds', async () => {
+      listingParams.maxDays = [maxUint256]
+      acceptListingParams.rentalDays = maxUint256
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith(
+        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
+      )
+    })
   })
 
   describe('acceptOffer', () => {
