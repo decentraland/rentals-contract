@@ -38,6 +38,7 @@ contract Rentals is
         );
 
     uint256 private constant MAX_FEE = 1_000_000;
+    uint256 private constant MAX_RENTAL_DAYS = 36525; // 100 years
 
     /// @dev EIP165 hash used to detect if a contract supports the verifyFingerprint(uint256,bytes) function.
     bytes4 private constant InterfaceId_VerifyFingerprint = bytes4(keccak256("verifyFingerprint(uint256,bytes)"));
@@ -251,6 +252,8 @@ contract Rentals is
         // Verify that the provided rental days is between min and max days range.
         require(_rentalDays >= minDays && _rentalDays <= maxDays, "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
 
+        require(_rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptListing: RENTAL_DAYS_EXCEEDES_LIMIT");
+
         _verifyListingSigner(_listing);
 
         _rent(
@@ -448,6 +451,8 @@ contract Rentals is
 
         // Verify that the rental days provided in the offer are valid.
         require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
+
+        require(_offer.rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT");
 
         _verifyOfferSigner(_offer);
 
