@@ -1579,7 +1579,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
     })
 
-    it('should revert when rentalDays has a value that overflows when converted to seconds', async () => {
+    it('should revert when rental days has a value that overflows when converted to seconds', async () => {
       listingParams.maxDays = [maxUint256]
       acceptListingParams.rentalDays = maxUint256
 
@@ -2131,6 +2131,16 @@ describe('Rentals', () => {
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert when rental days has a value that overflows when converted to seconds', async () => {
+      offerParams.rentalDays = maxUint256
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith(
+        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
+      )
     })
   })
 
@@ -3602,6 +3612,19 @@ describe('Rentals', () => {
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
+    })
+
+    it('should revert when rental days has a value that overflows when converted to seconds', async () => {
+      offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxUint256
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith(
+        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
+      )
     })
   })
 
