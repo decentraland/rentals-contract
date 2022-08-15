@@ -23,6 +23,7 @@ const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const estateId = 1
 const fee = '100000' // 10% fee
+const maxRentalDays = 36525 // 100 years
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -1035,6 +1036,31 @@ describe('Rentals', () => {
       ).to.not.be.reverted
     })
 
+    it('should allow rental days equal to MAX_RENTAL_DAYS', async () => {
+      listingParams.maxDays = [maxRentalDays]
+      listingParams.pricePerDay = [ether('1')]
+      acceptListingParams.rentalDays = maxRentalDays
+
+      const prevBalance = await mana.balanceOf(tenant.address)
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.not.be.reverted
+
+      const newBalance = await mana.balanceOf(tenant.address)
+      const expectedPayment = BigNumber.from(listingParams.pricePerDay[0]).mul(BigNumber.from(acceptListingParams.rentalDays))
+
+      expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
+    })
+
     it('should accept a meta tx', async () => {
       const iface = new ethers.utils.Interface(acceptListingABI)
       const signature = await getListingSignature(lessor, rentals, listingParams)
@@ -1596,6 +1622,24 @@ describe('Rentals', () => {
       ).to.be.revertedWith(
         'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
       )
+    })
+
+    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+      listingParams.maxDays = [maxRentalDays + 1]
+      listingParams.pricePerDay = [ether('1')]
+      acceptListingParams.rentalDays = maxRentalDays + 1
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#acceptListing: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
