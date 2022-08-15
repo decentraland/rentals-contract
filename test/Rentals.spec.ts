@@ -1986,6 +1986,21 @@ describe('Rentals', () => {
         .be.reverted
     })
 
+    it('should allow rental days equal to MAX_RENTAL_DAYS', async () => {
+      offerParams.rentalDays = maxRentalDays
+      offerParams.pricePerDay = ether('1')
+
+      const prevBalance = await mana.balanceOf(tenant.address)
+
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })).to.not
+        .be.reverted
+
+      const newBalance = await mana.balanceOf(tenant.address)
+      const expectedPayment = BigNumber.from(offerParams.pricePerDay).mul(BigNumber.from(offerParams.rentalDays))
+
+      expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
+    })
+
     it('should accept a meta tx', async () => {
       const iface = new ethers.utils.Interface(acceptOfferABI)
       const signature = await getOfferSignature(tenant, rentals, offerParams)
@@ -2185,6 +2200,15 @@ describe('Rentals', () => {
       ).to.be.revertedWith(
         'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
       )
+    })
+
+    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+      offerParams.rentalDays = maxRentalDays + 1
+      offerParams.pricePerDay = ether('1')
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
