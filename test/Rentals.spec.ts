@@ -3434,6 +3434,24 @@ describe('Rentals', () => {
         .reverted
     })
 
+    it('should allow rental days equal to MAX_RENTAL_DAYS', async () => {
+      offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxRentalDays
+      offerEncodeValue[pricePerDayIndex] = offerParams.pricePerDay = ether('1')
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
+
+      const prevBalance = await mana.balanceOf(tenant.address)
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)).to.not.be
+        .reverted
+
+      const newBalance = await mana.balanceOf(tenant.address)
+      const expectedPayment = BigNumber.from(offerEncodeValue[pricePerDayIndex]).mul(BigNumber.from(offerEncodeValue[rentalDaysIndex]))
+
+      expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
+    })
+
     it('should revert when the caller is different from the contract address provided in the offer', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
@@ -3693,6 +3711,18 @@ describe('Rentals', () => {
       ).to.be.revertedWith(
         'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
       )
+    })
+
+    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+      offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxRentalDays + 1
+      offerEncodeValue[pricePerDayIndex] = offerParams.pricePerDay = ether('1')
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
