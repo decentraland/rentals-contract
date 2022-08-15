@@ -252,6 +252,7 @@ contract Rentals is
         // Verify that the provided rental days is between min and max days range.
         require(_rentalDays >= minDays && _rentalDays <= maxDays, "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
 
+        // Verify that the provided rental days doesn not exceed MAX_RENTAL_DAYS
         require(_rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptListing: RENTAL_DAYS_EXCEEDES_LIMIT");
 
         _verifyListingSigner(_listing);
@@ -452,6 +453,7 @@ contract Rentals is
         // Verify that the rental days provided in the offer are valid.
         require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
 
+        // Verify that the provided rental days doesn not exceed MAX_RENTAL_DAYS
         require(_offer.rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT");
 
         _verifyOfferSigner(_offer);
