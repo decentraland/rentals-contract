@@ -26,14 +26,14 @@ contract Rentals is
     bytes32 private constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
-                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays,address target)"
+                "Listing(address signer,address contractAddress,uint256 tokenId,address paymentErc20,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays,address target)"
             )
         );
 
     bytes32 private constant OFFER_TYPE_HASH =
         keccak256(
             bytes(
-                "Offer(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
+                "Offer(address signer,address contractAddress,uint256 tokenId,address paymentErc20,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
             )
         );
 
@@ -44,9 +44,6 @@ contract Rentals is
 
     /// @dev EIP165 hash used to detect if a contract supports the onERC721Received(address,address,uint256,bytes) function.
     bytes4 private constant InterfaceId_OnERC721Received = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
-
-    /// @notice ERC20 token used to pay for rent and fees.
-    IERC20 public token;
 
     /// @notice Tracks necessary rental data per asset.
     /// @custom:schema (contract address -> token id -> lessor address)
@@ -64,6 +61,7 @@ contract Rentals is
         address signer;
         address contractAddress;
         uint256 tokenId;
+        address paymentErc20;
         uint256 expiration;
         uint256[3] nonces;
         uint256[] pricePerDay;
@@ -81,6 +79,7 @@ contract Rentals is
         address signer;
         address contractAddress;
         uint256 tokenId;
+        address paymentErc20;
         uint256 expiration;
         uint256[3] nonces;
         uint256 pricePerDay;
@@ -101,6 +100,7 @@ contract Rentals is
         address tenant;
         address contractAddress;
         uint256 tokenId;
+        address paymentErc20;
         bytes32 fingerprint;
         uint256 pricePerDay;
         uint256 rentalDays;
@@ -141,16 +141,9 @@ contract Rentals is
         __ReentrancyGuard_init();
         __NativeMetaTransaction_init("Rentals", "1");
         __ContractNonceVerifiable_init();
-        _setToken(_token);
         _transferOwnership(_owner);
         _setFeeCollector(_feeCollector);
         _setFee(_fee);
-    }
-
-    /// @notice Set the ERC20 token used by tenants to pay rent.
-    /// @param _token The address of the token
-    function setToken(IERC20 _token) external onlyOwner {
-        _setToken(_token);
     }
 
     /// @notice Set the address of the fee collector.
@@ -237,6 +230,7 @@ contract Rentals is
                 tenant,
                 _listing.contractAddress,
                 _listing.tokenId,
+                _listing.paymentErc20,
                 _fingerprint,
                 _listing.pricePerDay[_index],
                 _rentalDays,
@@ -387,10 +381,6 @@ contract Rentals is
         return _getMsgSender();
     }
 
-    function _setToken(IERC20 _token) private {
-        emit TokenUpdated(token, token = _token, _msgSender());
-    }
-
     function _setFeeCollector(address _feeCollector) private {
         emit FeeCollectorUpdated(feeCollector, feeCollector = _feeCollector, _msgSender());
     }
@@ -435,6 +425,7 @@ contract Rentals is
                 tenant,
                 _offer.contractAddress,
                 _offer.tokenId,
+                _offer.paymentErc20,
                 _offer.fingerprint,
                 _offer.pricePerDay,
                 _offer.rentalDays,
@@ -453,6 +444,7 @@ contract Rentals is
                     _listing.signer,
                     _listing.contractAddress,
                     _listing.tokenId,
+                    _listing.paymentErc20,
                     _listing.expiration,
                     keccak256(abi.encodePacked(_listing.nonces)),
                     keccak256(abi.encodePacked(_listing.pricePerDay)),
@@ -477,6 +469,7 @@ contract Rentals is
                     _offer.signer,
                     _offer.contractAddress,
                     _offer.tokenId,
+                    _offer.paymentErc20,
                     _offer.expiration,
                     keccak256(abi.encodePacked(_offer.nonces)),
                     _offer.pricePerDay,
@@ -540,7 +533,7 @@ contract Rentals is
 
         // Transfer tokens
         if (_rentParams.pricePerDay > 0) {
-            _handleTokenTransfers(_rentParams.lessor, _rentParams.tenant, _rentParams.pricePerDay, _rentParams.rentalDays);
+            _handleTokenTransfers(_rentParams.lessor, _rentParams.tenant, _rentParams.pricePerDay, _rentParams.rentalDays, _rentParams.paymentErc20);
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
@@ -607,16 +600,17 @@ contract Rentals is
         address _lessor,
         address _tenant,
         uint256 _pricePerDay,
-        uint256 _rentalDays
+        uint256 _rentalDays,
+        address _paymentErc20
     ) private {
         uint256 totalPrice = _pricePerDay * _rentalDays;
         uint256 forCollector = (totalPrice * fee) / MAX_FEE;
 
         // Save the reference in memory so it doesn't access storage twice.
-        IERC20 mToken = token;
+        IERC20 mToken = IERC20(_paymentErc20);
 
         // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
-        mToken.transferFrom(_tenant, _lessor, totalPrice - forCollector);
-        mToken.transferFrom(_tenant, feeCollector, forCollector);
+        require(mToken.transferFrom(_tenant, _lessor, totalPrice - forCollector));
+        require(mToken.transferFrom(_tenant, feeCollector, forCollector));
     }
 }

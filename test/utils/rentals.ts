@@ -56,6 +56,10 @@ export const getListingSignature = (
           name: 'tokenId',
         },
         {
+          type: 'address',
+          name: 'paymentErc20',
+        },
+        {
           type: 'uint256',
           name: 'expiration',
         },
@@ -105,6 +109,10 @@ export const getOfferSignature = (signer: SignerWithAddress, contract: Rentals, 
         {
           type: 'uint256',
           name: 'tokenId',
+        },
+        {
+          type: 'address',
+          name: 'paymentErc20',
         },
         {
           type: 'uint256',
@@ -188,6 +196,11 @@ export const acceptListingABI = [
             internalType: 'uint256',
             name: 'tokenId',
             type: 'uint256',
+          },
+          {
+            internalType: 'address',
+            name: 'paymentErc20',
+            type: 'address',
           },
           {
             internalType: 'uint256',
@@ -276,6 +289,11 @@ export const acceptOfferABI = [
             internalType: 'uint256',
             name: 'tokenId',
             type: 'uint256',
+          },
+          {
+            internalType: 'address',
+            name: 'paymentErc20',
+            type: 'address',
           },
           {
             internalType: 'uint256',

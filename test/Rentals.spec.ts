@@ -46,13 +46,14 @@ describe('Rentals', () => {
   const signerIndex = 0
   const contractAddressIndex = 1
   const tokenIdIndex = 2
-  const expirationIndex = 3
-  const noncesIndex = 4
-  const pricePerDayIndex = 5
-  const rentalDaysIndex = 6
-  const operatorIndex = 7
-  const fingerprintIndex = 8
-  const signatureIndex = 9
+  const paymentErc20Index = 3
+  const expirationIndex = 4
+  const noncesIndex = 5
+  const pricePerDayIndex = 6
+  const rentalDaysIndex = 7
+  const operatorIndex = 8
+  const fingerprintIndex = 9
+  const signatureIndex = 10
 
   beforeEach(async () => {
     snapshotId = await network.provider.send('evm_snapshot')
@@ -122,6 +123,7 @@ describe('Rentals', () => {
       signer: lessor.address,
       contractAddress: land.address,
       tokenId,
+      paymentErc20: mana.address,
       expiration: now() + 1000,
       nonces: [0, 0, 0],
       pricePerDay: [ether('100')],
@@ -134,6 +136,7 @@ describe('Rentals', () => {
       signer: tenant.address,
       contractAddress: land.address,
       tokenId,
+      paymentErc20: mana.address,
       fingerprint: getZeroBytes32(),
       pricePerDay: ether('100'),
       expiration: now() + 1000,
@@ -149,12 +152,13 @@ describe('Rentals', () => {
       fingerprint: offerParams.fingerprint,
     }
 
-    offerEncodeType = 'tuple(address,address,uint256,uint256,uint256[3],uint256,uint256,address,bytes32,bytes)'
+    offerEncodeType = 'tuple(address,address,uint256,address,uint256,uint256[3],uint256,uint256,address,bytes32,bytes)'
 
     offerEncodeValue = [
       offerParams.signer,
       offerParams.contractAddress,
       offerParams.tokenId,
+      offerParams.paymentErc20,
       offerParams.expiration,
       offerParams.nonces,
       offerParams.pricePerDay,
@@ -176,10 +180,6 @@ describe('Rentals', () => {
 
     it('should set the owner', async () => {
       expect(await rentals.owner()).to.be.equal(owner.address)
-    })
-
-    it('should set the erc20 token', async () => {
-      expect(await rentals.token()).to.be.equal(mana.address)
     })
 
     it('should set the fee collector', async () => {
@@ -209,42 +209,6 @@ describe('Rentals', () => {
       await expect(rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
-    })
-  })
-
-  describe('setToken', () => {
-    let oldToken: string
-    let newToken: string
-
-    beforeEach(async () => {
-      oldToken = mana.address
-      newToken = deployer.address
-
-      await rentals.connect(deployer).initialize(owner.address, oldToken, collector.address, fee)
-    })
-
-    it('should update the erc20 token variable', async () => {
-      await rentals.connect(owner).setToken(newToken)
-      expect(await rentals.token()).to.be.equal(newToken)
-    })
-
-    it('should emit a TokenUpdated event', async () => {
-      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'TokenUpdated').withArgs(oldToken, newToken, owner.address)
-    })
-
-    it('should accept a meta tx', async () => {
-      const abi = ['function setToken(address _token)']
-      const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('setToken', [newToken])
-      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionData)
-
-      await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
-
-      expect(await rentals.token()).to.be.equal(newToken)
-    })
-
-    it('should revert when sender is not owner', async () => {
-      await expect(rentals.connect(tenant).setToken(newToken)).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
 
