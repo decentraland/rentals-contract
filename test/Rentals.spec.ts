@@ -23,6 +23,7 @@ const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const estateId = 1
 const fee = '100000' // 10% fee
+const maxRentalDays = 36525 // 100 years
 
 describe('Rentals', () => {
   let deployer: SignerWithAddress
@@ -1035,6 +1036,31 @@ describe('Rentals', () => {
       ).to.not.be.reverted
     })
 
+    it('should allow rental days equal to MAX_RENTAL_DAYS', async () => {
+      listingParams.maxDays = [maxRentalDays]
+      listingParams.pricePerDay = [ether('1')]
+      acceptListingParams.rentalDays = maxRentalDays
+
+      const prevBalance = await mana.balanceOf(tenant.address)
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.not.be.reverted
+
+      const newBalance = await mana.balanceOf(tenant.address)
+      const expectedPayment = BigNumber.from(listingParams.pricePerDay[0]).mul(BigNumber.from(acceptListingParams.rentalDays))
+
+      expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
+    })
+
     it('should accept a meta tx', async () => {
       const iface = new ethers.utils.Interface(acceptListingABI)
       const signature = await getListingSignature(lessor, rentals, listingParams)
@@ -1579,9 +1605,10 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
     })
 
-    it('should revert when rental days has a value that overflows when converted to seconds', async () => {
-      listingParams.maxDays = [maxUint256]
-      acceptListingParams.rentalDays = maxUint256
+    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+      listingParams.maxDays = [maxRentalDays + 1]
+      listingParams.pricePerDay = [ether('1')]
+      acceptListingParams.rentalDays = maxRentalDays + 1
 
       await expect(
         rentals
@@ -1593,9 +1620,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith(
-        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
-      )
+      ).to.be.revertedWith('Rentals#acceptListing: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
@@ -1942,6 +1967,21 @@ describe('Rentals', () => {
         .be.reverted
     })
 
+    it('should allow rental days equal to MAX_RENTAL_DAYS', async () => {
+      offerParams.rentalDays = maxRentalDays
+      offerParams.pricePerDay = ether('1')
+
+      const prevBalance = await mana.balanceOf(tenant.address)
+
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })).to.not
+        .be.reverted
+
+      const newBalance = await mana.balanceOf(tenant.address)
+      const expectedPayment = BigNumber.from(offerParams.pricePerDay).mul(BigNumber.from(offerParams.rentalDays))
+
+      expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
+    })
+
     it('should accept a meta tx', async () => {
       const iface = new ethers.utils.Interface(acceptOfferABI)
       const signature = await getOfferSignature(tenant, rentals, offerParams)
@@ -2133,14 +2173,13 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when rental days has a value that overflows when converted to seconds', async () => {
-      offerParams.rentalDays = maxUint256
+    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+      offerParams.rentalDays = maxRentalDays + 1
+      offerParams.pricePerDay = ether('1')
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith(
-        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
-      )
+      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
@@ -3366,6 +3405,24 @@ describe('Rentals', () => {
         .reverted
     })
 
+    it('should allow rental days equal to MAX_RENTAL_DAYS', async () => {
+      offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxRentalDays
+      offerEncodeValue[pricePerDayIndex] = offerParams.pricePerDay = ether('1')
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
+
+      const prevBalance = await mana.balanceOf(tenant.address)
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)).to.not.be
+        .reverted
+
+      const newBalance = await mana.balanceOf(tenant.address)
+      const expectedPayment = BigNumber.from(offerEncodeValue[pricePerDayIndex]).mul(BigNumber.from(offerEncodeValue[rentalDaysIndex]))
+
+      expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
+    })
+
     it('should revert when the caller is different from the contract address provided in the offer', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
@@ -3614,17 +3671,16 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when rental days has a value that overflows when converted to seconds', async () => {
-      offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxUint256
+    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+      offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxRentalDays + 1
+      offerEncodeValue[pricePerDayIndex] = offerParams.pricePerDay = ether('1')
       offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith(
-        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
-      )
+      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
