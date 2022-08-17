@@ -213,42 +213,6 @@ describe('Rentals', () => {
     })
   })
 
-  describe('setToken', () => {
-    let oldToken: string
-    let newToken: string
-
-    beforeEach(async () => {
-      oldToken = mana.address
-      newToken = deployer.address
-
-      await rentals.connect(deployer).initialize(owner.address, oldToken, collector.address, fee)
-    })
-
-    it('should update the erc20 token variable', async () => {
-      await rentals.connect(owner).setToken(newToken)
-      expect(await rentals.getToken()).to.be.equal(newToken)
-    })
-
-    it('should emit a TokenUpdated event', async () => {
-      await expect(rentals.connect(owner).setToken(newToken)).to.emit(rentals, 'TokenUpdated').withArgs(oldToken, newToken, owner.address)
-    })
-
-    it('should accept a meta tx', async () => {
-      const abi = ['function setToken(address _token)']
-      const iface = new ethers.utils.Interface(abi)
-      const functionData = iface.encodeFunctionData('setToken', [newToken])
-      const metaTxSignature = await getMetaTxSignature(owner, rentals, functionData)
-
-      await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
-
-      expect(await rentals.getToken()).to.be.equal(newToken)
-    })
-
-    it('should revert when sender is not owner', async () => {
-      await expect(rentals.connect(tenant).setToken(newToken)).to.be.revertedWith('Ownable: caller is not the owner')
-    })
-  })
-
   describe('setFeeCollector', () => {
     let oldFeeCollector: string
     let newFeeCollector: string
