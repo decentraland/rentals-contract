@@ -1983,7 +1983,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(lessor, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER')
+      ).to.be.revertedWith('Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER')
     })
 
     it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
@@ -1991,7 +1991,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#acceptOffer: EXPIRED_SIGNATURE')
+      ).to.be.revertedWith('Rentals#_acceptOffer: EXPIRED_SIGNATURE')
     })
 
     it('should revert when tenant rental days is zero', async () => {
@@ -1999,7 +1999,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO')
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
     })
 
     it('should revert when tenant contract nonce is not the same as the contract', async () => {
@@ -2143,7 +2143,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 
@@ -3439,7 +3439,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER')
+      ).to.be.revertedWith('Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER')
     })
 
     it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
@@ -3450,7 +3450,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#acceptOffer: EXPIRED_SIGNATURE')
+      ).to.be.revertedWith('Rentals#_acceptOffer: EXPIRED_SIGNATURE')
     })
 
     it('should revert when tenant rental days is zero', async () => {
@@ -3461,7 +3461,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO')
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
     })
 
     it('should revert when tenant contract nonce is not the same as the contract', async () => {
@@ -3644,7 +3644,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
     })
   })
 

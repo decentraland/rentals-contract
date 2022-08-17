@@ -430,7 +430,7 @@ contract Rentals is
     function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant {
         address tenant = _offer.signer;
 
-        require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
+        require(_lessor != tenant, "Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the offer match the ones in the contract.
         _verifyContractNonce(_offer.nonces[0]);
@@ -438,13 +438,13 @@ contract Rentals is
         _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
 
         // Verify that the offer is not already expired.
-        require(_offer.expiration >= block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
+        require(_offer.expiration >= block.timestamp, "Rentals#_acceptOffer: EXPIRED_SIGNATURE");
 
         // Verify that the rental days provided in the offer are valid.
-        require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
+        require(_offer.rentalDays > 0, "Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO");
 
         // Verify that the provided rental days does not exceed MAX_RENTAL_DAYS
-        require(_offer.rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT");
+        require(_offer.rentalDays <= MAX_RENTAL_DAYS, "Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT");
 
         _verifyOfferSigner(_offer);
 
