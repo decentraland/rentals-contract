@@ -206,6 +206,10 @@ describe('Rentals', () => {
       expect(await rentals.getEIP712VersionHash()).to.be.equal('0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6')
     })
 
+    it('should set the contract as unpaused', async () => {
+      expect(await rentals.paused()).to.be.false
+    })
+
     it('should revert when initialized more than once', async () => {
       await expect(rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
@@ -3735,6 +3739,156 @@ describe('Rentals', () => {
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
       ).to.be.revertedWith('ReentrancyGuard: reentrant call')
+    })
+  })
+
+  describe('pause', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
+    })
+
+    it('should pause the rentals contract', async () => {
+      await rentals.connect(owner).pause()
+      expect(await rentals.paused()).to.be.true
+    })
+
+    it('should revert when the caller is not the owner', async () => {
+      await expect(rentals.pause()).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+
+    it('should revert when the contract is already paused', async () => {
+      await rentals.connect(owner).pause()
+      await expect(rentals.connect(owner).pause()).to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when calling acceptListing and the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when calling acceptOffer and the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when calling onERC721Received and the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when calling claim and the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+      await expect(rentals.claim([], [])).to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when calling setUpdateOperator and the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+      await expect(rentals.setUpdateOperator([], [], [])).to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when calling setManyLandUpdateOperator and the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+      await expect(rentals.setManyLandUpdateOperator(estate.address, estateId, [], [])).to.be.revertedWith('Pausable: paused')
+    })
+  })
+
+  describe('unpause', () => {
+    beforeEach(async () => {
+      await rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)
+    })
+
+    it('should unpause the rentals contract', async () => {
+      await rentals.connect(owner).pause()
+      expect(await rentals.paused()).to.be.true
+      await rentals.connect(owner).unpause()
+      expect(await rentals.paused()).to.be.false
+    })
+
+    it('should allow calling acceptListing when the contract is unpaused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should allow calling acceptOffer when the contract is unpaused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should allow calling onERC721Received when the contract is unpaused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should allow calling claim when the contract is unpaused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+
+      await expect(rentals.claim([], [])).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should allow calling setUpdateOperator when the contract is unpaused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+
+      await expect(rentals.setUpdateOperator([], [], [])).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should allow calling setManyLandUpdateOperator when the contract is unpaused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+
+      await expect(rentals.setManyLandUpdateOperator(estate.address, estateId, [], [])).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert when the caller is not the owner', async () => {
+      await expect(rentals.unpause()).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+
+    it('should revert when the contract is already paused', async () => {
+      await rentals.connect(owner).pause()
+      await rentals.connect(owner).unpause()
+      await expect(rentals.connect(owner).unpause()).to.be.revertedWith('Pausable: not paused')
     })
   })
 })
