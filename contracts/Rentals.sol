@@ -157,6 +157,8 @@ contract Rentals is
     /// - acceptOffer
     /// - onERC721Received (No offers will be accepted through a safeTransfer to this contract)
     /// - claim
+    /// - setUpdateOperator
+    /// - setManyLandUpdateOperator
     /// @dev The contract has to be unpaused or this function will revert.
     function pause() external onlyOwner {
         _pause();
@@ -346,7 +348,7 @@ contract Rentals is
         address[] memory _contractAddresses,
         uint256[] memory _tokenIds,
         address[] memory _operators
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         require(
             _contractAddresses.length == _tokenIds.length && _contractAddresses.length == _operators.length,
             "Rentals#setUpdateOperator: LENGTH_MISMATCH"
@@ -382,7 +384,7 @@ contract Rentals is
         uint256 _tokenId,
         uint256[][] memory _landTokenIds,
         address[] memory _operators
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
 
         Rental memory rental = rentals[_contractAddress][_tokenId];
