@@ -179,15 +179,15 @@ describe('Rentals', () => {
     })
 
     it('should set the erc20 token', async () => {
-      expect(await rentals.token()).to.be.equal(mana.address)
+      expect(await rentals.getToken()).to.be.equal(mana.address)
     })
 
     it('should set the fee collector', async () => {
-      expect(await rentals.feeCollector()).to.be.equal(collector.address)
+      expect(await rentals.getFeeCollector()).to.be.equal(collector.address)
     })
 
     it('should set the fee', async () => {
-      expect(await rentals.fee()).to.be.equal(fee)
+      expect(await rentals.getFee()).to.be.equal(fee)
     })
 
     it('should set eip712 name and version hashes', async () => {
@@ -225,7 +225,7 @@ describe('Rentals', () => {
 
     it('should update the erc20 token variable', async () => {
       await rentals.connect(owner).setToken(newToken)
-      expect(await rentals.token()).to.be.equal(newToken)
+      expect(await rentals.getToken()).to.be.equal(newToken)
     })
 
     it('should emit a TokenUpdated event', async () => {
@@ -240,7 +240,7 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
 
-      expect(await rentals.token()).to.be.equal(newToken)
+      expect(await rentals.getToken()).to.be.equal(newToken)
     })
 
     it('should revert when sender is not owner', async () => {
@@ -261,7 +261,7 @@ describe('Rentals', () => {
 
     it('should update the feeCollector variable', async () => {
       await rentals.connect(owner).setFeeCollector(newFeeCollector)
-      expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
+      expect(await rentals.getFeeCollector()).to.be.equal(newFeeCollector)
     })
 
     it('should emit a FeeCollectorUpdated event', async () => {
@@ -278,7 +278,7 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
 
-      expect(await rentals.feeCollector()).to.be.equal(newFeeCollector)
+      expect(await rentals.getFeeCollector()).to.be.equal(newFeeCollector)
     })
 
     it('should revert when sender is not owner', async () => {
@@ -296,7 +296,7 @@ describe('Rentals', () => {
 
     it('should update the fee variable', async () => {
       await rentals.connect(owner).setFee(newFee)
-      expect(await rentals.fee()).to.be.equal(newFee)
+      expect(await rentals.getFee()).to.be.equal(newFee)
     })
 
     it('should emit a FeeUpdated event', async () => {
@@ -306,7 +306,7 @@ describe('Rentals', () => {
     it('should accept the maximum fee of MAX_FEE', async () => {
       const maximumFee = '1000000'
       await rentals.connect(owner).setFee(maximumFee)
-      expect(await rentals.fee()).to.be.equal(maximumFee)
+      expect(await rentals.getFee()).to.be.equal(maximumFee)
     })
 
     it('should accept a meta tx', async () => {
@@ -317,7 +317,7 @@ describe('Rentals', () => {
 
       await rentals.connect(owner).executeMetaTransaction(owner.address, functionData, metaTxSignature)
 
-      expect(await rentals.fee()).to.be.equal(newFee)
+      expect(await rentals.getFee()).to.be.equal(newFee)
     })
 
     it('should revert when sender is not owner', async () => {
@@ -423,13 +423,13 @@ describe('Rentals', () => {
     })
 
     it('should return false when the asset was never rented', async () => {
-      expect(await rentals.isRented(land.address, tokenId)).to.equal(false)
+      expect(await rentals.getIsRented(land.address, tokenId)).to.equal(false)
     })
 
     it('should return true after an asset is rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect(await rentals.isRented(land.address, tokenId)).to.equal(true)
+      expect(await rentals.getIsRented(land.address, tokenId)).to.equal(true)
     })
 
     it('should return true when the current block timestamp is the same as the rental end', async () => {
@@ -439,11 +439,11 @@ describe('Rentals', () => {
       await evmMine()
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
-      const rentalEnd = (await rentals.rentals(land.address, tokenId)).endDate
+      const rentalEnd = (await rentals.getRental(land.address, tokenId)).endDate
 
       expect(rentalEnd).to.be.equal(latestBlockTimestamp)
 
-      expect(await rentals.isRented(land.address, tokenId)).to.equal(true)
+      expect(await rentals.getIsRented(land.address, tokenId)).to.equal(true)
     })
 
     it('should return false when the block timestamp is equal to the rental end + 1', async () => {
@@ -452,7 +452,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays) + 1)
       await evmMine()
 
-      expect(await rentals.isRented(land.address, tokenId)).to.equal(false)
+      expect(await rentals.getIsRented(land.address, tokenId)).to.equal(false)
     })
   })
 
@@ -603,7 +603,7 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping with lessor when the contract does not own the asset already', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -615,11 +615,11 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(lessor.address)
     })
 
     it('should update the rentals mapping with new tenant', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -631,7 +631,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(tenant.address)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -653,7 +653,7 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping with the end timestamp of the rented asset', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
+      expect((await rentals.getRental(land.address, tokenId)).endDate).to.equal(0)
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
@@ -667,7 +667,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.getRental(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should increase the end date of a rental on an extension by the provided rental days', async () => {
@@ -685,7 +685,7 @@ describe('Rentals', () => {
 
       let endDate = latestBlockTimestamp + daysToSeconds(acceptListingParams.rentalDays)
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
 
       expect(rental.endDate).to.equal(endDate)
 
@@ -707,7 +707,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
 
       endDate += daysToSeconds(acceptListingParams.rentalDays)
 
@@ -718,7 +718,7 @@ describe('Rentals', () => {
       const rentalDays1 = 10
       const rentalDays2 = 100
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
@@ -744,7 +744,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
@@ -768,7 +768,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
@@ -785,7 +785,7 @@ describe('Rentals', () => {
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
@@ -801,7 +801,7 @@ describe('Rentals', () => {
       const rentalDays1 = 10
       const rentalDays2 = 100
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
@@ -827,7 +827,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
@@ -842,7 +842,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
@@ -859,7 +859,7 @@ describe('Rentals', () => {
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
@@ -969,7 +969,7 @@ describe('Rentals', () => {
     it('should accept the listing when the caller is the same as the target provided', async () => {
       listingParams = { ...listingParams, target: tenant.address }
 
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
+      expect((await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -981,11 +981,11 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
+      expect((await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
     })
 
     it('should allow a re rent if the lessor is the same', async () => {
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
+      expect((await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals
         .connect(tenant)
@@ -997,7 +997,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
+      expect((await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(tenant.address)
 
       await evmIncreaseTime((await getLatestBlockTimestamp()) + daysToSeconds(acceptListingParams.rentalDays))
       await evmMine()
@@ -1014,7 +1014,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      expect((await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(extra.address)
+      expect((await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(extra.address)
     })
 
     it('should allow an expiration that is equal to the current block timestamp', async () => {
@@ -1670,19 +1670,19 @@ describe('Rentals', () => {
     })
 
     it('should update rentals mapping with lessor when the contract does not own the asset already', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(lessor.address)
     })
 
     it('should update the rentals mapping with new tenant', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(tenant.address)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(tenant.address)
     })
 
     it('should bump both the lessor and tenant asset nonces', async () => {
@@ -1696,13 +1696,13 @@ describe('Rentals', () => {
     })
 
     it('should update the rentals mapping for the rented asset with the rental finish timestamp', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(0)
+      expect((await rentals.getRental(land.address, tokenId)).endDate).to.equal(0)
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays) + 1)
+      expect((await rentals.getRental(land.address, tokenId)).endDate).to.equal(latestBlockTimestamp + daysToSeconds(offerParams.rentalDays) + 1)
     })
 
     it('should increase the end date of a rental on an extension by the provided rental days', async () => {
@@ -1712,7 +1712,7 @@ describe('Rentals', () => {
 
       let endDate = latestBlockTimestamp + daysToSeconds(offerParams.rentalDays)
 
-      let rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+      let rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
 
       expect(rental.endDate).to.equal(endDate)
 
@@ -1725,7 +1725,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+      rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
 
       endDate += daysToSeconds(offerParams.rentalDays)
 
@@ -1736,7 +1736,7 @@ describe('Rentals', () => {
       const rentalDays1 = 10
       const rentalDays2 = 100
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
@@ -1753,7 +1753,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
@@ -1768,7 +1768,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
@@ -1785,7 +1785,7 @@ describe('Rentals', () => {
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
@@ -1801,7 +1801,7 @@ describe('Rentals', () => {
       const rentalDays1 = 10
       const rentalDays2 = 100
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
@@ -1818,7 +1818,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
@@ -1842,7 +1842,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
@@ -1859,7 +1859,7 @@ describe('Rentals', () => {
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
@@ -2150,33 +2150,33 @@ describe('Rentals', () => {
     })
 
     it('should set the lessor to address(0)', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(lessor.address)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(lessor.address)
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
       await rentals.connect(lessor).claim([land.address], [tokenId])
 
-      expect((await rentals.rentals(land.address, tokenId)).lessor).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).lessor).to.equal(zeroAddress)
     })
 
     it('should set tenant to address(0)', async () => {
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(zeroAddress)
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(tenant.address)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(tenant.address)
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
       await rentals.connect(lessor).claim([land.address], [tokenId])
 
-      expect((await rentals.rentals(land.address, tokenId)).tenant).to.equal(zeroAddress)
+      expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(zeroAddress)
     })
 
     it('should transfer the asset to the original owner', async () => {
@@ -2980,7 +2980,7 @@ describe('Rentals', () => {
       await evmMine()
 
       // Check that it reverts after the rental.
-      expect(await rentals.isRented(offerParams.contractAddress, offerParams.tokenId)).to.be.false
+      expect(await rentals.getIsRented(offerParams.contractAddress, offerParams.tokenId)).to.be.false
 
       await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])).to.be.revertedWith(
         'Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR'
@@ -3045,13 +3045,13 @@ describe('Rentals', () => {
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
-      let rental = await rentals.rentals(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+      let rental = await rentals.getRental(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
 
       expect(rental.lessor).to.equal(zeroAddress)
 
       await land.connect(extra)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
 
-      rental = await rentals.rentals(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
+      rental = await rentals.getRental(offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex])
 
       expect(rental.lessor).to.equal(extra.address)
 
@@ -3094,7 +3094,7 @@ describe('Rentals', () => {
     it('should accept an offer by transfering the asset to the rentals contract with the offer data', async () => {
       expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
 
-      let rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+      let rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
 
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
@@ -3106,7 +3106,7 @@ describe('Rentals', () => {
 
       expect(await land.ownerOf(tokenId)).to.equal(rentals.address)
 
-      rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+      rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
@@ -3124,7 +3124,7 @@ describe('Rentals', () => {
 
       let endDate = latestBlockTimestamp + daysToSeconds(offerParams.rentalDays)
 
-      let rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+      let rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
 
       expect(rental.endDate).to.equal(endDate)
 
@@ -3137,7 +3137,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(offerParams.contractAddress, offerParams.tokenId)
+      rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
 
       endDate += daysToSeconds(offerParams.rentalDays)
 
@@ -3153,7 +3153,7 @@ describe('Rentals', () => {
 
       let endDate = latestBlockTimestamp + daysToSeconds(acceptListingParams.rentalDays)
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
 
       expect(rental.endDate).to.equal(endDate)
 
@@ -3175,7 +3175,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
 
       endDate += daysToSeconds(acceptListingParams.rentalDays)
 
@@ -3186,7 +3186,7 @@ describe('Rentals', () => {
       const rentalDays1 = 10
       const rentalDays2 = 100
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
@@ -3206,7 +3206,7 @@ describe('Rentals', () => {
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
@@ -3230,7 +3230,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
@@ -3247,7 +3247,7 @@ describe('Rentals', () => {
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))
@@ -3263,7 +3263,7 @@ describe('Rentals', () => {
       const rentalDays1 = 10
       const rentalDays2 = 100
 
-      let rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      let rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(zeroAddress)
       expect(rental.tenant).to.equal(zeroAddress)
       expect(rental.endDate).to.equal(0)
@@ -3283,7 +3283,7 @@ describe('Rentals', () => {
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1) + 1)
@@ -3298,7 +3298,7 @@ describe('Rentals', () => {
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId, { blockTag: 'pending' })
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal((await getLatestBlockTimestamp()) + daysToSeconds(rentalDays1 + rentalDays2) + 1)
@@ -3315,9 +3315,9 @@ describe('Rentals', () => {
 
       const latestBlockTimestamp = await getLatestBlockTimestamp()
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
 
-      rental = await rentals.rentals(listingParams.contractAddress, listingParams.tokenId)
+      rental = await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)
       expect(rental.lessor).to.equal(lessor.address)
       expect(rental.tenant).to.equal(tenant.address)
       expect(rental.endDate).to.equal(latestBlockTimestamp + daysToSeconds(rentalDays1 + rentalDays2))

@@ -46,17 +46,17 @@ contract Rentals is
     bytes4 private constant InterfaceId_OnERC721Received = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
 
     /// @notice ERC20 token used to pay for rent and fees.
-    IERC20 public token;
+    IERC20 private token;
 
     /// @notice Tracks necessary rental data per asset.
     /// @custom:schema (contract address -> token id -> lessor address)
-    mapping(address => mapping(uint256 => Rental)) public rentals;
+    mapping(address => mapping(uint256 => Rental)) private rentals;
 
     /// @notice Address that will receive ERC20 tokens collected as rental fees.
-    address public feeCollector;
+    address private feeCollector;
 
     /// @notice Value per million wei that will be deducted from the rental price and sent to the collector.
-    uint256 public fee;
+    uint256 private fee;
 
     /// @notice Struct received as a parameter in `acceptListing` containing all information about
     /// listing conditions and values required to verify the signature was created by the signer.
@@ -141,10 +141,40 @@ contract Rentals is
         __ReentrancyGuard_init();
         __NativeMetaTransaction_init("Rentals", "1");
         __ContractNonceVerifiable_init();
-        _setToken(_token);
         _transferOwnership(_owner);
+        _setToken(_token);
         _setFeeCollector(_feeCollector);
         _setFee(_fee);
+    }
+
+    /// @notice Get the rental data for a given asset.
+    /// @param _contractAddress The contract address of the asset.
+    /// @param _tokenId The id of the asset.
+    function getRental(address _contractAddress, uint256 _tokenId) external view returns (Rental memory) {
+        return rentals[_contractAddress][_tokenId];
+    }
+
+    /// @notice Get the current token address used for rental payments.
+    function getToken() external view returns (IERC20) {
+        return token;
+    }
+
+    /// @notice Get the current address that will receive a cut of rental payments as a fee.
+    function getFeeCollector() external view returns (address) {
+        return feeCollector;
+    }
+
+    /// @notice Get the value per MAX_FEE that will be cut from the rental payment and sent to the fee collector.
+    function getFee() external view returns (uint256) {
+        return fee;
+    }
+
+    /// @notice Get if and asset is currently being rented.
+    /// @param _contractAddress The contract address of the asset.
+    /// @param _tokenId The token id of the asset.
+    /// @return result true or false depending if the asset is currently rented
+    function getIsRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
+        result = block.timestamp <= rentals[_contractAddress][_tokenId].endDate;
     }
 
     /// @notice Set the ERC20 token used by tenants to pay rent.
@@ -163,14 +193,6 @@ contract Rentals is
     /// @param _fee The value for the fee.
     function setFee(uint256 _fee) external onlyOwner {
         _setFee(_fee);
-    }
-
-    /// @notice Get if and asset is currently being rented.
-    /// @param _contractAddress The contract address of the asset.
-    /// @param _tokenId The token id of the asset.
-    /// @return result true or false depending if the asset is currently rented
-    function isRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
-        result = block.timestamp <= rentals[_contractAddress][_tokenId].endDate;
     }
 
     /// @notice Accept a rental listing created by the owner of an asset.
@@ -268,7 +290,7 @@ contract Rentals is
             uint256 tokenId = _tokenIds[i];
 
             // Verify that the rent has finished.
-            require(!isRented(contractAddress, tokenId), "Rentals#claim: CURRENTLY_RENTED");
+            require(!getIsRented(contractAddress, tokenId), "Rentals#claim: CURRENTLY_RENTED");
 
             Rental memory rental = rentals[contractAddress][tokenId];
 
@@ -312,10 +334,10 @@ contract Rentals is
             address contractAddress = _contractAddresses[i];
             uint256 tokenId = _tokenIds[i];
             Rental memory rental = rentals[contractAddress][tokenId];
-            bool rented = isRented(contractAddress, tokenId);
+            bool isRented = getIsRented(contractAddress, tokenId);
 
             require(
-                (rented && sender == rental.tenant) || (!rented && sender == rental.lessor),
+                (isRented && sender == rental.tenant) || (!isRented && sender == rental.lessor),
                 "Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR"
             );
 
@@ -340,11 +362,11 @@ contract Rentals is
         require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
 
         Rental memory rental = rentals[_contractAddress][_tokenId];
-        bool rented = isRented(_contractAddress, _tokenId);
+        bool isRented = getIsRented(_contractAddress, _tokenId);
         address sender = _msgSender();
 
         require(
-            (rented && sender == rental.tenant) || (!rented && sender == rental.lessor),
+            (isRented && sender == rental.tenant) || (!isRented && sender == rental.lessor),
             "Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR"
         );
 
@@ -503,24 +525,24 @@ contract Rentals is
         Rental storage rental = rentals[_rentParams.contractAddress][_rentParams.tokenId];
 
         // True if the asset is currently rented.
-        bool rented = isRented(_rentParams.contractAddress, _rentParams.tokenId);
+        bool isRented = getIsRented(_rentParams.contractAddress, _rentParams.tokenId);
         // True if the asset rental period is over, but is has not been claimed back from the contract.
-        bool reRent = !rented && rental.lessor != address(0);
+        bool isReRent = !isRented && rental.lessor != address(0);
         // True if the asset rental period is not over yet, but the lessor and the tenant are the same.
-        bool extend = rented && rental.lessor == _rentParams.lessor && rental.tenant == _rentParams.tenant;
+        bool isExtend = isRented && rental.lessor == _rentParams.lessor && rental.tenant == _rentParams.tenant;
 
-        if (!extend && !reRent) {
+        if (!isExtend && !isReRent) {
             // Verify that the asset is not already rented.
-            require(!rented, "Rentals#_rent: CURRENTLY_RENTED");
+            require(!isRented, "Rentals#_rent: CURRENTLY_RENTED");
         }
 
-        if (reRent) {
+        if (isReRent) {
             // The asset is being rented again wihout claiming it back first, so we need to check that the previous lessor
             // is the same as the lessor this time to prevent anyone else from acting as the lessor.
             require(rental.lessor == _rentParams.lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         }
 
-        if (extend) {
+        if (isExtend) {
             // Increase the current end date by the amount of provided rental days.
             rental.endDate = rental.endDate + _rentParams.rentalDays * 1 days;
         } else {
@@ -559,7 +581,7 @@ contract Rentals is
             _rentParams.operator,
             _rentParams.rentalDays,
             _rentParams.pricePerDay,
-            extend,
+            isExtend,
             _msgSender(),
             _rentParams.signature
         );
