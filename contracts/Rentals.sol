@@ -109,7 +109,6 @@ contract Rentals is
         bytes signature;
     }
 
-    event TokenUpdated(IERC20 _from, IERC20 _to, address _sender);
     event FeeCollectorUpdated(address _from, address _to, address _sender);
     event FeeUpdated(uint256 _from, uint256 _to, address _sender);
     event AssetClaimed(address indexed _contractAddress, uint256 indexed _tokenId, address _sender);
@@ -143,9 +142,10 @@ contract Rentals is
         __NativeMetaTransaction_init("Rentals", "1");
         __ContractNonceVerifiable_init();
         _transferOwnership(_owner);
-        _setToken(_token);
         _setFeeCollector(_feeCollector);
         _setFee(_fee);
+
+        token = _token;
     }
 
     /// @notice Get the rental data for a given asset.
@@ -176,12 +176,6 @@ contract Rentals is
     /// @return result true or false depending if the asset is currently rented
     function getIsRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
         result = block.timestamp <= rentals[_contractAddress][_tokenId].endDate;
-    }
-
-    /// @notice Set the ERC20 token used by tenants to pay rent.
-    /// @param _token The address of the token
-    function setToken(IERC20 _token) external onlyOwner {
-        _setToken(_token);
     }
 
     /// @notice Set the address of the fee collector.
@@ -411,10 +405,6 @@ contract Rentals is
     /// @dev Overriding to return NativeMetaTransaction._getMsgSender for the contract to support meta transactions.
     function _msgSender() internal view override returns (address sender) {
         return _getMsgSender();
-    }
-
-    function _setToken(IERC20 _token) private {
-        emit TokenUpdated(token, token = _token, _msgSender());
     }
 
     function _setFeeCollector(address _feeCollector) private {
