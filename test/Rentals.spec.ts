@@ -16,6 +16,7 @@ import {
   getLatestBlockTimestamp,
   acceptListingABI,
   acceptOfferABI,
+  getPendingBlockTimestamp,
 } from './utils/rentals'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
@@ -1016,6 +1017,24 @@ describe('Rentals', () => {
       expect((await rentals.getRental(listingParams.contractAddress, listingParams.tokenId)).tenant).to.equal(extra.address)
     })
 
+    it('should allow an expiration that is equal to the current block timestamp', async () => {
+      const pendingBlockTimestamp = await getPendingBlockTimestamp()
+
+      listingParams = { ...listingParams, expiration: pendingBlockTimestamp }
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.index,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.not.be.reverted
+    })
+
     it('should accept a meta tx', async () => {
       const iface = new ethers.utils.Interface(acceptListingABI)
       const signature = await getListingSignature(lessor, rentals, listingParams)
@@ -1893,6 +1912,15 @@ describe('Rentals', () => {
       expect(await mana.balanceOf(tenant.address)).to.equal(originalBalanceTenant.sub(total))
       expect(await mana.balanceOf(lessor.address)).to.equal(originalBalanceLessor)
       expect(await mana.balanceOf(collector.address)).to.equal(originalBalanceCollector.add(total))
+    })
+
+    it('should allow an expiration that is equal to the current block timestamp', async () => {
+      const pendingBlockTimestamp = await getPendingBlockTimestamp()
+
+      offerParams = { ...offerParams, expiration: pendingBlockTimestamp }
+
+      await expect(rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })).to.not
+        .be.reverted
     })
 
     it('should accept a meta tx', async () => {
@@ -2983,7 +3011,7 @@ describe('Rentals', () => {
         .withArgs(offerEncodeValue[signerIndex], offerEncodeValue[contractAddressIndex], offerEncodeValue[tokenIdIndex], 1, land.address)
     })
 
-    it('should should set the _operator of the onERC721Received as lessor', async () => {
+    it('should set the _operator of the onERC721Received as lessor', async () => {
       await land.connect(lessor).setApprovalForAll(extra.address, true)
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
@@ -3295,6 +3323,18 @@ describe('Rentals', () => {
       const acceptOfferReceipt = await acceptOfferResult.wait()
 
       expect(safeTransferReceipt.gasUsed < acceptOfferReceipt.gasUsed).to.be.true
+    })
+
+    it('should allow an expiration that is equal to the current block timestamp', async () => {
+      const pendingBlockTimestamp = await getPendingBlockTimestamp()
+
+      offerEncodeValue[expirationIndex] = pendingBlockTimestamp
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, expiration: offerEncodeValue[expirationIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)).to.not.be
+        .reverted
     })
 
     it('should revert when the caller is different from the contract address provided in the offer', async () => {

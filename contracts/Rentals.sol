@@ -239,7 +239,7 @@ contract Rentals is
         require(_index < pricePerDayLength, "Rentals#acceptListing: INDEX_OUT_OF_BOUNDS");
 
         // Verify that the listing is not already expired.
-        require(_listing.expiration > block.timestamp, "Rentals#acceptListing: EXPIRED_SIGNATURE");
+        require(_listing.expiration >= block.timestamp, "Rentals#acceptListing: EXPIRED_SIGNATURE");
 
         uint256 maxDays = _listing.maxDays[_index];
         uint256 minDays = _listing.minDays[_index];
@@ -444,7 +444,7 @@ contract Rentals is
         _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
 
         // Verify that the offer is not already expired.
-        require(_offer.expiration > block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
+        require(_offer.expiration >= block.timestamp, "Rentals#acceptOffer: EXPIRED_SIGNATURE");
 
         // Verify that the rental days provided in the offer are valid.
         require(_offer.rentalDays > 0, "Rentals#acceptOffer: RENTAL_DAYS_IS_ZERO");
@@ -566,7 +566,7 @@ contract Rentals is
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (!isExtend && !isReRent && _ownerOf(address(asset), _rentParams.tokenId) != address(this)) {
+        if (_ownerOf(address(asset), _rentParams.tokenId) != address(this)) {
             asset.safeTransferFrom(_rentParams.lessor, address(this), _rentParams.tokenId);
         }
 
