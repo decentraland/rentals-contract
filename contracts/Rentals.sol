@@ -52,7 +52,7 @@ contract Rentals is
     IERC20 private token;
 
     /// @notice Tracks necessary rental data per asset.
-    /// @custom:schema (contract address -> token id -> lessor address)
+    /// @custom:schema (contract address -> token id -> rental)
     mapping(address => mapping(uint256 => Rental)) private rentals;
 
     /// @notice Address that will receive ERC20 tokens collected as rental fees.
@@ -62,7 +62,7 @@ contract Rentals is
     uint256 private fee;
 
     /// @notice Struct received as a parameter in `acceptListing` containing all information about
-    /// listing conditions and values required to verify the signature was created by the signer.
+    /// listing conditions and values required to verify that the signature was created by the signer.
     struct Listing {
         address signer;
         address contractAddress;
@@ -78,8 +78,8 @@ contract Rentals is
         bytes signature;
     }
 
-    /// @notice Struct received as a parameter in `acceptOffer` containing all information about
-    /// offer conditions and values required to verify the signature was created by the signer.
+    /// @notice Struct received as a parameter in `acceptOffer` or as _data parameter in onERC721Received
+    /// containing all information about offer conditions and values required to verify that the signature was created by the signer.
     struct Offer {
         address signer;
         address contractAddress;
@@ -93,12 +93,15 @@ contract Rentals is
         bytes signature;
     }
 
+    /// @notice Info stored in the rentals mapping to track rental information.
     struct Rental {
         address lessor;
         address tenant;
         uint256 endDate;
     }
 
+    /// @dev Used internally as an argument of the _rent function as an alternative to passing a long list
+    /// of arguments.
     struct RentParams {
         address lessor;
         address tenant;
@@ -132,6 +135,7 @@ contract Rentals is
     /// Using this method in favor of a constructor allows the implementation of various kinds of proxies.
     /// @param _owner The address of the owner of the contract.
     /// @param _token The address of the ERC20 token used by tenants to pay rent.
+    /// This token is set once on initialization and cannot be changed afterwards.
     /// @param _feeCollector Address that will receive rental fees
     /// @param _fee Value per million wei that will be transferred from the rental price to the fee collector.
     function initialize(
@@ -164,7 +168,7 @@ contract Rentals is
         _pause();
     }
 
-    /// @notice Resume the normal functionallity of the contract.
+    /// @notice Resume the normal functionality of the contract.
     /// @dev The contract has to be paused or this function will revert.
     function unpause() external onlyOwner {
         _unpause();
@@ -178,16 +182,19 @@ contract Rentals is
     }
 
     /// @notice Get the current token address used for rental payments.
+    /// @return The address of the token.
     function getToken() external view returns (IERC20) {
         return token;
     }
 
     /// @notice Get the current address that will receive a cut of rental payments as a fee.
+    /// @return The address of the fee collector.
     function getFeeCollector() external view returns (address) {
         return feeCollector;
     }
 
     /// @notice Get the value per MAX_FEE that will be cut from the rental payment and sent to the fee collector.
+    /// @return The value of the current fee.
     function getFee() external view returns (uint256) {
         return fee;
     }
@@ -195,9 +202,9 @@ contract Rentals is
     /// @notice Get if and asset is currently being rented.
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
-    /// @return result true or false depending if the asset is currently rented
-    function getIsRented(address _contractAddress, uint256 _tokenId) public view returns (bool result) {
-        result = block.timestamp <= rentals[_contractAddress][_tokenId].endDate;
+    /// @return True or false depending if the asset is currently rented.
+    function getIsRented(address _contractAddress, uint256 _tokenId) public view returns (bool) {
+        return block.timestamp <= rentals[_contractAddress][_tokenId].endDate;
     }
 
     /// @notice Set the address of the fee collector.
@@ -219,9 +226,9 @@ contract Rentals is
     /// @param _rentalDays The amount of days the caller wants to rent the asset.
     /// Must be a value between the selected condition's min and max days.
     /// @param _fingerprint The fingerprint used to verify composable erc721s.
-    /// Useful in order to prevent a front run were, for example, the owner removes LAND from and Estate before
+    /// Useful in order to prevent a front run were, for example, the owner removes LAND from an Estate before
     /// the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
-    /// they expected.
+    /// they expect.
     function acceptListing(
         Listing calldata _listing,
         address _operator,
@@ -232,13 +239,12 @@ contract Rentals is
         _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
 
         address lessor = _listing.signer;
-
-        // Verify that the caller and the signer are not the same address.
         address tenant = _msgSender();
 
+        // Verify that the caller and the signer are not the same address.
         require(tenant != lessor, "Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER");
 
-        // Verify that the targeted address in the listing is the caller of this function.
+        // Verify that the targeted address in the listing, if not address(0), is the caller of this function.
         require(_listing.target == address(0) || _listing.target == tenant, "Rentals#acceptListing: TARGET_MISMATCH");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
@@ -269,7 +275,7 @@ contract Rentals is
         require(_rentalDays >= minDays && _rentalDays <= maxDays, "Rentals#acceptListing: DAYS_NOT_IN_RANGE");
 
         // Verify that the provided rental days does not exceed MAX_RENTAL_DAYS
-        require(_rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptListing: RENTAL_DAYS_EXCEEDES_LIMIT");
+        require(_rentalDays <= MAX_RENTAL_DAYS, "Rentals#acceptListing: RENTAL_DAYS_EXCEEDS_LIMIT");
 
         _verifyListingSigner(_listing);
 
@@ -301,9 +307,9 @@ contract Rentals is
     /// @param _tokenIds The token ids of the assets to be claimed.
     /// Each tokenId corresponds to a contract address in the same index.
     function claim(address[] memory _contractAddresses, uint256[] memory _tokenIds) external nonReentrant whenNotPaused {
-        address sender = _msgSender();
-
         require(_contractAddresses.length == _tokenIds.length, "Rentals#claim: LENGTH_MISMATCH");
+
+        address sender = _msgSender();
 
         for (uint256 i = 0; i < _contractAddresses.length; i++) {
             address contractAddress = _contractAddresses[i];
@@ -317,7 +323,7 @@ contract Rentals is
             // Verify that the caller is the original owner of the asset.
             require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
 
-            // Remove the lessor and tenant addresses from the mappings as they don't need more tracking.
+            // Delete the data for the rental as it is not necessary anymore.
             delete rentals[contractAddress][tokenId];
 
             // Transfer the asset back to its original owner.
@@ -331,13 +337,13 @@ contract Rentals is
 
     /// @notice Set the update operator of the provided assets.
     /// @dev Only when the rent is active a tenant can change the operator of an asset.
-    /// When the rent is over, the lessor is the one that can change the operator.
+    /// When the rent is over, the lessor is the one that can change operators.
     /// In the case of the lessor, this is useful to update the operator without having to claim the asset back once the rent is over.
     /// Elements in the param arrays correspond to each other in the same index.
     /// For example, asset with address _contractAddresses[0] and token id _tokenIds[0] will be set _operators[0] as operator.
     /// @param _contractAddresses The contract addresses of the assets.
     /// @param _tokenIds The token ids of the assets.
-    /// @param _operators The addresses that will have operator privileges over the given assets.
+    /// @param _operators The addresses that will have operator privileges over the given assets in the same index.
     function setUpdateOperator(
         address[] memory _contractAddresses,
         uint256[] memory _tokenIds,
@@ -365,13 +371,16 @@ contract Rentals is
         }
     }
 
-    /// @notice Set the operator of LANDs inside an Estate
-    /// @dev Differently from the update operator role of the estate, when the asset is transferred to the rentals contract,
-    /// LAND update operators can be set to assign granular permissions. LAND update operators will remain if they are inside an Estate when it is transferred.
-    /// They are only cleared once the LAND is transferred.
+    /// @notice Set the operator of individual LANDs inside an Estate
+    /// @dev LAND inside an Estate can be granularly given update operator permissions by calling the setLandUpdateOperator
+    /// (or setManyLandUpdateOperator) in the Estate contract.
+    /// All update operators defined like this will remain after the Estate is rented because they are not cleared up on transfer.
+    /// To prevent these remaining update operators from being able to deploy and override scenes from the current tenant, the tenant
+    /// can call this function to clear or override them.
+    /// The lessor can do the same after the rental is over to clear up any individual LAND update operators set by the tenant.
     /// @param _contractAddress The address of the Estate contract containing the LANDs that will have their update operators updated.
     /// @param _tokenId The Estate id.
-    /// @param _landTokenIds An array of LAND token id arrays. Each array corresponds to the operator of the same index.
+    /// @param _landTokenIds An array of LAND token id arrays which will have the update operator updated. Each array corresponds to the operator of the same index.
     /// @param _operators An array of addresses that will be set as update operators of the provided LAND token ids.
     function setManyLandUpdateOperator(
         address _contractAddress,
@@ -398,7 +407,7 @@ contract Rentals is
     /// @notice Standard function called by ERC721 contracts whenever a safe transfer occurs.
     /// Provides an alternative to acceptOffer by letting the asset holder send the asset to the contract
     /// and accepting the offer at the same time.
-    /// IMPORTANT: Addresses that have been given allowance to an asset can safely transfer said asset to this contract
+    /// IMPORTANT: Addresses (Not necessarily EOA but contracts as well) that have been given allowance to an asset can safely transfer said asset to this contract
     /// to accept an offer. The address that has been given allowance will be considered the lessor, and will enjoy all of its benefits,
     /// including the ability to claim the asset back to themselves after the rental period is over.
     /// @param _operator Caller of the safeTransfer function.
@@ -425,7 +434,7 @@ contract Rentals is
     }
 
     /// @dev Overriding to return NativeMetaTransaction._getMsgSender for the contract to support meta transactions.
-    function _msgSender() internal view override returns (address sender) {
+    function _msgSender() internal view override returns (address) {
         return _getMsgSender();
     }
 
@@ -439,7 +448,9 @@ contract Rentals is
         emit FeeUpdated(fee, fee = _fee, _msgSender());
     }
 
-    /// @dev Reverts if someone is trying to rent an asset that was unsafely sent to the rentals contract.
+    /// @dev Someone might send an asset to this contract via an unsafe transfer, causing ownerOf checks to be inconsistent with the state
+    /// of this contract. This function is used to prevent interactions with these assets.
+    /// ERC721 ASSETS SENT UNSAFELY WILL BE REMAIN LOCKED INSIDE THIS CONTRACT.
     function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
         address lessor = rentals[_contractAddress][_tokenId].lessor;
         address assetOwner = _ownerOf(_contractAddress, _tokenId);
@@ -452,6 +463,7 @@ contract Rentals is
     function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant whenNotPaused {
         address tenant = _offer.signer;
 
+        // Verify that the caller and the signer are not the same address.
         require(_lessor != tenant, "Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the offer match the ones in the contract.
@@ -466,7 +478,7 @@ contract Rentals is
         require(_offer.rentalDays > 0, "Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO");
 
         // Verify that the provided rental days does not exceed MAX_RENTAL_DAYS
-        require(_offer.rentalDays <= MAX_RENTAL_DAYS, "Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT");
+        require(_offer.rentalDays <= MAX_RENTAL_DAYS, "Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDS_LIMIT");
 
         _verifyOfferSigner(_offer);
 
@@ -556,7 +568,7 @@ contract Rentals is
         }
 
         if (isReRent) {
-            // The asset is being rented again wihout claiming it back first, so we need to check that the previous lessor
+            // The asset is being rented again without claiming it back first, so we need to check that the previous lessor
             // is the same as the lessor this time to prevent anyone else from acting as the lessor.
             require(rental.lessor == _rentParams.lessor, "Rentals#_rent: NOT_ORIGINAL_OWNER");
         }
@@ -656,7 +668,7 @@ contract Rentals is
         // Save the reference in memory so it doesn't access storage twice.
         IERC20 mToken = token;
 
-        // Transfer the rental payment to the lessor minus the fee which is transfered to the collector.
+        // Transfer the rental payment to the lessor minus the fee which is transferred to the collector.
         mToken.transferFrom(_tenant, _lessor, totalPrice - forCollector);
         mToken.transferFrom(_tenant, feeCollector, forCollector);
     }
