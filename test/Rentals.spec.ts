@@ -3788,6 +3788,16 @@ describe('Rentals', () => {
       expect(await rentals.paused()).to.be.true
     })
 
+    it('should allow calling setUpdateOperator when the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+      await expect(rentals.setUpdateOperator([], [], [])).to.not.be.revertedWith('Pausable: paused')
+    })
+
+    it('should allow calling setManyLandUpdateOperator when the contract is paused', async () => {
+      await rentals.connect(owner).pause()
+      await expect(rentals.setManyLandUpdateOperator(estate.address, estateId, [], [])).to.not.be.revertedWith('Pausable: paused')
+    })
+
     it('should revert when the caller is not the owner', async () => {
       await expect(rentals.pause()).to.be.revertedWith('Ownable: caller is not the owner')
     })
@@ -3834,16 +3844,6 @@ describe('Rentals', () => {
     it('should revert when calling claim and the contract is paused', async () => {
       await rentals.connect(owner).pause()
       await expect(rentals.claim([], [])).to.be.revertedWith('Pausable: paused')
-    })
-
-    it('should revert when calling setUpdateOperator and the contract is paused', async () => {
-      await rentals.connect(owner).pause()
-      await expect(rentals.setUpdateOperator([], [], [])).to.be.revertedWith('Pausable: paused')
-    })
-
-    it('should revert when calling setManyLandUpdateOperator and the contract is paused', async () => {
-      await rentals.connect(owner).pause()
-      await expect(rentals.setManyLandUpdateOperator(estate.address, estateId, [], [])).to.be.revertedWith('Pausable: paused')
     })
   })
 
