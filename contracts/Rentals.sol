@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "@dcl/common-contracts/meta-transactions/NativeMetaTransaction.sol";
 import "@dcl/common-contracts/signatures/ContractNonceVerifiable.sol";
@@ -20,7 +21,8 @@ contract Rentals is
     AssetNonceVerifiable,
     NativeMetaTransaction,
     IERC721Receiver,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     /// @dev EIP712 type hashes for recovering the signer from a signature.
     bytes32 private constant LISTING_TYPE_HASH =
@@ -140,12 +142,32 @@ contract Rentals is
         uint256 _fee
     ) external initializer {
         __ReentrancyGuard_init();
+        __Pausable_init();
         __NativeMetaTransaction_init("Rentals", "1");
         __ContractNonceVerifiable_init();
         _transferOwnership(_owner);
         _setToken(_token);
         _setFeeCollector(_feeCollector);
         _setFee(_fee);
+    }
+
+    /// @notice Pause the contract and prevent core functions from being called.
+    /// Functions that will be paused are:
+    /// - acceptListing
+    /// - acceptOffer
+    /// - onERC721Received (No offers will be accepted through a safeTransfer to this contract)
+    /// - claim
+    /// - setUpdateOperator
+    /// - setManyLandUpdateOperator
+    /// @dev The contract has to be unpaused or this function will revert.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Resume the normal functionallity of the contract.
+    /// @dev The contract has to be paused or this function will revert.
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /// @notice Get the rental data for a given asset.
@@ -212,7 +234,7 @@ contract Rentals is
         uint256 _index,
         uint256 _rentalDays,
         bytes32 _fingerprint
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
 
         address lessor = _listing.signer;
@@ -284,7 +306,7 @@ contract Rentals is
     /// @param _contractAddresses The contract address of the assets to be claimed.
     /// @param _tokenIds The token ids of the assets to be claimed.
     /// Each tokenId corresponds to a contract address in the same index.
-    function claim(address[] memory _contractAddresses, uint256[] memory _tokenIds) external nonReentrant {
+    function claim(address[] memory _contractAddresses, uint256[] memory _tokenIds) external nonReentrant whenNotPaused {
         address sender = _msgSender();
 
         require(_contractAddresses.length == _tokenIds.length, "Rentals#claim: LENGTH_MISMATCH");
@@ -326,7 +348,7 @@ contract Rentals is
         address[] memory _contractAddresses,
         uint256[] memory _tokenIds,
         address[] memory _operators
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         require(
             _contractAddresses.length == _tokenIds.length && _contractAddresses.length == _operators.length,
             "Rentals#setUpdateOperator: LENGTH_MISMATCH"
@@ -362,7 +384,7 @@ contract Rentals is
         uint256 _tokenId,
         uint256[][] memory _landTokenIds,
         address[] memory _operators
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
 
         Rental memory rental = rentals[_contractAddress][_tokenId];
@@ -437,7 +459,7 @@ contract Rentals is
         }
     }
 
-    function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant {
+    function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant whenNotPaused {
         address tenant = _offer.signer;
 
         require(_lessor != tenant, "Rentals#acceptOffer: CALLER_CANNOT_BE_SIGNER");
