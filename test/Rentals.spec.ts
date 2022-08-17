@@ -1588,7 +1588,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: RENTAL_DAYS_EXCEEDES_LIMIT')
+      ).to.be.revertedWith('Rentals#acceptListing: RENTAL_DAYS_EXCEEDS_LIMIT')
     })
   })
 
@@ -2147,7 +2147,7 @@ describe('Rentals', () => {
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDS_LIMIT')
     })
   })
 
@@ -3648,7 +3648,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDES_LIMIT')
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_EXCEEDS_LIMIT')
     })
   })
 
