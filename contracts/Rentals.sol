@@ -450,7 +450,7 @@ contract Rentals is
 
     /// @dev Someone might send an asset to this contract via an unsafe transfer, causing ownerOf checks to be inconsistent with the state
     /// of this contract. This function is used to prevent interactions with these assets.
-    /// ERC721 ASSETS SENT UNSAFELY WILL BE REMAIN LOCKED INSIDE THIS CONTRACT.
+    /// ERC721 ASSETS SENT UNSAFELY WILL REMAIN LOCKED INSIDE THIS CONTRACT.
     function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
         address lessor = rentals[_contractAddress][_tokenId].lessor;
         address assetOwner = _ownerOf(_contractAddress, _tokenId);
