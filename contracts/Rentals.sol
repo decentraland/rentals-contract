@@ -230,7 +230,7 @@ contract Rentals is
     /// the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
     /// they expect.
     function acceptListing(
-        Listing calldata _listing,
+        Listing memory _listing,
         address _operator,
         uint256 _index,
         uint256 _rentalDays,
@@ -296,7 +296,7 @@ contract Rentals is
 
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
-    function acceptOffer(Offer calldata _offer) external {
+    function acceptOffer(Offer memory _offer) external {
         _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
 
         _acceptOffer(_offer, _msgSender());
@@ -450,7 +450,7 @@ contract Rentals is
 
     /// @dev Someone might send an asset to this contract via an unsafe transfer, causing ownerOf checks to be inconsistent with the state
     /// of this contract. This function is used to prevent interactions with these assets.
-    /// ERC721 ASSETS SENT UNSAFELY WILL BE REMAIN LOCKED INSIDE THIS CONTRACT.
+    /// ERC721 ASSETS SENT UNSAFELY WILL REMAIN LOCKED INSIDE THIS CONTRACT.
     function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
         address lessor = rentals[_contractAddress][_tokenId].lessor;
         address assetOwner = _ownerOf(_contractAddress, _tokenId);
@@ -498,7 +498,7 @@ contract Rentals is
     }
 
     /// @dev Verify that the signer provided in the listing is the address that created the provided signature.
-    function _verifyListingSigner(Listing calldata _listing) private view {
+    function _verifyListingSigner(Listing memory _listing) private view {
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
