@@ -548,8 +548,8 @@ contract Rentals is
     function _rent(RentParams memory _rentParams) private {
         IERC721Rentable asset = IERC721Rentable(_rentParams.contractAddress);
 
-        // If the provided contract support the verifyFingerprint function, validate the provided fingerprint.
-        if (_supportsVerifyFingerprint(asset)) {
+        // If the provided contract supports the verifyFingerprint function, validate the provided fingerprint.
+        if (asset.supportsInterface(InterfaceId_VerifyFingerprint)) {
             require(_verifyFingerprint(asset, _rentParams.tokenId, _rentParams.fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
         }
 
@@ -616,17 +616,6 @@ contract Rentals is
             _msgSender(),
             _rentParams.signature
         );
-    }
-
-    /// @dev Wrapper to static call IERC721Rentable.supportsInterface
-    function _supportsVerifyFingerprint(IERC721Rentable _asset) private view returns (bool) {
-        (bool success, bytes memory data) = address(_asset).staticcall(
-            abi.encodeWithSelector(_asset.supportsInterface.selector, InterfaceId_VerifyFingerprint)
-        );
-
-        require(success, "Rentals#_supportsVerifyFingerprint: SUPPORTS_INTERFACE_CALL_FAILURE");
-
-        return abi.decode(data, (bool));
     }
 
     /// @dev Wrapper to static call IERC721Rentable.verifyFingerprint
