@@ -550,7 +550,7 @@ contract Rentals is
 
         // If the provided contract supports the verifyFingerprint function, validate the provided fingerprint.
         if (asset.supportsInterface(InterfaceId_VerifyFingerprint)) {
-            require(_verifyFingerprint(asset, _rentParams.tokenId, _rentParams.fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
+            require(asset.verifyFingerprint(_rentParams.tokenId, abi.encode(_rentParams.fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
         }
 
         Rental storage rental = rentals[_rentParams.contractAddress][_rentParams.tokenId];
@@ -616,21 +616,6 @@ contract Rentals is
             _msgSender(),
             _rentParams.signature
         );
-    }
-
-    /// @dev Wrapper to static call IERC721Rentable.verifyFingerprint
-    function _verifyFingerprint(
-        IERC721Rentable _asset,
-        uint256 _tokenId,
-        bytes32 _fingerprint
-    ) private view returns (bool) {
-        (bool success, bytes memory data) = address(_asset).staticcall(
-            abi.encodeWithSelector(_asset.verifyFingerprint.selector, _tokenId, abi.encode(_fingerprint))
-        );
-
-        require(success, "Rentals#_verifyFingerprint: VERIFY_FINGERPRINT_CALL_FAILURE");
-
-        return abi.decode(data, (bool));
     }
 
     /// @dev Transfer the erc20 tokens required to start a rent from the tenant to the lessor and the fee collector.
