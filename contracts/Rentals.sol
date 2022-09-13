@@ -327,7 +327,7 @@ contract Rentals is
             delete rentals[contractAddress][tokenId];
 
             // Transfer the asset back to its original owner.
-            IERC721 asset = IERC721(contractAddress);
+            IERC721Rentable asset = IERC721Rentable(contractAddress);
 
             asset.safeTransferFrom(address(this), sender, tokenId);
 
@@ -453,7 +453,7 @@ contract Rentals is
     /// ERC721 ASSETS SENT UNSAFELY WILL REMAIN LOCKED INSIDE THIS CONTRACT.
     function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
         address lessor = rentals[_contractAddress][_tokenId].lessor;
-        address assetOwner = _ownerOf(_contractAddress, _tokenId);
+        address assetOwner = IERC721Rentable(_contractAddress).ownerOf(_tokenId);
 
         if (lessor == address(0) && assetOwner == address(this)) {
             revert("Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY");
@@ -548,9 +548,9 @@ contract Rentals is
     function _rent(RentParams memory _rentParams) private {
         IERC721Rentable asset = IERC721Rentable(_rentParams.contractAddress);
 
-        // If the provided contract support the verifyFingerprint function, validate the provided fingerprint.
-        if (_supportsVerifyFingerprint(asset)) {
-            require(_verifyFingerprint(asset, _rentParams.tokenId, _rentParams.fingerprint), "Rentals#_rent: INVALID_FINGERPRINT");
+        // If the provided contract supports the verifyFingerprint function, validate the provided fingerprint.
+        if (asset.supportsInterface(InterfaceId_VerifyFingerprint)) {
+            require(asset.verifyFingerprint(_rentParams.tokenId, abi.encode(_rentParams.fingerprint)), "Rentals#_rent: INVALID_FINGERPRINT");
         }
 
         Rental storage rental = rentals[_rentParams.contractAddress][_rentParams.tokenId];
@@ -597,7 +597,7 @@ contract Rentals is
         }
 
         // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (_ownerOf(address(asset), _rentParams.tokenId) != address(this)) {
+        if (asset.ownerOf(_rentParams.tokenId) != address(this)) {
             asset.safeTransferFrom(_rentParams.lessor, address(this), _rentParams.tokenId);
         }
 
@@ -616,43 +616,6 @@ contract Rentals is
             _msgSender(),
             _rentParams.signature
         );
-    }
-
-    /// @dev Wrapper to static call IERC721Rentable.ownerOf
-    function _ownerOf(address _contractAddress, uint256 _tokenId) private view returns (address) {
-        (bool success, bytes memory data) = _contractAddress.staticcall(
-            abi.encodeWithSelector(IERC721Rentable(_contractAddress).ownerOf.selector, _tokenId)
-        );
-
-        require(success, "Rentals#_ownerOf: OWNER_OF_CALL_FAILURE");
-
-        return abi.decode(data, (address));
-    }
-
-    /// @dev Wrapper to static call IERC721Rentable.supportsInterface
-    function _supportsVerifyFingerprint(IERC721Rentable _asset) private view returns (bool) {
-        (bool success, bytes memory data) = address(_asset).staticcall(
-            abi.encodeWithSelector(_asset.supportsInterface.selector, InterfaceId_VerifyFingerprint)
-        );
-
-        require(success, "Rentals#_supportsVerifyFingerprint: SUPPORTS_INTERFACE_CALL_FAILURE");
-
-        return abi.decode(data, (bool));
-    }
-
-    /// @dev Wrapper to static call IERC721Rentable.verifyFingerprint
-    function _verifyFingerprint(
-        IERC721Rentable _asset,
-        uint256 _tokenId,
-        bytes32 _fingerprint
-    ) private view returns (bool) {
-        (bool success, bytes memory data) = address(_asset).staticcall(
-            abi.encodeWithSelector(_asset.verifyFingerprint.selector, _tokenId, abi.encode(_fingerprint))
-        );
-
-        require(success, "Rentals#_verifyFingerprint: VERIFY_FINGERPRINT_CALL_FAILURE");
-
-        return abi.decode(data, (bool));
     }
 
     /// @dev Transfer the erc20 tokens required to start a rent from the tenant to the lessor and the fee collector.
