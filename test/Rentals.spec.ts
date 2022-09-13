@@ -2,7 +2,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { EstateRegistry, ExtendedRentals, LANDRegistry, MANAToken, ReentrantERC721, Rentals } from '../typechain-types'
+import {
+  EstateRegistry,
+  ExtendedRentals__factory,
+  LANDRegistry,
+  MANAToken,
+  ReentrantERC721,
+  Rentals,
+  Rentals__factory,
+} from '../typechain-types'
 import {
   daysToSeconds,
   ether,
@@ -63,7 +71,11 @@ describe('Rentals', () => {
 
     // Deploy Rentals contract
     const RentalsFactory = await ethers.getContractFactory('Rentals')
-    rentals = await RentalsFactory.connect(deployer).deploy()
+    const rentalsImpl = await RentalsFactory.connect(deployer).deploy()
+    const RentalsProxyFactory = await ethers.getContractFactory('RentalsProxy')
+    const rentalsProxy = await RentalsProxyFactory.connect(deployer).deploy(rentalsImpl.address)
+
+    rentals = Rentals__factory.connect(rentalsProxy.address, deployer)
 
     // Deploy and Prepare LANDRegistry
     const LANDRegistryFactory = await ethers.getContractFactory('LANDRegistry')
@@ -192,8 +204,11 @@ describe('Rentals', () => {
     })
 
     it('should set eip712 name and version hashes', async () => {
-      const ExtendedRentals = await ethers.getContractFactory('ExtendedRentals')
-      const rentals: ExtendedRentals = await ExtendedRentals.connect(deployer).deploy()
+      const ExtendedRentalsFactory = await ethers.getContractFactory('ExtendedRentals')
+      const rentalsImpl = await ExtendedRentalsFactory.connect(deployer).deploy()
+      const RentalsProxyFactory = await ethers.getContractFactory('RentalsProxy')
+      const rentalsProxy = await RentalsProxyFactory.connect(deployer).deploy(rentalsImpl.address)
+      const rentals = ExtendedRentals__factory.connect(rentalsProxy.address, deployer)
 
       const zeroBytes32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
