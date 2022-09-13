@@ -425,7 +425,7 @@ contract Rentals is
             // Check that the caller is the contract defined in the offer to ensure the function is being
             // called through an ERC721.safeTransferFrom.
             // Also check that the token id is the same as the one provided in the offer.
-            require(msg.sender == offer.contractAddress && offer.tokenId == _tokenId, "Rentals#onERC721Received: ASSET_MISMATCH");
+            require(_msgSender() == offer.contractAddress && offer.tokenId == _tokenId, "Rentals#onERC721Received: ASSET_MISMATCH");
 
             _acceptOffer(offer, _operator);
         }
