@@ -180,6 +180,7 @@ describe('Rentals', () => {
 
   afterEach(async () => {
     await network.provider.send('evm_revert', [snapshotId])
+    await network.provider.send('evm_setAutomine', [true])
   })
 
   describe('initialize', () => {
