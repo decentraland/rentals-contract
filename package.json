@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@dcl/common-contracts": "^1.0.1-20220913152856.commit-5b4efc2",
+    "@dcl/common-contracts": "^1.0.1-20220915222519.commit-7f49a2e",
     "@nomiclabs/hardhat-ethers": "^2.0.4",
     "@nomiclabs/hardhat-waffle": "^2.0.2",
     "@openzeppelin/contracts": "^4.7.3",
