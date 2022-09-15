@@ -9,16 +9,16 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "@dcl/common-contracts/meta-transactions/NativeMetaTransaction.sol";
-import "@dcl/common-contracts/signatures/ContractNonceVerifiable.sol";
-import "@dcl/common-contracts/signatures/SignerNonceVerifiable.sol";
-import "@dcl/common-contracts/signatures/AssetNonceVerifiable.sol";
+import "@dcl/common-contracts/signatures/ContractIndexVerifiable.sol";
+import "@dcl/common-contracts/signatures/SignerIndexVerifiable.sol";
+import "@dcl/common-contracts/signatures/AssetIndexVerifiable.sol";
 
 import "./interfaces/IERC721Rentable.sol";
 
 contract Rentals is
-    ContractNonceVerifiable,
-    SignerNonceVerifiable,
-    AssetNonceVerifiable,
+    ContractIndexVerifiable,
+    SignerIndexVerifiable,
+    AssetIndexVerifiable,
     NativeMetaTransaction,
     IERC721Receiver,
     ReentrancyGuardUpgradeable,
@@ -153,7 +153,7 @@ contract Rentals is
         __ReentrancyGuard_init();
         __Pausable_init();
         __NativeMetaTransaction_init("Rentals", "1");
-        __ContractNonceVerifiable_init();
+        __ContractIndexVerifiable_init();
         _transferOwnership(_owner);
         _setFeeCollector(_feeCollector);
         _setFee(_fee);
@@ -254,9 +254,9 @@ contract Rentals is
         require(_listing.target == address(0) || _listing.target == tenant, "Rentals#acceptListing: TARGET_MISMATCH");
 
         // Verify that the nonces provided in the listing match the ones in the contract.
-        _verifyContractNonce(_listing.nonces[0]);
-        _verifySignerNonce(lessor, _listing.nonces[1]);
-        _verifyAssetNonce(_listing.contractAddress, _listing.tokenId, lessor, _listing.nonces[2]);
+        _verifyContractIndex(_listing.nonces[0]);
+        _verifySignerIndex(lessor, _listing.nonces[1]);
+        _verifyAssetIndex(_listing.contractAddress, _listing.tokenId, lessor, _listing.nonces[2]);
 
         uint256 pricePerDayLength = _listing.pricePerDay.length;
 
@@ -473,9 +473,9 @@ contract Rentals is
         require(_lessor != tenant, "Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER");
 
         // Verify that the nonces provided in the offer match the ones in the contract.
-        _verifyContractNonce(_offer.nonces[0]);
-        _verifySignerNonce(tenant, _offer.nonces[1]);
-        _verifyAssetNonce(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
+        _verifyContractIndex(_offer.nonces[0]);
+        _verifySignerIndex(tenant, _offer.nonces[1]);
+        _verifyAssetIndex(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
 
         // Verify that the offer is not already expired.
         require(_offer.expiration >= block.timestamp, "Rentals#_acceptOffer: EXPIRED_SIGNATURE");
@@ -594,8 +594,8 @@ contract Rentals is
         }
 
         // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
-        _bumpAssetNonce(_rentParams.contractAddress, _rentParams.tokenId, _rentParams.lessor);
-        _bumpAssetNonce(_rentParams.contractAddress, _rentParams.tokenId, _rentParams.tenant);
+        _bumpAssetIndex(_rentParams.contractAddress, _rentParams.tokenId, _rentParams.lessor);
+        _bumpAssetIndex(_rentParams.contractAddress, _rentParams.tokenId, _rentParams.tenant);
 
         // Transfer tokens
         if (_rentParams.pricePerDay > 0) {

@@ -137,7 +137,7 @@ export const getOfferSignature = (signer: SignerWithAddress, contract: Rentals, 
 
 export const getMetaTxSignature = async (signer: SignerWithAddress, contract: Rentals, functionData: string): Promise<string> => {
   const params = {
-    nonce: await contract.getNonce(signer.address),
+    nonce: await contract.getIndex(signer.address),
     from: signer.address,
     functionData,
   }
