@@ -201,7 +201,7 @@ describe('Rentals', () => {
       const rentalsImpl = await ExtendedRentalsFactory.connect(deployer).deploy()
       const RentalsProxyFactory = await ethers.getContractFactory('RentalsProxy')
       const rentalsProxy = await RentalsProxyFactory.connect(deployer).deploy(rentalsImpl.address)
-      const rentals = ExtendedRentals__factory.connect(rentalsProxy.address, deployer)
+      const rentals = await ethers.getContractAt('ExtendedRentals', rentalsProxy.address)
 
       const zeroBytes32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
