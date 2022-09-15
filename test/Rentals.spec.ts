@@ -75,7 +75,7 @@ describe('Rentals', () => {
     const RentalsProxyFactory = await ethers.getContractFactory('RentalsProxy')
     const rentalsProxy = await RentalsProxyFactory.connect(deployer).deploy(rentalsImpl.address)
 
-    rentals = Rentals__factory.connect(rentalsProxy.address, deployer)
+    rentals = await ethers.getContractAt("Rentals", rentalsProxy.address)
 
     // Deploy and Prepare LANDRegistry
     const LANDRegistryFactory = await ethers.getContractFactory('LANDRegistry')
