@@ -2,15 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import {
-  EstateRegistry,
-  ExtendedRentals__factory,
-  LANDRegistry,
-  MANAToken,
-  ReentrantERC721,
-  Rentals,
-  Rentals__factory,
-} from '../typechain-types'
+import { EstateRegistry, ExtendedRentals__factory, LANDRegistry, MANAToken, ReentrantERC721, Rentals, Rentals__factory } from '../typechain-types'
 import {
   daysToSeconds,
   ether,
@@ -75,7 +67,7 @@ describe('Rentals', () => {
     const RentalsProxyFactory = await ethers.getContractFactory('RentalsProxy')
     const rentalsProxy = await RentalsProxyFactory.connect(deployer).deploy(rentalsImpl.address)
 
-    rentals = await ethers.getContractAt("Rentals", rentalsProxy.address)
+    rentals = await ethers.getContractAt('Rentals', rentalsProxy.address)
 
     // Deploy and Prepare LANDRegistry
     const LANDRegistryFactory = await ethers.getContractFactory('LANDRegistry')
@@ -228,6 +220,15 @@ describe('Rentals', () => {
 
     it('should revert when initialized more than once', async () => {
       await expect(rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
+    })
+
+    it('should revert when trying to initialize the implementation', async () => {
+      const RentalsFactory = await ethers.getContractFactory('Rentals')
+      const rentalsImpl = await RentalsFactory.connect(deployer).deploy()
+
+      await expect(rentalsImpl.initialize(owner.address, mana.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
