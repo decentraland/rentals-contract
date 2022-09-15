@@ -130,6 +130,12 @@ contract Rentals is
         bytes _signature
     );
 
+    constructor() {
+        // Prevents the implementation to be initialized.
+        // Initialization can only be done through a Proxy.
+        _disableInitializers();
+    }
+
     /// @notice Initialize the contract.
     /// @dev This method should be called as soon as the contract is deployed.
     /// Using this method in favor of a constructor allows the implementation of various kinds of proxies.
