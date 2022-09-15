@@ -131,6 +131,8 @@ contract Rentals is
     );
 
     constructor() {
+        // Prevents the implementation to be initialized.
+        // Initialization can only be done through a Proxy.
         _disableInitializers();
     }
 
