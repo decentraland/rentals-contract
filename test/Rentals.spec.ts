@@ -48,7 +48,7 @@ describe('Rentals', () => {
   const contractAddressIndex = 1
   const tokenIdIndex = 2
   const expirationIndex = 3
-  const noncesIndex = 4
+  const indexesIndex = 4
   const pricePerDayIndex = 5
   const rentalDaysIndex = 6
   const operatorIndex = 7
@@ -128,7 +128,7 @@ describe('Rentals', () => {
       contractAddress: land.address,
       tokenId,
       expiration: now() + 1000,
-      nonces: [0, 0, 0],
+      indexes: [0, 0, 0],
       pricePerDay: [ether('100')],
       maxDays: [20],
       minDays: [10],
@@ -142,7 +142,7 @@ describe('Rentals', () => {
       fingerprint: getZeroBytes32(),
       pricePerDay: ether('100'),
       expiration: now() + 1000,
-      nonces: [0, 0, 0],
+      indexes: [0, 0, 0],
       rentalDays: 15,
       operator: operator.address,
     }
@@ -161,7 +161,7 @@ describe('Rentals', () => {
       offerParams.contractAddress,
       offerParams.tokenId,
       offerParams.expiration,
-      offerParams.nonces,
+      offerParams.indexes,
       offerParams.pricePerDay,
       offerParams.rentalDays,
       offerParams.operator,
@@ -504,7 +504,7 @@ describe('Rentals', () => {
           signature
         )
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, indexes: [0, 0, 1] }
 
       signature = await getListingSignature(lessor, rentals, listingParams)
 
@@ -620,7 +620,7 @@ describe('Rentals', () => {
       expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(tenant.address)
     })
 
-    it('should bump both the lessor and tenant asset nonces', async () => {
+    it('should bump both the lessor and tenant asset indexes', async () => {
       expect(await rentals.connect(lessor).getAssetIndex(land.address, tokenId, lessor.address)).to.equal(0)
       expect(await rentals.connect(lessor).getAssetIndex(land.address, tokenId, tenant.address)).to.equal(0)
 
@@ -680,7 +680,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      listingParams = { ...listingParams, indexes: [0, 0, 1], expiration: maxUint256 }
       acceptListingParams = { ...acceptListingParams, operator: extra.address }
 
       await rentals
@@ -741,7 +741,7 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
-      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], indexes: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
 
       await rentals
@@ -824,7 +824,7 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
-      offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, rentalDays: rentalDays2, indexes: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -988,7 +988,7 @@ describe('Rentals', () => {
       await evmIncreaseTime((await getLatestBlockTimestamp()) + daysToSeconds(acceptListingParams.rentalDays))
       await evmMine()
 
-      listingParams = { ...listingParams, expiration: maxUint256, nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, expiration: maxUint256, indexes: [0, 0, 1] }
 
       await rentals
         .connect(extra)
@@ -1252,8 +1252,8 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: DAYS_NOT_IN_RANGE')
     })
 
-    it('should revert when lessor contract nonce is not the same as the contract', async () => {
-      listingParams = { ...listingParams, nonces: [1, 0, 0] }
+    it('should revert when lessor contract index is not the same as the contract', async () => {
+      listingParams = { ...listingParams, indexes: [1, 0, 0] }
 
       await expect(
         rentals
@@ -1265,11 +1265,11 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_NONCE_MISMATCH')
+      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
     })
 
-    it('should revert when lessor signer nonce is not the same as the contract', async () => {
-      listingParams = { ...listingParams, nonces: [0, 1, 0] }
+    it('should revert when lessor signer index is not the same as the contract', async () => {
+      listingParams = { ...listingParams, indexes: [0, 1, 0] }
 
       await expect(
         rentals
@@ -1281,11 +1281,11 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_NONCE_MISMATCH')
+      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
     })
 
-    it('should revert when lessor asset nonce is not the same as the contract', async () => {
-      listingParams = { ...listingParams, nonces: [0, 0, 1] }
+    it('should revert when lessor asset index is not the same as the contract', async () => {
+      listingParams = { ...listingParams, indexes: [0, 0, 1] }
 
       await expect(
         rentals
@@ -1297,7 +1297,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
@@ -1342,7 +1342,7 @@ describe('Rentals', () => {
           acceptListingParams.fingerprint
         )
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, indexes: [0, 0, 1] }
 
       await expect(
         rentals
@@ -1454,7 +1454,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: TARGET_MISMATCH')
     })
 
-    it('should revert when accepting a listing twice in the same block with the same nonces', async () => {
+    it('should revert when accepting a listing twice in the same block with the same indexes', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -1488,7 +1488,7 @@ describe('Rentals', () => {
       const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
       const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
 
-      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
@@ -1507,7 +1507,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      listingParams = { ...listingParams, indexes: [0, 0, 1], expiration: maxUint256 }
       acceptListingParams = { ...acceptListingParams, operator: extra.address }
 
       await expect(
@@ -1539,7 +1539,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      offerParams = { ...offerParams, indexes: [0, 0, 1], expiration: maxUint256 }
 
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -1651,7 +1651,7 @@ describe('Rentals', () => {
           signature
         )
 
-      offerParams = { ...offerParams, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, indexes: [0, 0, 1] }
 
       signature = await getOfferSignature(tenant, rentals, offerParams)
 
@@ -1695,7 +1695,7 @@ describe('Rentals', () => {
       expect((await rentals.getRental(land.address, tokenId)).tenant).to.equal(tenant.address)
     })
 
-    it('should bump both the lessor and tenant asset nonces', async () => {
+    it('should bump both the lessor and tenant asset indexes', async () => {
       expect(await rentals.connect(lessor).getAssetIndex(land.address, tokenId, lessor.address)).to.equal(0)
       expect(await rentals.connect(lessor).getAssetIndex(land.address, tokenId, tenant.address)).to.equal(0)
 
@@ -1731,7 +1731,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      offerParams = { ...offerParams, indexes: [0, 0, 1], expiration: maxUint256 }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -1774,7 +1774,7 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
-      offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, rentalDays: rentalDays2, indexes: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -1839,7 +1839,7 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
-      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], indexes: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
 
       await rentals
@@ -2023,28 +2023,28 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
     })
 
-    it('should revert when tenant contract nonce is not the same as the contract', async () => {
-      offerParams = { ...offerParams, nonces: [1, 0, 0] }
+    it('should revert when tenant contract index is not the same as the contract', async () => {
+      offerParams = { ...offerParams, indexes: [1, 0, 0] }
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_NONCE_MISMATCH')
+      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
     })
 
-    it('should revert when tenant signer nonce is not the same as the contract', async () => {
-      offerParams = { ...offerParams, nonces: [0, 1, 0] }
+    it('should revert when tenant signer index is not the same as the contract', async () => {
+      offerParams = { ...offerParams, indexes: [0, 1, 0] }
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_NONCE_MISMATCH')
+      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
     })
 
-    it('should revert when tenant asset nonce is not the same as the contract', async () => {
-      offerParams = { ...offerParams, nonces: [0, 0, 1] }
+    it('should revert when tenant asset index is not the same as the contract', async () => {
+      offerParams = { ...offerParams, indexes: [0, 0, 1] }
 
       await expect(
         rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
@@ -2069,8 +2069,8 @@ describe('Rentals', () => {
     it('should revert if an asset is already being rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1] }
-      offerParams = { ...offerParams, nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, indexes: [0, 0, 1] }
+      offerParams = { ...offerParams, indexes: [0, 0, 1] }
 
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -2083,7 +2083,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
       await evmMine()
 
-      offerParams = { ...offerParams, expiration: maxUint256, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, expiration: maxUint256, indexes: [0, 0, 1] }
 
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -2098,7 +2098,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
     })
 
-    it('should revert when accepting an offer twice in the same block with the same nonces', async () => {
+    it('should revert when accepting an offer twice in the same block with the same indexes', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -2116,7 +2116,7 @@ describe('Rentals', () => {
       const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
       const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
 
-      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
@@ -2127,7 +2127,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      listingParams = { ...listingParams, indexes: [0, 0, 1], expiration: maxUint256 }
       acceptListingParams = { ...acceptListingParams, operator: extra.address }
 
       await expect(
@@ -2151,7 +2151,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      offerParams = { ...offerParams, indexes: [0, 0, 1], expiration: maxUint256 }
 
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -3157,7 +3157,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      offerParams = { ...offerParams, indexes: [0, 0, 1], expiration: maxUint256 }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -3186,7 +3186,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      listingParams = { ...listingParams, indexes: [0, 0, 1], expiration: maxUint256 }
       acceptListingParams = { ...acceptListingParams, operator: extra.address }
 
       await rentals
@@ -3241,7 +3241,7 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
-      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], nonces: [0, 0, 1] }
+      listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], indexes: [0, 0, 1] }
       acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
 
       await rentals
@@ -3318,7 +3318,7 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, lessor.address, { blockTag: 'pending' })).to.equal(1)
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
-      offerParams = { ...offerParams, rentalDays: rentalDays2, nonces: [0, 0, 1] }
+      offerParams = { ...offerParams, rentalDays: rentalDays2, indexes: [0, 0, 1] }
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
@@ -3485,37 +3485,37 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
     })
 
-    it('should revert when tenant contract nonce is not the same as the contract', async () => {
-      offerEncodeValue[noncesIndex] = [1, 0, 0]
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, nonces: offerEncodeValue[noncesIndex] })
+    it('should revert when tenant contract index is not the same as the contract', async () => {
+      offerEncodeValue[indexesIndex] = [1, 0, 0]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_NONCE_MISMATCH')
+      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
     })
 
-    it('should revert when tenant signer nonce is not the same as the contract', async () => {
-      offerEncodeValue[noncesIndex] = [0, 1, 0]
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, nonces: offerEncodeValue[noncesIndex] })
+    it('should revert when tenant signer index is not the same as the contract', async () => {
+      offerEncodeValue[indexesIndex] = [0, 1, 0]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_NONCE_MISMATCH')
+      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
     })
 
-    it('should revert when tenant asset nonce is not the same as the contract', async () => {
-      offerEncodeValue[noncesIndex] = [0, 0, 1]
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, nonces: offerEncodeValue[noncesIndex] })
+    it('should revert when tenant asset index is not the same as the contract', async () => {
+      offerEncodeValue[indexesIndex] = [0, 0, 1]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
@@ -3587,7 +3587,7 @@ describe('Rentals', () => {
       const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
       const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
 
-      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it('should revert when accepting an offer by sending the land and by calling acceptOffer on the same block', async () => {
@@ -3610,7 +3610,7 @@ describe('Rentals', () => {
       const encodedErrorMessage = `0x${claimTrxTrace.returnValue.substr(136)}`.replace(/0+$/, '')
       const decodedErrorMessage = ethers.utils.toUtf8String(encodedErrorMessage)
 
-      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_NONCE_MISMATCH')
+      expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
     it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
@@ -3623,7 +3623,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      listingParams = { ...listingParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      listingParams = { ...listingParams, indexes: [0, 0, 1], expiration: maxUint256 }
       acceptListingParams = { ...acceptListingParams, operator: extra.address }
 
       await expect(
@@ -3649,7 +3649,7 @@ describe('Rentals', () => {
       await evmIncreaseTime(increaseTime)
       await evmMine()
 
-      offerParams = { ...offerParams, nonces: [0, 0, 1], expiration: maxUint256 }
+      offerParams = { ...offerParams, indexes: [0, 0, 1], expiration: maxUint256 }
 
       await expect(
         rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })

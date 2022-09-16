@@ -28,14 +28,14 @@ contract Rentals is
     bytes32 private constant LISTING_TYPE_HASH =
         keccak256(
             bytes(
-                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays,address target)"
+                "Listing(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] indexes,uint256[] pricePerDay,uint256[] maxDays,uint256[] minDays,address target)"
             )
         );
 
     bytes32 private constant OFFER_TYPE_HASH =
         keccak256(
             bytes(
-                "Offer(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] nonces,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
+                "Offer(address signer,address contractAddress,uint256 tokenId,uint256 expiration,uint256[3] indexes,uint256 pricePerDay,uint256 rentalDays,address operator,bytes32 fingerprint)"
             )
         );
 
@@ -68,7 +68,7 @@ contract Rentals is
         address contractAddress;
         uint256 tokenId;
         uint256 expiration;
-        uint256[3] nonces;
+        uint256[3] indexes;
         uint256[] pricePerDay;
         uint256[] maxDays;
         uint256[] minDays;
@@ -85,7 +85,7 @@ contract Rentals is
         address contractAddress;
         uint256 tokenId;
         uint256 expiration;
-        uint256[3] nonces;
+        uint256[3] indexes;
         uint256 pricePerDay;
         uint256 rentalDays;
         address operator;
@@ -253,10 +253,10 @@ contract Rentals is
         // Verify that the targeted address in the listing, if not address(0), is the caller of this function.
         require(_listing.target == address(0) || _listing.target == tenant, "Rentals#acceptListing: TARGET_MISMATCH");
 
-        // Verify that the nonces provided in the listing match the ones in the contract.
-        _verifyContractIndex(_listing.nonces[0]);
-        _verifySignerIndex(lessor, _listing.nonces[1]);
-        _verifyAssetIndex(_listing.contractAddress, _listing.tokenId, lessor, _listing.nonces[2]);
+        // Verify that the indexes provided in the listing match the ones in the contract.
+        _verifyContractIndex(_listing.indexes[0]);
+        _verifySignerIndex(lessor, _listing.indexes[1]);
+        _verifyAssetIndex(_listing.contractAddress, _listing.tokenId, lessor, _listing.indexes[2]);
 
         uint256 pricePerDayLength = _listing.pricePerDay.length;
 
@@ -472,10 +472,10 @@ contract Rentals is
         // Verify that the caller and the signer are not the same address.
         require(_lessor != tenant, "Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER");
 
-        // Verify that the nonces provided in the offer match the ones in the contract.
-        _verifyContractIndex(_offer.nonces[0]);
-        _verifySignerIndex(tenant, _offer.nonces[1]);
-        _verifyAssetIndex(_offer.contractAddress, _offer.tokenId, tenant, _offer.nonces[2]);
+        // Verify that the indexes provided in the offer match the ones in the contract.
+        _verifyContractIndex(_offer.indexes[0]);
+        _verifySignerIndex(tenant, _offer.indexes[1]);
+        _verifyAssetIndex(_offer.contractAddress, _offer.tokenId, tenant, _offer.indexes[2]);
 
         // Verify that the offer is not already expired.
         require(_offer.expiration >= block.timestamp, "Rentals#_acceptOffer: EXPIRED_SIGNATURE");
@@ -513,7 +513,7 @@ contract Rentals is
                     _listing.contractAddress,
                     _listing.tokenId,
                     _listing.expiration,
-                    keccak256(abi.encodePacked(_listing.nonces)),
+                    keccak256(abi.encodePacked(_listing.indexes)),
                     keccak256(abi.encodePacked(_listing.pricePerDay)),
                     keccak256(abi.encodePacked(_listing.maxDays)),
                     keccak256(abi.encodePacked(_listing.minDays)),
@@ -537,7 +537,7 @@ contract Rentals is
                     _offer.contractAddress,
                     _offer.tokenId,
                     _offer.expiration,
-                    keccak256(abi.encodePacked(_offer.nonces)),
+                    keccak256(abi.encodePacked(_offer.indexes)),
                     _offer.pricePerDay,
                     _offer.rentalDays,
                     _offer.operator,
@@ -593,7 +593,7 @@ contract Rentals is
             rental.endDate = block.timestamp + _rentParams.rentalDays * 1 days;
         }
 
-        // Update the asset nonces for both the lessor and the tenant to invalidate old signatures.
+        // Update the asset indexes for both the lessor and the tenant to invalidate old signatures.
         _bumpAssetIndex(_rentParams.contractAddress, _rentParams.tokenId, _rentParams.lessor);
         _bumpAssetIndex(_rentParams.contractAddress, _rentParams.tokenId, _rentParams.tenant);
 
