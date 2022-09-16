@@ -236,7 +236,7 @@ export const acceptListingABI = [
       },
       {
         internalType: 'uint256',
-        name: '_index',
+        name: '_conditionIndex',
         type: 'uint256',
       },
       {
