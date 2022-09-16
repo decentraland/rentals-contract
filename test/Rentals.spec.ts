@@ -40,7 +40,7 @@ describe('Rentals', () => {
   let mana: MANAToken
   let listingParams: Omit<Rentals.ListingStruct, 'signature'>
   let offerParams: Omit<Rentals.OfferStruct, 'signature'>
-  let acceptListingParams: Pick<typeof offerParams, 'operator' | 'rentalDays' | 'fingerprint'> & { index: BigNumberish }
+  let acceptListingParams: Pick<typeof offerParams, 'operator' | 'rentalDays' | 'fingerprint'> & { conditionIndex: BigNumberish }
   let snapshotId: any
   let offerEncodeType: string
   let offerEncodeValue: any
@@ -149,7 +149,7 @@ describe('Rentals', () => {
 
     acceptListingParams = {
       operator: offerParams.operator,
-      index: 0,
+      conditionIndex: 0,
       rentalDays: offerParams.rentalDays,
       fingerprint: offerParams.fingerprint,
     }
@@ -456,7 +456,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -469,7 +469,7 @@ describe('Rentals', () => {
           tenant.address,
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
-          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          listingParams.pricePerDay[acceptListingParams.conditionIndex.valueOf() as number],
           false,
           tenant.address,
           signature
@@ -485,7 +485,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -498,7 +498,7 @@ describe('Rentals', () => {
           tenant.address,
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
-          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          listingParams.pricePerDay[acceptListingParams.conditionIndex.valueOf() as number],
           false,
           tenant.address,
           signature
@@ -514,7 +514,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -527,7 +527,7 @@ describe('Rentals', () => {
           tenant.address,
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
-          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          listingParams.pricePerDay[acceptListingParams.conditionIndex.valueOf() as number],
           true,
           tenant.address,
           signature
@@ -541,7 +541,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -552,13 +552,13 @@ describe('Rentals', () => {
         .withArgs(offerParams.signer, offerParams.contractAddress, offerParams.tokenId, 1, tenant.address)
     })
 
-    it('should allow the tenant to select a different option included in the tenant signature by providing a different index', async () => {
+    it('should allow the tenant to select a different option included in the tenant signature by providing a different condition index', async () => {
       listingParams.pricePerDay = [...listingParams.pricePerDay, ether('20')]
       listingParams.maxDays = [...listingParams.maxDays, 30]
       listingParams.minDays = [...listingParams.minDays, 20]
 
       acceptListingParams.rentalDays = 25
-      acceptListingParams.index = 1
+      acceptListingParams.conditionIndex = 1
 
       const signature = await getListingSignature(lessor, rentals, listingParams)
 
@@ -567,7 +567,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -581,7 +581,7 @@ describe('Rentals', () => {
           tenant.address,
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
-          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          listingParams.pricePerDay[acceptListingParams.conditionIndex.valueOf() as number],
           false,
           tenant.address,
           signature
@@ -596,7 +596,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -612,7 +612,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -629,7 +629,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -648,7 +648,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -662,7 +662,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -688,7 +688,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -718,14 +718,14 @@ describe('Rentals', () => {
       await network.provider.send('evm_setAutomine', [false])
 
       listingParams = { ...listingParams, maxDays: [rentalDays1], minDays: [rentalDays1] }
-      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays1, index: 0 }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays1, conditionIndex: 0 }
 
       await rentals
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -742,14 +742,14 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], indexes: [0, 0, 1] }
-      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, conditionIndex: 0 }
 
       await rentals
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -801,14 +801,14 @@ describe('Rentals', () => {
       await network.provider.send('evm_setAutomine', [false])
 
       listingParams = { ...listingParams, maxDays: [rentalDays1], minDays: [rentalDays1] }
-      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays1, index: 0 }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays1, conditionIndex: 0 }
 
       await rentals
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -870,7 +870,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -890,7 +890,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -916,7 +916,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -940,7 +940,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -962,7 +962,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -978,7 +978,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -995,7 +995,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1014,7 +1014,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1034,7 +1034,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1052,7 +1052,7 @@ describe('Rentals', () => {
       const functionData = iface.encodeFunctionData('acceptListing', [
         { ...listingParams, signature },
         acceptListingParams.operator,
-        acceptListingParams.index,
+        acceptListingParams.conditionIndex,
         acceptListingParams.rentalDays,
         acceptListingParams.fingerprint,
       ])
@@ -1069,7 +1069,7 @@ describe('Rentals', () => {
           tenant.address,
           acceptListingParams.operator,
           acceptListingParams.rentalDays,
-          listingParams.pricePerDay[acceptListingParams.index.valueOf() as number],
+          listingParams.pricePerDay[acceptListingParams.conditionIndex.valueOf() as number],
           false,
           tenant.address,
           signature
@@ -1085,7 +1085,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1099,7 +1099,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, { ...listingParams, signer: tenant.address }) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1117,11 +1117,11 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: INDEX_OUT_OF_BOUNDS')
+      ).to.be.revertedWith('Rentals#acceptListing: CONDITION_INDEX_OUT_OF_BOUNDS')
     })
 
     it('should revert when maxDays length is different than pricePerDay length', async () => {
@@ -1133,7 +1133,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1149,7 +1149,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1157,7 +1157,7 @@ describe('Rentals', () => {
     })
 
     it('should revert when tenant index is outside the pricePerDay length', async () => {
-      acceptListingParams = { ...acceptListingParams, index: 1 }
+      acceptListingParams = { ...acceptListingParams, conditionIndex: 1 }
 
       await expect(
         rentals
@@ -1165,11 +1165,11 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#acceptListing: INDEX_OUT_OF_BOUNDS')
+      ).to.be.revertedWith('Rentals#acceptListing: CONDITION_INDEX_OUT_OF_BOUNDS')
     })
 
     it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
@@ -1181,7 +1181,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1197,7 +1197,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1213,7 +1213,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1229,7 +1229,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1245,7 +1245,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1261,7 +1261,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1277,7 +1277,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1293,7 +1293,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1309,7 +1309,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1325,7 +1325,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1337,7 +1337,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1350,7 +1350,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1363,7 +1363,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1379,7 +1379,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(extra, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1395,7 +1395,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1431,7 +1431,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(extra, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1447,7 +1447,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1463,7 +1463,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1473,7 +1473,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1497,7 +1497,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1516,7 +1516,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1529,7 +1529,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -1559,7 +1559,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, pricePerDay: listingParams.pricePerDay.reverse(), signature },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1571,7 +1571,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, minDays: listingParams.minDays.reverse(), signature },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1583,7 +1583,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, maxDays: listingParams.maxDays.reverse(), signature },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1601,7 +1601,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -1840,14 +1840,14 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], indexes: [0, 0, 1] }
-      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, conditionIndex: 0 }
 
       await rentals
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -2136,7 +2136,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -2820,7 +2820,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -2918,7 +2918,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -3107,7 +3107,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -3194,7 +3194,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -3242,14 +3242,14 @@ describe('Rentals', () => {
       expect(await rentals.getAssetIndex(listingParams.contractAddress, listingParams.tokenId, tenant.address, { blockTag: 'pending' })).to.equal(1)
 
       listingParams = { ...listingParams, maxDays: [rentalDays2], minDays: [rentalDays2], indexes: [0, 0, 1] }
-      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, index: 0 }
+      acceptListingParams = { ...acceptListingParams, rentalDays: rentalDays2, conditionIndex: 0 }
 
       await rentals
         .connect(tenant)
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -3369,7 +3369,7 @@ describe('Rentals', () => {
         .acceptListing(
           { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
           acceptListingParams.operator,
-          acceptListingParams.index,
+          acceptListingParams.conditionIndex,
           acceptListingParams.rentalDays,
           acceptListingParams.fingerprint
         )
@@ -3632,7 +3632,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -3712,7 +3712,7 @@ describe('Rentals', () => {
       const functionData = iface.encodeFunctionData('acceptListing', [
         { ...listingParams, signature },
         acceptListingParams.operator,
-        acceptListingParams.index,
+        acceptListingParams.conditionIndex,
         acceptListingParams.rentalDays,
         acceptListingParams.fingerprint,
       ])
@@ -3787,7 +3787,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
@@ -3850,7 +3850,7 @@ describe('Rentals', () => {
           .acceptListing(
             { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
             acceptListingParams.operator,
-            acceptListingParams.index,
+            acceptListingParams.conditionIndex,
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )

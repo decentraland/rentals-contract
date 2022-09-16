@@ -228,7 +228,7 @@ contract Rentals is
     /// @notice Accept a rental listing created by the owner of an asset.
     /// @param _listing Contains the listing conditions as well as the signature data for verification.
     /// @param _operator The address that will be given operator permissions over an asset.
-    /// @param _index The rental conditions index chosen from the options provided in _listing.
+    /// @param _conditionIndex The rental conditions index chosen from the options provided in _listing.
     /// @param _rentalDays The amount of days the caller wants to rent the asset.
     /// Must be a value between the selected condition's min and max days.
     /// @param _fingerprint The fingerprint used to verify composable erc721s.
@@ -238,7 +238,7 @@ contract Rentals is
     function acceptListing(
         Listing memory _listing,
         address _operator,
-        uint256 _index,
+        uint256 _conditionIndex,
         uint256 _rentalDays,
         bytes32 _fingerprint
     ) external nonReentrant whenNotPaused {
@@ -265,13 +265,13 @@ contract Rentals is
         require(pricePerDayLength == _listing.minDays.length, "Rentals#acceptListing: MIN_DAYS_LENGTH_MISMATCH");
 
         // Verify that the provided index is not out of bounds of the listing conditions.
-        require(_index < pricePerDayLength, "Rentals#acceptListing: INDEX_OUT_OF_BOUNDS");
+        require(_conditionIndex < pricePerDayLength, "Rentals#acceptListing: CONDITION_INDEX_OUT_OF_BOUNDS");
 
         // Verify that the listing is not already expired.
         require(_listing.expiration >= block.timestamp, "Rentals#acceptListing: EXPIRED_SIGNATURE");
 
-        uint256 maxDays = _listing.maxDays[_index];
-        uint256 minDays = _listing.minDays[_index];
+        uint256 maxDays = _listing.maxDays[_conditionIndex];
+        uint256 minDays = _listing.minDays[_conditionIndex];
 
         // Verify that minDays and maxDays have valid values.
         require(minDays <= maxDays, "Rentals#acceptListing: MAX_DAYS_LOWER_THAN_MIN_DAYS");
@@ -292,7 +292,7 @@ contract Rentals is
                 _listing.contractAddress,
                 _listing.tokenId,
                 _fingerprint,
-                _listing.pricePerDay[_index],
+                _listing.pricePerDay[_conditionIndex],
                 _rentalDays,
                 _operator,
                 _listing.signature
