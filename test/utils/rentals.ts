@@ -61,7 +61,7 @@ export const getListingSignature = (
         },
         {
           type: 'uint256[3]',
-          name: 'nonces',
+          name: 'indexes',
         },
         {
           type: 'uint256[]',
@@ -112,7 +112,7 @@ export const getOfferSignature = (signer: SignerWithAddress, contract: Rentals, 
         },
         {
           type: 'uint256[3]',
-          name: 'nonces',
+          name: 'indexes',
         },
         {
           type: 'uint256',
@@ -196,7 +196,7 @@ export const acceptListingABI = [
           },
           {
             internalType: 'uint256[3]',
-            name: 'nonces',
+            name: 'indexes',
             type: 'uint256[3]',
           },
           {
@@ -236,7 +236,7 @@ export const acceptListingABI = [
       },
       {
         internalType: 'uint256',
-        name: '_index',
+        name: '_conditionIndex',
         type: 'uint256',
       },
       {
@@ -284,7 +284,7 @@ export const acceptOfferABI = [
           },
           {
             internalType: 'uint256[3]',
-            name: 'nonces',
+            name: 'indexes',
             type: 'uint256[3]',
           },
           {
