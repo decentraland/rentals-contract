@@ -23,6 +23,12 @@ export const evmMine = () => network.provider.send('evm_mine')
 
 export const getLatestBlockTimestamp = async () => (await ethers.provider.getBlock('latest')).timestamp
 
+export const getPendingBlockTimestamp = async () => {
+  //@ts-ignore
+  const pendingBlock = await network.provider.send('eth_getBlockByNumber', ['pending', false])
+  return Number(pendingBlock.timestamp)
+}
+
 export const getListingSignature = (
   signer: SignerWithAddress,
   contract: Rentals,
@@ -55,7 +61,7 @@ export const getListingSignature = (
         },
         {
           type: 'uint256[3]',
-          name: 'nonces',
+          name: 'indexes',
         },
         {
           type: 'uint256[]',
@@ -106,7 +112,7 @@ export const getOfferSignature = (signer: SignerWithAddress, contract: Rentals, 
         },
         {
           type: 'uint256[3]',
-          name: 'nonces',
+          name: 'indexes',
         },
         {
           type: 'uint256',
@@ -131,7 +137,7 @@ export const getOfferSignature = (signer: SignerWithAddress, contract: Rentals, 
 
 export const getMetaTxSignature = async (signer: SignerWithAddress, contract: Rentals, functionData: string): Promise<string> => {
   const params = {
-    nonce: await contract.nonces(signer.address),
+    nonce: await contract.getNonce(signer.address),
     from: signer.address,
     functionData,
   }
@@ -162,3 +168,159 @@ export const getMetaTxSignature = async (signer: SignerWithAddress, contract: Re
     params
   )
 }
+
+export const acceptListingABI = [
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: 'address',
+            name: 'signer',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'contractAddress',
+            type: 'address',
+          },
+          {
+            internalType: 'uint256',
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'expiration',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256[3]',
+            name: 'indexes',
+            type: 'uint256[3]',
+          },
+          {
+            internalType: 'uint256[]',
+            name: 'pricePerDay',
+            type: 'uint256[]',
+          },
+          {
+            internalType: 'uint256[]',
+            name: 'maxDays',
+            type: 'uint256[]',
+          },
+          {
+            internalType: 'uint256[]',
+            name: 'minDays',
+            type: 'uint256[]',
+          },
+          {
+            internalType: 'address',
+            name: 'target',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes',
+            name: 'signature',
+            type: 'bytes',
+          },
+        ],
+        internalType: 'struct Rentals.Listing',
+        name: '_listing',
+        type: 'tuple',
+      },
+      {
+        internalType: 'address',
+        name: '_operator',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: '_conditionIndex',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '_rentalDays',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: '_fingerprint',
+        type: 'bytes32',
+      },
+    ],
+    name: 'acceptListing',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]
+
+export const acceptOfferABI = [
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: 'address',
+            name: 'signer',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'contractAddress',
+            type: 'address',
+          },
+          {
+            internalType: 'uint256',
+            name: 'tokenId',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'expiration',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256[3]',
+            name: 'indexes',
+            type: 'uint256[3]',
+          },
+          {
+            internalType: 'uint256',
+            name: 'pricePerDay',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'rentalDays',
+            type: 'uint256',
+          },
+          {
+            internalType: 'address',
+            name: 'operator',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes32',
+            name: 'fingerprint',
+            type: 'bytes32',
+          },
+          {
+            internalType: 'bytes',
+            name: 'signature',
+            type: 'bytes',
+          },
+        ],
+        internalType: 'struct Rentals.Offer',
+        name: '_offer',
+        type: 'tuple',
+      },
+    ],
+    name: 'acceptOffer',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]
