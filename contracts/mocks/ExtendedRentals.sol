@@ -7,9 +7,6 @@ import "../Rentals.sol";
 /// @notice Extension of the Rentals contract.
 /// @dev This contract is used for testing purposes only and should not be used in production.
 contract ExtendedRentals is Rentals {
-    // Event emitted when a rented asset is returned to its lessor via "returnToLessor".
-    event AssetReturned(address indexed _contractAddress, uint256 indexed _tokenId, address _lessor, address _sender);
-
     /// @notice Get the EIP712NameHash
     /// @return The EIP712NameHash
     function getEIP712NameHash() external view virtual returns (bytes32) {
@@ -50,8 +47,6 @@ contract ExtendedRentals is Rentals {
 
             // Transfer the asset back to the lessor.
             asset.safeTransferFrom(address(this), lessor, tokenId);
-
-            emit AssetReturned(contractAddress, tokenId, lessor, _msgSender());
         }
     }
 }
