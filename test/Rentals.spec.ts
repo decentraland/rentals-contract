@@ -3909,7 +3909,7 @@ describe('Rentals', () => {
     })
   })
 
-  describe.only('returnToLessor :: ExtendedRentals', () => {
+  describe('returnToLessor :: ExtendedRentals', () => {
     let rentals: ExtendedRentals
 
     beforeEach(async () => {
@@ -3921,11 +3921,56 @@ describe('Rentals', () => {
       rentals = await ethers.getContractAt('ExtendedRentals', rentalsProxy.address)
 
       await rentals.initialize(owner.address, mana.address, collector.address, fee)
+
+      await land.connect(lessor).setApprovalForAll(rentals.address, true)
+      await estate.connect(lessor).setApprovalForAll(rentals.address, true)
+      await mana.connect(tenant).approve(rentals.address, maxUint256)
+      await mana.connect(extra).approve(rentals.address, maxUint256)
+    })
+
+    it('should return the asset to the lessor', async () => {
+      let rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
+      expect(rental.lessor).to.be.equal(zeroAddress)
+      expect(rental.tenant).to.be.equal(zeroAddress)
+      expect(rental.endDate).to.be.equal(zeroAddress)
+      expect(await land.ownerOf(tokenId)).to.be.equal(lessor.address)
+
+      // Accept offer
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals as any, offerParams) })
+
+      rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
+      expect(rental.lessor).to.be.equal(lessor.address)
+      expect(rental.tenant).to.be.equal(tenant.address)
+      expect(rental.endDate).to.not.be.equal(zeroAddress)
+      expect(await land.ownerOf(tokenId)).to.be.equal(rentals.address)
+
+      // Return to lessor
+      await rentals.connect(owner).returnToLessor([offerParams.contractAddress], [offerParams.tokenId])
+
+      rental = await rentals.getRental(offerParams.contractAddress, offerParams.tokenId)
+      expect(rental.lessor).to.be.equal(zeroAddress)
+      expect(rental.tenant).to.be.equal(zeroAddress)
+      expect(rental.endDate).to.be.equal(zeroAddress)
+      expect(await land.ownerOf(tokenId)).to.be.equal(lessor.address)
     })
 
     it('should revert when the asset is not in the rentals mapping', async () => {
       await expect(rentals.connect(owner).returnToLessor([land.address], [tokenId])).to.be.revertedWith(
         'ExtendedRentals#returnToLessor: ASSET_NOT_IN_CONTRACT'
+      )
+    })
+
+    it('should revert when the arrays have different length', async () => {
+      await expect(rentals.connect(owner).returnToLessor([land.address], [])).to.be.revertedWith('ExtendedRentals#returnToLessor: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(owner).returnToLessor([], [tokenId])).to.be.revertedWith('ExtendedRentals#returnToLessor: LENGTH_MISMATCH')
+
+      await expect(rentals.connect(owner).returnToLessor([land.address], [tokenId, tokenId])).to.be.revertedWith(
+        'ExtendedRentals#returnToLessor: LENGTH_MISMATCH'
+      )
+
+      await expect(rentals.connect(owner).returnToLessor([land.address, land.address], [tokenId])).to.be.revertedWith(
+        'ExtendedRentals#returnToLessor: LENGTH_MISMATCH'
       )
     })
   })
