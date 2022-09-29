@@ -9,7 +9,7 @@ const zeroAddress = '0x0000000000000000000000000000000000000000'
 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 const fee = '100000' // 10% fee
 
-describe.only('DevRentals', () => {
+describe('DevRentals', () => {
   let deployer: SignerWithAddress
   let owner: SignerWithAddress
   let tenant: SignerWithAddress
