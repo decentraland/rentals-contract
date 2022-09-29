@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { EstateRegistry, ExtendedRentals__factory, LANDRegistry, MANAToken, ReentrantERC721, Rentals, Rentals__factory } from '../typechain-types'
+import { EstateRegistry, ExtendedRentals, LANDRegistry, MANAToken, ReentrantERC721, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
   ether,
@@ -3906,6 +3906,27 @@ describe('Rentals', () => {
       await rentals.connect(owner).pause()
       await rentals.connect(owner).unpause()
       await expect(rentals.connect(owner).unpause()).to.be.revertedWith('Pausable: not paused')
+    })
+  })
+
+  describe.only('returnToLessor :: ExtendedRentals', () => {
+    let rentals: ExtendedRentals
+
+    beforeEach(async () => {
+      const ExtendedRentalsFactory = await ethers.getContractFactory('ExtendedRentals')
+      const rentalsImpl = await ExtendedRentalsFactory.connect(deployer).deploy()
+      const RentalsProxyFactory = await ethers.getContractFactory('RentalsProxy')
+      const rentalsProxy = await RentalsProxyFactory.connect(deployer).deploy(rentalsImpl.address)
+
+      rentals = await ethers.getContractAt('ExtendedRentals', rentalsProxy.address)
+
+      await rentals.initialize(owner.address, mana.address, collector.address, fee)
+    })
+
+    it('should revert when the asset is not in the rentals mapping', async () => {
+      await expect(rentals.connect(owner).returnToLessor([land.address], [tokenId])).to.be.revertedWith(
+        'ExtendedRentals#returnToLessor: ASSET_NOT_IN_CONTRACT'
+      )
     })
   })
 })
