@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers, network } from 'hardhat'
-import { EstateRegistry, ExtendedRentals__factory, LANDRegistry, MANAToken, ReentrantERC721, Rentals, Rentals__factory } from '../typechain-types'
+import { EstateRegistry, LANDRegistry, MANAToken, ReentrantERC721, Rentals } from '../typechain-types'
 import {
   daysToSeconds,
   ether,

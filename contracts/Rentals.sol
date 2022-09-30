@@ -53,7 +53,7 @@ contract Rentals is
 
     /// @notice Tracks necessary rental data per asset.
     /// @custom:schema (contract address -> token id -> rental)
-    mapping(address => mapping(uint256 => Rental)) private rentals;
+    mapping(address => mapping(uint256 => Rental)) internal rentals;
 
     /// @notice Address that will receive ERC20 tokens collected as rental fees.
     address private feeCollector;
