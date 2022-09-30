@@ -16,7 +16,7 @@ const rpc = process.env.RPC
 const config: HardhatUserConfig = {
   networks: {
     deploy: {
-      url: rpc,
+      url: rpc || '',
       accounts: privateKey ? [privateKey] : undefined,
     },
   },
