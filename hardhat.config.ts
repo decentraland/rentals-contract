@@ -1,10 +1,10 @@
+import dotenv from 'dotenv'
+import { HardhatUserConfig } from 'hardhat/types'
+
 import '@typechain/hardhat'
 import '@nomiclabs/hardhat-waffle'
 import 'solidity-coverage'
 import 'hardhat-gas-reporter'
-
-import dotenv from 'dotenv'
-import { HardhatUserConfig } from 'hardhat/types'
 
 dotenv.config()
 
