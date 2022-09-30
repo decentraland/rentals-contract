@@ -3,7 +3,21 @@ import '@nomiclabs/hardhat-waffle'
 import 'solidity-coverage'
 import 'hardhat-gas-reporter'
 
-export default {
+import dotenv from 'dotenv'
+import { HardhatUserConfig } from 'hardhat/types'
+
+dotenv.config()
+
+const privateKey = process.env.PRIVATE_KEY
+const rpc = process.env.RPC
+
+const config: HardhatUserConfig = {
+  networks: {
+    deploy: {
+      url: rpc,
+      accounts: privateKey ? [privateKey] : undefined,
+    },
+  },
   solidity: {
     compilers: [
       {
@@ -45,3 +59,5 @@ export default {
     ],
   },
 }
+
+export default config
