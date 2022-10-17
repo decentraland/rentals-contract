@@ -236,7 +236,7 @@ contract Rentals is
     /// the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
     /// they expect.
     function acceptListing(
-        Listing memory _listing,
+        Listing calldata _listing,
         address _operator,
         uint256 _conditionIndex,
         uint256 _rentalDays,
@@ -302,7 +302,7 @@ contract Rentals is
 
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
-    function acceptOffer(Offer memory _offer) external {
+    function acceptOffer(Offer calldata _offer) external {
         _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
 
         _acceptOffer(_offer, _msgSender());
@@ -312,7 +312,7 @@ contract Rentals is
     /// @param _contractAddresses The contract address of the assets to be claimed.
     /// @param _tokenIds The token ids of the assets to be claimed.
     /// Each tokenId corresponds to a contract address in the same index.
-    function claim(address[] memory _contractAddresses, uint256[] memory _tokenIds) external nonReentrant whenNotPaused {
+    function claim(address[] calldata _contractAddresses, uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         require(_contractAddresses.length == _tokenIds.length, "Rentals#claim: LENGTH_MISMATCH");
 
         address sender = _msgSender();
@@ -351,9 +351,9 @@ contract Rentals is
     /// @param _tokenIds The token ids of the assets.
     /// @param _operators The addresses that will have operator privileges over the given assets in the same index.
     function setUpdateOperator(
-        address[] memory _contractAddresses,
-        uint256[] memory _tokenIds,
-        address[] memory _operators
+        address[] calldata _contractAddresses,
+        uint256[] calldata _tokenIds,
+        address[] calldata _operators
     ) external nonReentrant whenNotPaused {
         require(
             _contractAddresses.length == _tokenIds.length && _contractAddresses.length == _operators.length,
@@ -391,8 +391,8 @@ contract Rentals is
     function setManyLandUpdateOperator(
         address _contractAddress,
         uint256 _tokenId,
-        uint256[][] memory _landTokenIds,
-        address[] memory _operators
+        uint256[][] calldata _landTokenIds,
+        address[] calldata _operators
     ) external nonReentrant whenNotPaused {
         require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
 
@@ -423,7 +423,7 @@ contract Rentals is
         address _operator,
         address, // _from,
         uint256 _tokenId,
-        bytes memory _data
+        bytes calldata _data
     ) external override returns (bytes4) {
         if (_operator != address(this)) {
             Offer memory offer = abi.decode(_data, (Offer));
@@ -504,7 +504,7 @@ contract Rentals is
     }
 
     /// @dev Verify that the signer provided in the listing is the address that created the provided signature.
-    function _verifyListingSigner(Listing memory _listing) private view {
+    function _verifyListingSigner(Listing calldata _listing) private view {
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(

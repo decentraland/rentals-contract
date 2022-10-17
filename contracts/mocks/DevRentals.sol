@@ -10,7 +10,7 @@ contract DevRentals is Rentals {
     /// @notice Allows the owner to return assets that are being rented to their respective lessors.
     /// @param _contractAddresses The addresses of the contracts that own the assets.
     /// @param _tokenIds The IDs of the assets to return.
-    function returnToLessor(address[] memory _contractAddresses, uint256[] memory _tokenIds) external onlyOwner {
+    function returnToLessor(address[] calldata _contractAddresses, uint256[] calldata _tokenIds) external onlyOwner {
         uint256 contractAddressesLength = _contractAddresses.length;
 
         // Check that the arrays are of the same length.
