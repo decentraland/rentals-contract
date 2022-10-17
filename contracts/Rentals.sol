@@ -323,10 +323,10 @@ contract Rentals is
             // Verify that the rent has finished.
             require(!getIsRented(contractAddress, tokenId), "Rentals#claim: CURRENTLY_RENTED");
 
-            Rental memory rental = rentals[contractAddress][tokenId];
+            address lessor = rentals[contractAddress][tokenId].lessor;
 
             // Verify that the caller is the original owner of the asset.
-            require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
+            require(lessor == sender, "Rentals#claim: NOT_LESSOR");
 
             // Delete the data for the rental as it is not necessary anymore.
             delete rentals[contractAddress][tokenId];
@@ -364,7 +364,7 @@ contract Rentals is
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             address contractAddress = _contractAddresses[i];
             uint256 tokenId = _tokenIds[i];
-            Rental memory rental = rentals[contractAddress][tokenId];
+            Rental storage rental = rentals[contractAddress][tokenId];
             bool isRented = getIsRented(contractAddress, tokenId);
 
             require(
@@ -395,7 +395,7 @@ contract Rentals is
     ) external nonReentrant whenNotPaused {
         require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
 
-        Rental memory rental = rentals[_contractAddress][_tokenId];
+        Rental storage rental = rentals[_contractAddress][_tokenId];
         bool isRented = getIsRented(_contractAddress, _tokenId);
         address sender = _msgSender();
 
