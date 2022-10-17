@@ -2475,7 +2475,7 @@ describe('Rentals', () => {
     })
   })
 
-  describe.only('setUpdateOperator', () => {
+  describe('setUpdateOperator', () => {
     const newOperator = ethers.Wallet.createRandom().address
 
     beforeEach(async () => {
