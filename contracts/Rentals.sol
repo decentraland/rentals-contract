@@ -205,7 +205,7 @@ contract Rentals is
         return fee;
     }
 
-    /// @notice Get if and asset is currently being rented.
+    /// @notice Get if an asset is currently being rented.
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
     /// @return True or false depending if the asset is currently rented.
