@@ -1435,7 +1435,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
+      ).to.be.reverted
     })
 
     it('should revert when the caller is different from the target provided in the listing', async () => {
@@ -2093,9 +2093,8 @@ describe('Rentals', () => {
     it('should revert when someone tries to accept an offer for an asset sent to the contract unsafely', async () => {
       await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
 
-      await expect(
-        rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
+      await expect(rentals.connect(extra).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })).to.be
+        .reverted
     })
 
     it('should revert when accepting an offer twice in the same block with the same indexes', async () => {

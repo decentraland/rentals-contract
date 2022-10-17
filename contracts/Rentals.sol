@@ -241,8 +241,6 @@ contract Rentals is
         uint256 _rentalDays,
         bytes32 _fingerprint
     ) external nonReentrant whenNotPaused {
-        _verifyUnsafeTransfer(_listing.contractAddress, _listing.tokenId);
-
         address lessor = _listing.signer;
         address tenant = _msgSender();
 
@@ -302,8 +300,6 @@ contract Rentals is
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
     function acceptOffer(Offer calldata _offer) external {
-        _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
-
         _acceptOffer(_offer, _msgSender());
     }
 
@@ -453,18 +449,6 @@ contract Rentals is
         emit FeeUpdated(fee, fee = _fee, _msgSender());
     }
 
-    /// @dev Someone might send an asset to this contract via an unsafe transfer, causing ownerOf checks to be inconsistent with the state
-    /// of this contract. This function is used to prevent interactions with these assets.
-    /// ERC721 ASSETS SENT UNSAFELY WILL REMAIN LOCKED INSIDE THIS CONTRACT.
-    function _verifyUnsafeTransfer(address _contractAddress, uint256 _tokenId) private view {
-        address lessor = rentals[_contractAddress][_tokenId].lessor;
-        address assetOwner = IERC721Rentable(_contractAddress).ownerOf(_tokenId);
-
-        if (lessor == address(0) && assetOwner == address(this)) {
-            revert("Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY");
-        }
-    }
-
     function _acceptOffer(Offer memory _offer, address _lessor) private nonReentrant whenNotPaused {
         address tenant = _offer.signer;
 
@@ -567,11 +551,6 @@ contract Rentals is
         // True if the asset rental period is not over yet, but the lessor and the tenant are the same.
         bool isExtend = isRented && rental.lessor == _rentParams.lessor && rental.tenant == _rentParams.tenant;
 
-        if (!isExtend && !isReRent) {
-            // Verify that the asset is not already rented.
-            require(!isRented, "Rentals#_rent: CURRENTLY_RENTED");
-        }
-
         if (isReRent) {
             // The asset is being rented again without claiming it back first, so we need to check that the previous lessor
             // is the same as the lessor this time to prevent anyone else from acting as the lessor.
@@ -601,9 +580,22 @@ contract Rentals is
             _handleTokenTransfers(_rentParams.lessor, _rentParams.tenant, _rentParams.pricePerDay, _rentParams.rentalDays);
         }
 
-        // Only transfer the ERC721 to this contract if it doesn't already have it.
-        if (asset.ownerOf(_rentParams.tokenId) != address(this)) {
-            asset.safeTransferFrom(_rentParams.lessor, address(this), _rentParams.tokenId);
+        if (isExtend || isReRent) {
+            // This contract should be the owner of the asset in case of an extend or a re-rent.
+            require(asset.ownerOf(_rentParams.tokenId) == address(this), "Rentals#_rent: NOT_OWNED_BY_CONTRACT");
+        } else {
+            // If it is no an extend or a re-rent, check that the asset is not already rented.
+            require(!isRented, "Rentals#_rent: CURRENTLY_RENTED");
+
+            if (_msgSender() == _rentParams.contractAddress) {
+                // This will happen in the case of accepting an offer via safeTransferFrom.
+                // onERC721Received will be called after the ownership of the asset is transferred to this contract.
+                // So this contract should be the owner of the asset at this point.
+                require(asset.ownerOf(_rentParams.tokenId) == address(this), "Rentals#_rent: NOT_OWNED_BY_CONTRACT");
+            } else {
+                // Transfer the asset from the lessor to this contract. 
+                asset.safeTransferFrom(_rentParams.lessor, address(this), _rentParams.tokenId);
+            }
         }
 
         // Update the operator
