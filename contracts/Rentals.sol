@@ -312,7 +312,9 @@ contract Rentals is
 
         address sender = _msgSender();
 
-        for (uint256 i = 0; i < _contractAddresses.length; i++) {
+        uint256 contractAddressesLength = _contractAddresses.length;
+
+        for (uint256 i; i < contractAddressesLength; ) {
             address contractAddress = _contractAddresses[i];
             uint256 tokenId = _tokenIds[i];
 
@@ -333,6 +335,10 @@ contract Rentals is
             asset.safeTransferFrom(address(this), sender, tokenId);
 
             emit AssetClaimed(contractAddress, tokenId, sender);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -357,7 +363,9 @@ contract Rentals is
 
         address sender = _msgSender();
 
-        for (uint256 i = 0; i < _tokenIds.length; i++) {
+        uint256 tokenIdsLength = _tokenIds.length;
+
+        for (uint256 i; i < tokenIdsLength; ) {
             address contractAddress = _contractAddresses[i];
             uint256 tokenId = _tokenIds[i];
             Rental storage rental = rentals[contractAddress][tokenId];
@@ -369,6 +377,10 @@ contract Rentals is
             );
 
             IERC721Rentable(contractAddress).setUpdateOperator(tokenId, _operators[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -400,8 +412,14 @@ contract Rentals is
             "Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR"
         );
 
-        for (uint256 i = 0; i < _landTokenIds.length; i++) {
+        uint256 landTokenIdsLength = _landTokenIds.length;
+
+        for (uint256 i; i < landTokenIdsLength; ) {
             IERC721Rentable(_contractAddress).setManyLandUpdateOperator(_tokenId, _landTokenIds[i], _operators[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -593,7 +611,7 @@ contract Rentals is
                 // So this contract should be the owner of the asset at this point.
                 require(asset.ownerOf(_rentParams.tokenId) == address(this), "Rentals#_rent: NOT_OWNED_BY_CONTRACT");
             } else {
-                // Transfer the asset from the lessor to this contract. 
+                // Transfer the asset from the lessor to this contract.
                 asset.safeTransferFrom(_rentParams.lessor, address(this), _rentParams.tokenId);
             }
         }
