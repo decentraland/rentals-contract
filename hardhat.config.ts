@@ -1,9 +1,28 @@
+import dotenv from 'dotenv'
+import { HardhatUserConfig } from 'hardhat/types'
+
 import '@typechain/hardhat'
 import '@nomiclabs/hardhat-waffle'
 import 'solidity-coverage'
 import 'hardhat-gas-reporter'
+import '@openzeppelin/hardhat-upgrades'
+import '@nomiclabs/hardhat-etherscan'
 
-export default {
+dotenv.config()
+
+const privateKey = process.env.PRIVATE_KEY
+const rpc = process.env.RPC
+
+const config: HardhatUserConfig = {
+  networks: {
+    deploy: {
+      url: rpc || '',
+      accounts: privateKey ? [privateKey] : undefined,
+    },
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
+  },
   solidity: {
     compilers: [
       {
@@ -45,3 +64,5 @@ export default {
     ],
   },
 }
+
+export default config
