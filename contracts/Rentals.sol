@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.7;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
@@ -205,7 +204,7 @@ contract Rentals is
         return fee;
     }
 
-    /// @notice Get if and asset is currently being rented.
+    /// @notice Get if an asset is currently being rented.
     /// @param _contractAddress The contract address of the asset.
     /// @param _tokenId The token id of the asset.
     /// @return True or false depending if the asset is currently rented.
@@ -236,7 +235,7 @@ contract Rentals is
     /// the listing is accepted. Causing the tenant to end up with an Estate that does not have the amount of LAND
     /// they expect.
     function acceptListing(
-        Listing memory _listing,
+        Listing calldata _listing,
         address _operator,
         uint256 _conditionIndex,
         uint256 _rentalDays,
@@ -302,7 +301,7 @@ contract Rentals is
 
     /// @notice Accept an offer for rent of an asset owned by the caller.
     /// @param _offer Contains the offer conditions as well as the signature data for verification.
-    function acceptOffer(Offer memory _offer) external {
+    function acceptOffer(Offer calldata _offer) external {
         _verifyUnsafeTransfer(_offer.contractAddress, _offer.tokenId);
 
         _acceptOffer(_offer, _msgSender());
@@ -312,22 +311,24 @@ contract Rentals is
     /// @param _contractAddresses The contract address of the assets to be claimed.
     /// @param _tokenIds The token ids of the assets to be claimed.
     /// Each tokenId corresponds to a contract address in the same index.
-    function claim(address[] memory _contractAddresses, uint256[] memory _tokenIds) external nonReentrant whenNotPaused {
+    function claim(address[] calldata _contractAddresses, uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         require(_contractAddresses.length == _tokenIds.length, "Rentals#claim: LENGTH_MISMATCH");
 
         address sender = _msgSender();
 
-        for (uint256 i = 0; i < _contractAddresses.length; i++) {
+        uint256 contractAddressesLength = _contractAddresses.length;
+
+        for (uint256 i; i < contractAddressesLength; ) {
             address contractAddress = _contractAddresses[i];
             uint256 tokenId = _tokenIds[i];
 
             // Verify that the rent has finished.
             require(!getIsRented(contractAddress, tokenId), "Rentals#claim: CURRENTLY_RENTED");
 
-            Rental memory rental = rentals[contractAddress][tokenId];
+            address lessor = rentals[contractAddress][tokenId].lessor;
 
             // Verify that the caller is the original owner of the asset.
-            require(rental.lessor == sender, "Rentals#claim: NOT_LESSOR");
+            require(lessor == sender, "Rentals#claim: NOT_LESSOR");
 
             // Delete the data for the rental as it is not necessary anymore.
             delete rentals[contractAddress][tokenId];
@@ -338,6 +339,10 @@ contract Rentals is
             asset.safeTransferFrom(address(this), sender, tokenId);
 
             emit AssetClaimed(contractAddress, tokenId, sender);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -351,9 +356,9 @@ contract Rentals is
     /// @param _tokenIds The token ids of the assets.
     /// @param _operators The addresses that will have operator privileges over the given assets in the same index.
     function setUpdateOperator(
-        address[] memory _contractAddresses,
-        uint256[] memory _tokenIds,
-        address[] memory _operators
+        address[] calldata _contractAddresses,
+        uint256[] calldata _tokenIds,
+        address[] calldata _operators
     ) external nonReentrant whenNotPaused {
         require(
             _contractAddresses.length == _tokenIds.length && _contractAddresses.length == _operators.length,
@@ -362,10 +367,12 @@ contract Rentals is
 
         address sender = _msgSender();
 
-        for (uint256 i = 0; i < _tokenIds.length; i++) {
+        uint256 tokenIdsLength = _tokenIds.length;
+
+        for (uint256 i; i < tokenIdsLength; ) {
             address contractAddress = _contractAddresses[i];
             uint256 tokenId = _tokenIds[i];
-            Rental memory rental = rentals[contractAddress][tokenId];
+            Rental storage rental = rentals[contractAddress][tokenId];
             bool isRented = getIsRented(contractAddress, tokenId);
 
             require(
@@ -374,6 +381,10 @@ contract Rentals is
             );
 
             IERC721Rentable(contractAddress).setUpdateOperator(tokenId, _operators[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -391,12 +402,12 @@ contract Rentals is
     function setManyLandUpdateOperator(
         address _contractAddress,
         uint256 _tokenId,
-        uint256[][] memory _landTokenIds,
-        address[] memory _operators
+        uint256[][] calldata _landTokenIds,
+        address[] calldata _operators
     ) external nonReentrant whenNotPaused {
         require(_landTokenIds.length == _operators.length, "Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH");
 
-        Rental memory rental = rentals[_contractAddress][_tokenId];
+        Rental storage rental = rentals[_contractAddress][_tokenId];
         bool isRented = getIsRented(_contractAddress, _tokenId);
         address sender = _msgSender();
 
@@ -405,8 +416,14 @@ contract Rentals is
             "Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR"
         );
 
-        for (uint256 i = 0; i < _landTokenIds.length; i++) {
+        uint256 landTokenIdsLength = _landTokenIds.length;
+
+        for (uint256 i; i < landTokenIdsLength; ) {
             IERC721Rentable(_contractAddress).setManyLandUpdateOperator(_tokenId, _landTokenIds[i], _operators[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -423,7 +440,7 @@ contract Rentals is
         address _operator,
         address, // _from,
         uint256 _tokenId,
-        bytes memory _data
+        bytes calldata _data
     ) external override returns (bytes4) {
         if (_operator != address(this)) {
             Offer memory offer = abi.decode(_data, (Offer));
@@ -504,7 +521,7 @@ contract Rentals is
     }
 
     /// @dev Verify that the signer provided in the listing is the address that created the provided signature.
-    function _verifyListingSigner(Listing memory _listing) private view {
+    function _verifyListingSigner(Listing calldata _listing) private view {
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
