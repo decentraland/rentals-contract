@@ -218,13 +218,13 @@ describe('Rentals', () => {
       expect(await rentals.paused()).to.be.false
     })
 
-    it('should revert when initialized more than once', async () => {
+    it('reverts when initialized more than once', async () => {
       await expect(rentals.connect(deployer).initialize(owner.address, mana.address, collector.address, fee)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
 
-    it('should revert when trying to initialize the implementation', async () => {
+    it('reverts when trying to initialize the implementation', async () => {
       const RentalsFactory = await ethers.getContractFactory('Rentals')
       const rentalsImpl = await RentalsFactory.connect(deployer).deploy()
 
@@ -267,7 +267,7 @@ describe('Rentals', () => {
       expect(await rentals.getFeeCollector()).to.be.equal(newFeeCollector)
     })
 
-    it('should revert when sender is not owner', async () => {
+    it('reverts when sender is not owner', async () => {
       await expect(rentals.connect(tenant).setFeeCollector(newFeeCollector)).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
@@ -306,11 +306,11 @@ describe('Rentals', () => {
       expect(await rentals.getFee()).to.be.equal(newFee)
     })
 
-    it('should revert when sender is not owner', async () => {
+    it('reverts when sender is not owner', async () => {
       await expect(rentals.connect(tenant).setFee(newFee)).to.be.revertedWith('Ownable: caller is not the owner')
     })
 
-    it('should revert when fee is higher than MAX_FEE', async () => {
+    it('reverts when fee is higher than MAX_FEE', async () => {
       const invalidFee = '1000001'
       await expect(rentals.connect(owner).setFee(invalidFee)).to.be.revertedWith('Rentals#_setFee: HIGHER_THAN_MAX_FEE')
     })
@@ -342,7 +342,7 @@ describe('Rentals', () => {
       expect(await rentals.connect(owner).getContractIndex()).to.equal(1)
     })
 
-    it('should revert when the contract owner is not the caller', async () => {
+    it('reverts when the contract owner is not the caller', async () => {
       await expect(rentals.connect(tenant).bumpContractIndex()).to.be.revertedWith('Ownable: caller is not the owner')
     })
   })
@@ -1076,7 +1076,22 @@ describe('Rentals', () => {
         )
     })
 
-    it('should revert when lessor is same as tenant', async () => {
+    it("should not revert when the provided contract address's `verifyFingerprint` returns true", async () => {
+      listingParams = { ...listingParams, contractAddress: estate.address, tokenId: estateId }
+      acceptListingParams = { ...acceptListingParams, fingerprint: await estate.connect(tenant).getFingerprint(estateId) }
+
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+          acceptListingParams.operator,
+          acceptListingParams.conditionIndex,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+    })
+
+    it('reverts when lessor is same as tenant', async () => {
       listingParams = { ...listingParams, signer: lessor.address }
 
       await expect(
@@ -1092,7 +1107,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER')
     })
 
-    it('should revert when the lessor signer does not match the signer in params', async () => {
+    it('reverts when the lessor signer does not match the signer in params', async () => {
       await expect(
         rentals
           .connect(tenant)
@@ -1106,7 +1121,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
     })
 
-    it('should revert when pricePerDay maxDays and minDays length is 0', async () => {
+    it('reverts when pricePerDay maxDays and minDays length is 0', async () => {
       listingParams.pricePerDay = []
       listingParams.maxDays = []
       listingParams.minDays = []
@@ -1124,7 +1139,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: CONDITION_INDEX_OUT_OF_BOUNDS')
     })
 
-    it('should revert when maxDays length is different than pricePerDay length', async () => {
+    it('reverts when maxDays length is different than pricePerDay length', async () => {
       listingParams.maxDays = [10, 20]
 
       await expect(
@@ -1140,7 +1155,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: MAX_DAYS_LENGTH_MISMATCH')
     })
 
-    it('should revert when minDays length is different than pricePerDay length', async () => {
+    it('reverts when minDays length is different than pricePerDay length', async () => {
       listingParams.minDays = [10, 20]
 
       await expect(
@@ -1156,7 +1171,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: MIN_DAYS_LENGTH_MISMATCH')
     })
 
-    it('should revert when tenant index is outside the pricePerDay length', async () => {
+    it('reverts when tenant index is outside the pricePerDay length', async () => {
       acceptListingParams = { ...acceptListingParams, conditionIndex: 1 }
 
       await expect(
@@ -1172,7 +1187,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: CONDITION_INDEX_OUT_OF_BOUNDS')
     })
 
-    it('should revert when the block timestamp is higher than the provided lessor signature expiration', async () => {
+    it('reverts when the block timestamp is higher than the provided lessor signature expiration', async () => {
       listingParams = { ...listingParams, expiration: now() - 1000 }
 
       await expect(
@@ -1188,7 +1203,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: EXPIRED_SIGNATURE')
     })
 
-    it('should revert when max days is lower than min days', async () => {
+    it('reverts when max days is lower than min days', async () => {
       listingParams = { ...listingParams, minDays: [BigNumber.from(listingParams.maxDays[0]).add(1)] }
 
       await expect(
@@ -1204,7 +1219,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: MAX_DAYS_LOWER_THAN_MIN_DAYS')
     })
 
-    it('should revert when min days is 0', async () => {
+    it('reverts when min days is 0', async () => {
       listingParams = { ...listingParams, minDays: [0] }
 
       await expect(
@@ -1220,7 +1235,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: MIN_DAYS_IS_ZERO')
     })
 
-    it('should revert when tenant days is lower than lessor min days', async () => {
+    it('reverts when tenant days is lower than lessor min days', async () => {
       acceptListingParams = { ...acceptListingParams, rentalDays: BigNumber.from(listingParams.minDays[0]).sub(1) }
 
       await expect(
@@ -1236,7 +1251,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: DAYS_NOT_IN_RANGE')
     })
 
-    it('should revert when tenant days is higher than lessor max days', async () => {
+    it('reverts when tenant days is higher than lessor max days', async () => {
       acceptListingParams = { ...acceptListingParams, rentalDays: BigNumber.from(listingParams.maxDays[0]).add(1) }
 
       await expect(
@@ -1252,7 +1267,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: DAYS_NOT_IN_RANGE')
     })
 
-    it('should revert when lessor contract index is not the same as the contract', async () => {
+    it('reverts when lessor contract index is not the same as the contract', async () => {
       listingParams = { ...listingParams, indexes: [1, 0, 0] }
 
       await expect(
@@ -1268,7 +1283,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
     })
 
-    it('should revert when lessor signer index is not the same as the contract', async () => {
+    it('reverts when lessor signer index is not the same as the contract', async () => {
       listingParams = { ...listingParams, indexes: [0, 1, 0] }
 
       await expect(
@@ -1284,7 +1299,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
     })
 
-    it('should revert when lessor asset index is not the same as the contract', async () => {
+    it('reverts when lessor asset index is not the same as the contract', async () => {
       listingParams = { ...listingParams, indexes: [0, 0, 1] }
 
       await expect(
@@ -1300,7 +1315,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
-    it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
+    it("reverts when the provided contract address's `verifyFingerprint` returns false", async () => {
       listingParams = { ...listingParams, contractAddress: estate.address, tokenId: estateId }
 
       await expect(
@@ -1316,22 +1331,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
     })
 
-    it("should NOT revert when the provided contract address's `verifyFingerprint` returns true", async () => {
-      listingParams = { ...listingParams, contractAddress: estate.address, tokenId: estateId }
-      acceptListingParams = { ...acceptListingParams, fingerprint: await estate.connect(tenant).getFingerprint(estateId) }
-
-      await rentals
-        .connect(tenant)
-        .acceptListing(
-          { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
-          acceptListingParams.operator,
-          acceptListingParams.conditionIndex,
-          acceptListingParams.rentalDays,
-          acceptListingParams.fingerprint
-        )
-    })
-
-    it('should revert if an asset is already being rented', async () => {
+    it('reverts if an asset is already being rented', async () => {
       await rentals
         .connect(tenant)
         .acceptListing(
@@ -1357,7 +1357,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
+    it('reverts if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
       await rentals
         .connect(tenant)
         .acceptListing(
@@ -1386,7 +1386,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
     })
 
-    it('should revert with currently rented error when claim is sent in the same block as accept listing', async () => {
+    it('reverts with currently rented error when claim is sent in the same block as accept listing', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -1420,7 +1420,7 @@ describe('Rentals', () => {
       expect(decodedErrorMessage).to.be.equal('Rentals#claim: CURRENTLY_RENTED')
     })
 
-    it('should revert when someone tries to accept a listing for an asset sent to the contract unsafely', async () => {
+    it('reverts when someone tries to accept a listing for an asset sent to the contract unsafely', async () => {
       await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
 
       listingParams = { ...listingParams, signer: extra.address }
@@ -1438,7 +1438,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
     })
 
-    it('should revert when the caller is different from the target provided in the listing', async () => {
+    it('reverts when the caller is different from the target provided in the listing', async () => {
       listingParams = { ...listingParams, target: extra.address }
 
       await expect(
@@ -1454,7 +1454,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: TARGET_MISMATCH')
     })
 
-    it('should revert when accepting a listing twice in the same block with the same indexes', async () => {
+    it('reverts when accepting a listing twice in the same block with the same indexes', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -1491,7 +1491,7 @@ describe('Rentals', () => {
       expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
-    it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
+    it('reverts when trying to extend the rental with accept listing while not being the tenant', async () => {
       await rentals
         .connect(tenant)
         .acceptListing(
@@ -1523,7 +1523,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when trying to extend the rental with accept offer while not being the lessor', async () => {
+    it('reverts when trying to extend the rental with accept offer while not being the lessor', async () => {
       await rentals
         .connect(tenant)
         .acceptListing(
@@ -1546,7 +1546,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when the listing was signed with arrays in a different order than the ones provided', async () => {
+    it('reverts when the listing was signed with arrays in a different order than the ones provided', async () => {
       listingParams.pricePerDay = [ether('10'), ether('20'), ether('30')]
       listingParams.maxDays = [98, 99, 100]
       listingParams.minDays = [1, 2, 3]
@@ -1590,7 +1590,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
     })
 
-    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+    it('reverts when rentals days exceeds MAX_RENTAL_DAYS', async () => {
       listingParams.maxDays = [maxRentalDays + 1]
       listingParams.pricePerDay = [ether('1')]
       acceptListingParams.rentalDays = maxRentalDays + 1
@@ -1991,71 +1991,7 @@ describe('Rentals', () => {
         )
     })
 
-    it('should revert when the offer signer does not match the signer provided in params', async () => {
-      await expect(
-        rentals
-          .connect(lessor)
-          .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: extra.address }) })
-      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
-    })
-
-    it('should revert when lessor is same as tenant', async () => {
-      offerParams = { ...offerParams, signer: lessor.address }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(lessor, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER')
-    })
-
-    it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
-      offerParams = { ...offerParams, expiration: now() - 1000 }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_acceptOffer: EXPIRED_SIGNATURE')
-    })
-
-    it('should revert when tenant rental days is zero', async () => {
-      offerParams = { ...offerParams, rentalDays: 0 }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
-    })
-
-    it('should revert when tenant contract index is not the same as the contract', async () => {
-      offerParams = { ...offerParams, indexes: [1, 0, 0] }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
-    })
-
-    it('should revert when tenant signer index is not the same as the contract', async () => {
-      offerParams = { ...offerParams, indexes: [0, 1, 0] }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
-    })
-
-    it('should revert when tenant asset index is not the same as the contract', async () => {
-      offerParams = { ...offerParams, indexes: [0, 0, 1] }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
-    })
-
-    it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
-      offerParams = { ...offerParams, contractAddress: estate.address, tokenId: estateId }
-
-      await expect(
-        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
-      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
-    })
-
-    it("should NOT revert when the provided contract address's `verifyFingerprint` returns true", async () => {
+    it("should not revert when the provided contract address's `verifyFingerprint` returns true", async () => {
       offerParams = {
         ...offerParams,
         contractAddress: estate.address,
@@ -2066,7 +2002,71 @@ describe('Rentals', () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
     })
 
-    it('should revert if an asset is already being rented', async () => {
+    it('reverts when the offer signer does not match the signer provided in params', async () => {
+      await expect(
+        rentals
+          .connect(lessor)
+          .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: extra.address }) })
+      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when lessor is same as tenant', async () => {
+      offerParams = { ...offerParams, signer: lessor.address }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(lessor, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER')
+    })
+
+    it('reverts when the block timestamp is higher than the provided tenant signature expiration', async () => {
+      offerParams = { ...offerParams, expiration: now() - 1000 }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_acceptOffer: EXPIRED_SIGNATURE')
+    })
+
+    it('reverts when tenant rental days is zero', async () => {
+      offerParams = { ...offerParams, rentalDays: 0 }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
+    })
+
+    it('reverts when tenant contract index is not the same as the contract', async () => {
+      offerParams = { ...offerParams, indexes: [1, 0, 0] }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
+    })
+
+    it('reverts when tenant signer index is not the same as the contract', async () => {
+      offerParams = { ...offerParams, indexes: [0, 1, 0] }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
+    })
+
+    it('reverts when tenant asset index is not the same as the contract', async () => {
+      offerParams = { ...offerParams, indexes: [0, 0, 1] }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
+    })
+
+    it("reverts when the provided contract address's `verifyFingerprint` returns false", async () => {
+      offerParams = { ...offerParams, contractAddress: estate.address, tokenId: estateId }
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
+    })
+
+    it('reverts if an asset is already being rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       listingParams = { ...listingParams, indexes: [0, 0, 1] }
@@ -2077,7 +2077,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
+    it('reverts if someone other than the original owner wants to rent an asset currently owned by the contract', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
@@ -2090,7 +2090,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: NOT_ORIGINAL_OWNER')
     })
 
-    it('should revert when someone tries to accept an offer for an asset sent to the contract unsafely', async () => {
+    it('reverts when someone tries to accept an offer for an asset sent to the contract unsafely', async () => {
       await land.connect(lessor).transferFrom(lessor.address, rentals.address, tokenId)
 
       await expect(
@@ -2098,7 +2098,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifyUnsafeTransfer: ASSET_TRANSFERRED_UNSAFELY')
     })
 
-    it('should revert when accepting an offer twice in the same block with the same indexes', async () => {
+    it('reverts when accepting an offer twice in the same block with the same indexes', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -2119,7 +2119,7 @@ describe('Rentals', () => {
       expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
-    it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
+    it('reverts when trying to extend the rental with accept listing while not being the tenant', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       const increaseTime = Math.trunc(daysToSeconds(offerParams.rentalDays) / 2)
@@ -2143,7 +2143,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when trying to extend the rental with accept offer while not being the lessor', async () => {
+    it('reverts when trying to extend the rental with accept offer while not being the lessor', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       const increaseTime = Math.trunc(daysToSeconds(offerParams.rentalDays) / 2)
@@ -2158,7 +2158,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+    it('reverts when rentals days exceeds MAX_RENTAL_DAYS', async () => {
       offerParams.rentalDays = maxRentalDays + 1
       offerParams.pricePerDay = ether('1')
 
@@ -2380,13 +2380,13 @@ describe('Rentals', () => {
       expect(await land.ownerOf(tokenId)).to.equal(lessor.address)
     })
 
-    it('should revert when the asset is currently being rented', async () => {
+    it('reverts when the asset is currently being rented', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await expect(rentals.connect(lessor).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: CURRENTLY_RENTED')
     })
 
-    it('should revert when the caller is not the original owner of the asset', async () => {
+    it('reverts when the caller is not the original owner of the asset', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
@@ -2395,7 +2395,7 @@ describe('Rentals', () => {
       await expect(rentals.connect(tenant).claim([land.address], [tokenId])).to.be.revertedWith('Rentals#claim: NOT_LESSOR')
     })
 
-    it('should revert when the contract address array and token ids array length dont match', async () => {
+    it('reverts when the contract address array and token ids array length dont match', async () => {
       const contractAddressA = land.address
       const tokenIdA = tokenId
 
@@ -2413,7 +2413,7 @@ describe('Rentals', () => {
       await expect(rentals.connect(lessor).claim([contractAddressA, contractAddressB], [])).to.be.revertedWith('Rentals#claim: LENGTH_MISMATCH')
     })
 
-    it('should revert when one of the assets to be claimed is currently rented', async () => {
+    it('reverts when one of the assets to be claimed is currently rented', async () => {
       const contractAddressA = land.address
       const tokenIdA = tokenId
 
@@ -2444,7 +2444,7 @@ describe('Rentals', () => {
       )
     })
 
-    it('should revert when one of the assets to be claimed is not owned (as lessor) by the sender', async () => {
+    it('reverts when one of the assets to be claimed is not owned (as lessor) by the sender', async () => {
       const contractAddressA = land.address
       const tokenIdA = tokenId
 
@@ -2595,7 +2595,7 @@ describe('Rentals', () => {
       expect(await land.updateOperator(tokenId)).to.be.equal(newOperator)
     })
 
-    it('should revert when the asset has never been rented', async () => {
+    it('reverts when the asset has never been rented', async () => {
       const setUpdateOperatorByLessor = rentals.connect(lessor).setUpdateOperator([land.address], [tokenId], [newOperator])
       const setUpdateOperatorByTenant = rentals.connect(tenant).setUpdateOperator([land.address], [tokenId], [newOperator])
 
@@ -2603,7 +2603,7 @@ describe('Rentals', () => {
       await expect(setUpdateOperatorByTenant).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
     })
 
-    it('should revert when the tenant tries to update the operator after the rent is over', async () => {
+    it('reverts when the tenant tries to update the operator after the rent is over', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       await evmIncreaseTime(daysToSeconds(offerParams.rentalDays))
@@ -2614,7 +2614,7 @@ describe('Rentals', () => {
       await expect(setUpdateOperator).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
     })
 
-    it('should revert when the lessor tries to update the operator before the rental ends', async () => {
+    it('reverts when the lessor tries to update the operator before the rental ends', async () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
 
       const setUpdateOperator = rentals.connect(lessor).setUpdateOperator([land.address], [tokenId], [newOperator])
@@ -2622,7 +2622,7 @@ describe('Rentals', () => {
       await expect(setUpdateOperator).to.be.revertedWith('Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR')
     })
 
-    it('should revert when the provided param arrays have different lengths', async () => {
+    it('reverts when the provided param arrays have different lengths', async () => {
       await expect(rentals.connect(lessor).setUpdateOperator([], [tokenId], [newOperator])).to.be.revertedWith(
         'Rentals#setUpdateOperator: LENGTH_MISMATCH'
       )
@@ -2634,7 +2634,7 @@ describe('Rentals', () => {
       )
     })
 
-    it('should revert when one of the assets to update operator is currently rented :: as lessor', async () => {
+    it('reverts when one of the assets to update operator is currently rented :: as lessor', async () => {
       const rentDays = 15
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -2662,7 +2662,7 @@ describe('Rentals', () => {
         .not.be.reverted
     })
 
-    it('should revert when one of the assets to update operator is currently not rented :: as tenant', async () => {
+    it('reverts when one of the assets to update operator is currently not rented :: as tenant', async () => {
       const rentDays = 15
 
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
@@ -2970,7 +2970,7 @@ describe('Rentals', () => {
       expect(await estate.connect(extra).updateOperator(estateId)).to.be.equal(offerParams.operator)
     })
 
-    it('should revert when the sender is not the tenant and the rental is ongoing', async () => {
+    it('reverts when the sender is not the tenant and the rental is ongoing', async () => {
       offerParams = {
         ...offerParams,
         contractAddress: estate.address,
@@ -2985,7 +2985,7 @@ describe('Rentals', () => {
       )
     })
 
-    it('should revert when the sender is not the lessor and the rental is NOT ongoing', async () => {
+    it('reverts when the sender is not the lessor and the rental is NOT ongoing', async () => {
       // Check that it reverts before a rental for the given asset is made.
       await expect(rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address])).to.be.revertedWith(
         'Rentals#setManyLandUpdateOperator: CANNOT_SET_MANY_LAND_UPDATE_OPERATOR'
@@ -3011,7 +3011,7 @@ describe('Rentals', () => {
       )
     })
 
-    it('should revert when the landTokenIds and operators arrays dont have the same length', async () => {
+    it('reverts when the landTokenIds and operators arrays dont have the same length', async () => {
       await expect(
         rentals.connect(extra).setManyLandUpdateOperator(estate.address, estateId, [landIds], [operator.address, operator.address])
       ).to.be.revertedWith('Rentals#setManyLandUpdateOperator: LENGTH_MISMATCH')
@@ -3408,133 +3408,7 @@ describe('Rentals', () => {
       expect(prevBalance.sub(newBalance)).to.be.equal(expectedPayment)
     })
 
-    it('should revert when the caller is different from the contract address provided in the offer', async () => {
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-      await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
-        'Rentals#onERC721Received: ASSET_MISMATCH'
-      )
-    })
-
-    it('should revert when the sent asset is not the one in the offer', async () => {
-      offerEncodeValue[contractAddressIndex] = estate.address
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
-        ...offerParams,
-        contractAddress: offerEncodeValue[contractAddressIndex],
-      })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#onERC721Received: ASSET_MISMATCH')
-    })
-
-    it('should revert when the offer token id is different than the sent asset token id', async () => {
-      await land.connect(deployer).assignNewParcel(0, 1, lessor.address)
-
-      offerEncodeValue[tokenIdIndex] = await land.encodeTokenId(0, 1)
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, tokenId: offerEncodeValue[tokenIdIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#onERC721Received: ASSET_MISMATCH')
-    })
-
-    it('should revert when the offer signer does not match the signer provided in params', async () => {
-      offerEncodeValue[signerIndex] = extra.address
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
-    })
-
-    it('should revert when lessor is same as tenant', async () => {
-      offerEncodeValue[signerIndex] = lessor.address
-      offerEncodeValue[signatureIndex] = await getOfferSignature(lessor, rentals, { ...offerParams, signer: offerEncodeValue[signerIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER')
-    })
-
-    it('should revert when the block timestamp is higher than the provided tenant signature expiration', async () => {
-      offerEncodeValue[expirationIndex] = now() - 1000
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, expiration: offerEncodeValue[expirationIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_acceptOffer: EXPIRED_SIGNATURE')
-    })
-
-    it('should revert when tenant rental days is zero', async () => {
-      offerEncodeValue[rentalDaysIndex] = 0
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, rentalDays: offerEncodeValue[rentalDaysIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
-    })
-
-    it('should revert when tenant contract index is not the same as the contract', async () => {
-      offerEncodeValue[indexesIndex] = [1, 0, 0]
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
-    })
-
-    it('should revert when tenant signer index is not the same as the contract', async () => {
-      offerEncodeValue[indexesIndex] = [0, 1, 0]
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
-    })
-
-    it('should revert when tenant asset index is not the same as the contract', async () => {
-      offerEncodeValue[indexesIndex] = [0, 0, 1]
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
-    })
-
-    it("should revert when the provided contract address's `verifyFingerprint` returns false", async () => {
-      offerEncodeValue[contractAddressIndex] = estate.address
-      offerEncodeValue[tokenIdIndex] = estateId
-      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
-        ...offerParams,
-        contractAddress: offerEncodeValue[contractAddressIndex],
-        tokenId: offerEncodeValue[tokenIdIndex],
-      })
-
-      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
-
-      await expect(
-        estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
-      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
-    })
-
-    it("should NOT revert when the provided contract address's `verifyFingerprint` returns true", async () => {
+    it("should not revert when the provided contract address's `verifyFingerprint` returns true", async () => {
       offerEncodeValue[contractAddressIndex] = estate.address
       offerEncodeValue[tokenIdIndex] = estateId
       offerEncodeValue[fingerprintIndex] = await estate.connect(tenant).getFingerprint(estateId)
@@ -3550,7 +3424,133 @@ describe('Rentals', () => {
       await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
     })
 
-    it('should revert when accepting an offer by sending the estate and by calling acceptOffer on the same block', async () => {
+    it('reverts when the caller is different from the contract address provided in the offer', async () => {
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+      await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
+        'Rentals#onERC721Received: ASSET_MISMATCH'
+      )
+    })
+
+    it('reverts when the sent asset is not the one in the offer', async () => {
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#onERC721Received: ASSET_MISMATCH')
+    })
+
+    it('reverts when the offer token id is different than the sent asset token id', async () => {
+      await land.connect(deployer).assignNewParcel(0, 1, lessor.address)
+
+      offerEncodeValue[tokenIdIndex] = await land.encodeTokenId(0, 1)
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, tokenId: offerEncodeValue[tokenIdIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#onERC721Received: ASSET_MISMATCH')
+    })
+
+    it('reverts when the offer signer does not match the signer provided in params', async () => {
+      offerEncodeValue[signerIndex] = extra.address
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when lessor is same as tenant', async () => {
+      offerEncodeValue[signerIndex] = lessor.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(lessor, rentals, { ...offerParams, signer: offerEncodeValue[signerIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#_acceptOffer: CALLER_CANNOT_BE_SIGNER')
+    })
+
+    it('reverts when the block timestamp is higher than the provided tenant signature expiration', async () => {
+      offerEncodeValue[expirationIndex] = now() - 1000
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, expiration: offerEncodeValue[expirationIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#_acceptOffer: EXPIRED_SIGNATURE')
+    })
+
+    it('reverts when tenant rental days is zero', async () => {
+      offerEncodeValue[rentalDaysIndex] = 0
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, rentalDays: offerEncodeValue[rentalDaysIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#_acceptOffer: RENTAL_DAYS_IS_ZERO')
+    })
+
+    it('reverts when tenant contract index is not the same as the contract', async () => {
+      offerEncodeValue[indexesIndex] = [1, 0, 0]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('ContractIndexVerifiable#_verifyContractIndex: CONTRACT_INDEX_MISMATCH')
+    })
+
+    it('reverts when tenant signer index is not the same as the contract', async () => {
+      offerEncodeValue[indexesIndex] = [0, 1, 0]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('SignerIndexVerifiable#_verifySignerIndex: SIGNER_INDEX_MISMATCH')
+    })
+
+    it('reverts when tenant asset index is not the same as the contract', async () => {
+      offerEncodeValue[indexesIndex] = [0, 0, 1]
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, indexes: offerEncodeValue[indexesIndex] })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
+    })
+
+    it("reverts when the provided contract address's `verifyFingerprint` returns false", async () => {
+      offerEncodeValue[contractAddressIndex] = estate.address
+      offerEncodeValue[tokenIdIndex] = estateId
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, {
+        ...offerParams,
+        contractAddress: offerEncodeValue[contractAddressIndex],
+        tokenId: offerEncodeValue[tokenIdIndex],
+      })
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
+      ).to.be.revertedWith('Rentals#_rent: INVALID_FINGERPRINT')
+    })
+
+    it('reverts when accepting an offer by sending the estate and by calling acceptOffer on the same block', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -3590,7 +3590,7 @@ describe('Rentals', () => {
       expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
-    it('should revert when accepting an offer by sending the land and by calling acceptOffer on the same block', async () => {
+    it('reverts when accepting an offer by sending the land and by calling acceptOffer on the same block', async () => {
       // Disable automine so the transactions are included in the same block.
       await network.provider.send('evm_setAutomine', [false])
 
@@ -3613,7 +3613,7 @@ describe('Rentals', () => {
       expect(decodedErrorMessage).to.be.equal('AssetIndexVerifiable#_verifyAssetIndex: ASSET_INDEX_MISMATCH')
     })
 
-    it('should revert when trying to extend the rental with accept listing while not being the tenant', async () => {
+    it('reverts when trying to extend the rental with accept listing while not being the tenant', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
@@ -3639,7 +3639,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when trying to extend the rental with accept offer while not being the lessor', async () => {
+    it('reverts when trying to extend the rental with accept offer while not being the lessor', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
@@ -3656,7 +3656,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_rent: CURRENTLY_RENTED')
     })
 
-    it('should revert when rentals days exceeds MAX_RENTAL_DAYS', async () => {
+    it('reverts when rentals days exceeds MAX_RENTAL_DAYS', async () => {
       offerEncodeValue[rentalDaysIndex] = offerParams.rentalDays = maxRentalDays + 1
       offerEncodeValue[pricePerDayIndex] = offerParams.pricePerDay = ether('1')
       offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
@@ -3678,7 +3678,7 @@ describe('Rentals', () => {
       reentrantERC721 = await ReentrantERC721Factory.connect(deployer).deploy(rentals.address)
     })
 
-    it('should revert when the contract is reentered through the claim function', async () => {
+    it('reverts when the contract is reentered through the claim function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
       const abi = ['function claim(address[] _contractAddress, uint256[] _tokenId)']
@@ -3691,7 +3691,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('ReentrancyGuard: reentrant call')
     })
 
-    it('should revert when the contract is reentered through the setUpdateOperator function', async () => {
+    it('reverts when the contract is reentered through the setUpdateOperator function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
       const abi = ['function setUpdateOperator(address[],uint256[],address[])']
@@ -3704,7 +3704,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('ReentrancyGuard: reentrant call')
     })
 
-    it('should revert when the contract is reentered through the acceptListing function', async () => {
+    it('reverts when the contract is reentered through the acceptListing function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
       const iface = new ethers.utils.Interface(acceptListingABI)
@@ -3724,7 +3724,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('ReentrancyGuard: reentrant call')
     })
 
-    it('should revert when the contract is reentered through the acceptOffer function', async () => {
+    it('reverts when the contract is reentered through the acceptOffer function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
 
       const iface = new ethers.utils.Interface(acceptOfferABI)
@@ -3738,7 +3738,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('ReentrancyGuard: reentrant call')
     })
 
-    it('should revert when the contract is reentered through the onERC721Received function', async () => {
+    it('reverts when the contract is reentered through the onERC721Received function', async () => {
       offerParams = { ...offerParams, contractAddress: reentrantERC721.address }
       offerEncodeValue[contractAddressIndex] = reentrantERC721.address
 
@@ -3769,16 +3769,16 @@ describe('Rentals', () => {
       expect(await rentals.paused()).to.be.true
     })
 
-    it('should revert when the caller is not the owner', async () => {
+    it('reverts when the caller is not the owner', async () => {
       await expect(rentals.pause()).to.be.revertedWith('Ownable: caller is not the owner')
     })
 
-    it('should revert when the contract is already paused', async () => {
+    it('reverts when the contract is already paused', async () => {
       await rentals.connect(owner).pause()
       await expect(rentals.connect(owner).pause()).to.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when calling acceptListing and the contract is paused', async () => {
+    it('reverts when calling acceptListing and the contract is paused', async () => {
       await rentals.connect(owner).pause()
 
       await expect(
@@ -3794,7 +3794,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when calling acceptOffer and the contract is paused', async () => {
+    it('reverts when calling acceptOffer and the contract is paused', async () => {
       await rentals.connect(owner).pause()
 
       await expect(
@@ -3802,7 +3802,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when calling onERC721Received and the contract is paused', async () => {
+    it('reverts when calling onERC721Received and the contract is paused', async () => {
       await rentals.connect(owner).pause()
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
@@ -3812,17 +3812,17 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when calling claim and the contract is paused', async () => {
+    it('reverts when calling claim and the contract is paused', async () => {
       await rentals.connect(owner).pause()
       await expect(rentals.claim([], [])).to.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when calling setUpdateOperator and the contract is paused', async () => {
+    it('reverts when calling setUpdateOperator and the contract is paused', async () => {
       await rentals.connect(owner).pause()
       await expect(rentals.setUpdateOperator([], [], [])).to.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when calling setManyLandUpdateOperator and the contract is paused', async () => {
+    it('reverts when calling setManyLandUpdateOperator and the contract is paused', async () => {
       await rentals.connect(owner).pause()
       await expect(rentals.setManyLandUpdateOperator(estate.address, estateId, [], [])).to.be.revertedWith('Pausable: paused')
     })
@@ -3898,11 +3898,11 @@ describe('Rentals', () => {
       await expect(rentals.setManyLandUpdateOperator(estate.address, estateId, [], [])).to.not.be.revertedWith('Pausable: paused')
     })
 
-    it('should revert when the caller is not the owner', async () => {
+    it('reverts when the caller is not the owner', async () => {
       await expect(rentals.unpause()).to.be.revertedWith('Ownable: caller is not the owner')
     })
 
-    it('should revert when the contract is already paused', async () => {
+    it('reverts when the contract is already paused', async () => {
       await rentals.connect(owner).pause()
       await rentals.connect(owner).unpause()
       await expect(rentals.connect(owner).unpause()).to.be.revertedWith('Pausable: not paused')

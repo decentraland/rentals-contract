@@ -103,13 +103,13 @@ describe('DevRentals', () => {
       expect(await land.ownerOf(tokenId)).to.be.equal(lessor.address)
     })
 
-    it('should revert when the asset is not in the rentals mapping', async () => {
+    it('reverts when the asset is not in the rentals mapping', async () => {
       await expect(rentals.connect(owner).returnToLessor([land.address], [tokenId])).to.be.revertedWith(
         'ExtendedRentals#returnToLessor: ASSET_NOT_IN_CONTRACT'
       )
     })
 
-    it('should revert when the arrays have different length', async () => {
+    it('reverts when the arrays have different length', async () => {
       await expect(rentals.connect(owner).returnToLessor([land.address], [])).to.be.revertedWith('ExtendedRentals#returnToLessor: LENGTH_MISMATCH')
 
       await expect(rentals.connect(owner).returnToLessor([], [tokenId])).to.be.revertedWith('ExtendedRentals#returnToLessor: LENGTH_MISMATCH')
