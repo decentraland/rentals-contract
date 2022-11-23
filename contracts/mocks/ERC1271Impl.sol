@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.7;
 
+/// @dev Mock contract for testing ERC1271 signature verification in the Rentals contract.
 contract ERC1271Impl {
     bool private immutable isValidSignatureResponse;
 

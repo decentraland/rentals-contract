@@ -2042,12 +2042,36 @@ describe('Rentals', () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
     })
 
+    it('should not revert when the offer signer is a contract and the magic value does match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(true)
+      await erc1271Impl.deployed()
+
+      offerParams.signer = erc1271Impl.address
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.not.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
+    })
+
     it('reverts when the offer signer does not match the signer provided in params', async () => {
       await expect(
         rentals
           .connect(lessor)
           .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: extra.address }) })
       ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when the offer signer is a contract and the magic value does not match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(false)
+      await erc1271Impl.deployed()
+
+      offerParams.signer = erc1271Impl.address
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
     })
 
     it('reverts when lessor is same as tenant', async () => {
