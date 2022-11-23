@@ -1563,7 +1563,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
 
       await expect(
         rentals
@@ -1575,7 +1575,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
 
       await expect(
         rentals
@@ -1587,7 +1587,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
     })
 
     it('reverts when rentals days exceeds MAX_RENTAL_DAYS', async () => {
@@ -3424,6 +3424,20 @@ describe('Rentals', () => {
       await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
     })
 
+    it('reverts not revert when the offer signer is a contract and the magic value does match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(true)
+      await erc1271Impl.deployed()
+
+      offerEncodeValue[signerIndex] = erc1271Impl.address
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.not.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
+    })
+
     it('reverts when the caller is different from the contract address provided in the offer', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
@@ -3466,6 +3480,20 @@ describe('Rentals', () => {
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
       ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when the offer signer is a contract and the magic value does not match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(false)
+      await erc1271Impl.deployed()
+
+      offerEncodeValue[signerIndex] = erc1271Impl.address
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
     })
 
     it('reverts when lessor is same as tenant', async () => {
