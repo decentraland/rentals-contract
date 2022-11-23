@@ -570,7 +570,7 @@ contract Rentals is
     }
 
     /// @dev Verify that the signature is valid for the provided signer and hash.
-    /// Will perform an ecrecover for EOA signatures and use ERC1271 verification for smart contract signatures.
+    /// Will perform an ecrecover for EOA _signers and ERC1271 verification for contract _signers.
     function _verifySigner(
         address _signer,
         bytes32 _hash,
