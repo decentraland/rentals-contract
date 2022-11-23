@@ -4,6 +4,7 @@ pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
@@ -522,11 +523,13 @@ contract Rentals is
 
     /// @dev Verify that the signer provided in the listing is the address that created the provided signature.
     function _verifyListingSigner(Listing calldata _listing) private view {
+        address listingSigner = _listing.signer;
+
         bytes32 listingHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     LISTING_TYPE_HASH,
-                    _listing.signer,
+                    listingSigner,
                     _listing.contractAddress,
                     _listing.tokenId,
                     _listing.expiration,
@@ -539,18 +542,18 @@ contract Rentals is
             )
         );
 
-        address signer = ECDSAUpgradeable.recover(listingHash, _listing.signature);
-
-        require(signer == _listing.signer, "Rentals#_verifyListingSigner: SIGNER_MISMATCH");
+        _verifySigner(listingSigner, listingHash, _listing.signature);
     }
 
     /// @dev Verify that the signer provided in the offer is the address that created the provided signature.
     function _verifyOfferSigner(Offer memory _offer) private view {
+        address offerSigner = _offer.signer;
+
         bytes32 offerHash = _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     OFFER_TYPE_HASH,
-                    _offer.signer,
+                    offerSigner,
                     _offer.contractAddress,
                     _offer.tokenId,
                     _offer.expiration,
@@ -563,9 +566,24 @@ contract Rentals is
             )
         );
 
-        address signer = ECDSAUpgradeable.recover(offerHash, _offer.signature);
+        _verifySigner(offerSigner, offerHash, _offer.signature);
+    }
 
-        require(signer == _offer.signer, "Rentals#_verifyOfferSigner: SIGNER_MISMATCH");
+    /// @dev Verify that the signature is valid for the provided signer and hash.
+    /// Will perform an ecrecover for EOA signatures and use ERC1271 verification for smart contract signatures.
+    function _verifySigner(
+        address _signer,
+        bytes32 _hash,
+        bytes memory _signature
+    ) private view {
+        if (_signer.code.length == 0) {
+            require(_signer == ECDSAUpgradeable.recover(_hash, _signature), "Rentals#_verifySigner: SIGNER_MISMATCH");
+        } else {
+            require(
+                IERC1271.isValidSignature.selector == IERC1271(_signer).isValidSignature(_hash, _signature),
+                "Rentals#_verifySigner: MAGIC_VALUE_MISMATCH"
+            );
+        }
     }
 
     function _rent(RentParams memory _rentParams) private {

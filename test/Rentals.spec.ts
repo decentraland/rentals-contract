@@ -1118,7 +1118,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
     })
 
     it('reverts when pricePerDay maxDays and minDays length is 0', async () => {
@@ -2007,7 +2007,7 @@ describe('Rentals', () => {
         rentals
           .connect(lessor)
           .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: extra.address }) })
-      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
     })
 
     it('reverts when lessor is same as tenant', async () => {
@@ -3465,7 +3465,7 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
     })
 
     it('reverts when lessor is same as tenant', async () => {
