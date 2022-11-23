@@ -1091,6 +1091,26 @@ describe('Rentals', () => {
         )
     })
 
+    it('should not revert when the lessor signer is a contract and the magic value does match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(true)
+      await erc1271Impl.deployed()
+
+      listingParams.signer = erc1271Impl.address
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.conditionIndex,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.not.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
+    })
+
     it('reverts when lessor is same as tenant', async () => {
       listingParams = { ...listingParams, signer: lessor.address }
 
@@ -1119,6 +1139,26 @@ describe('Rentals', () => {
             acceptListingParams.fingerprint
           )
       ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when the lessor signer is a contract and the magic value does not match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(false)
+      await erc1271Impl.deployed()
+
+      listingParams.signer = erc1271Impl.address
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.conditionIndex,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
     })
 
     it('reverts when pricePerDay maxDays and minDays length is 0', async () => {
@@ -3424,7 +3464,7 @@ describe('Rentals', () => {
       await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
     })
 
-    it('reverts not revert when the offer signer is a contract and the magic value does match', async () => {
+    it('should not revert when the offer signer is a contract and the magic value does match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
       const erc1271Impl = await ERC1271Impl.deploy(true)
       await erc1271Impl.deployed()
