@@ -1091,7 +1091,7 @@ describe('Rentals', () => {
         )
     })
 
-    it('should not revert when the lessor signer is a contract and the magic value does match', async () => {
+    it('should not revert when the listing signer is a contract and the magic value does match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
       const erc1271Impl = await ERC1271Impl.deploy(true)
       await erc1271Impl.deployed()
@@ -1127,7 +1127,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER')
     })
 
-    it('reverts when the lessor signer does not match the signer in params', async () => {
+    it('reverts when the listing signer does not match the signer in params', async () => {
       await expect(
         rentals
           .connect(tenant)
@@ -1141,7 +1141,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
     })
 
-    it('reverts when the lessor signer is a contract and the magic value does not match', async () => {
+    it('reverts when the listing signer is a contract and the magic value does not match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
       const erc1271Impl = await ERC1271Impl.deploy(false)
       await erc1271Impl.deployed()
