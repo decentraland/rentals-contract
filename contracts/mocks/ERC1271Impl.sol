@@ -26,11 +26,19 @@ contract ERC1271Impl {
         }
     }
 
-    function erc721_setApprovalForAll(address _contractAddress, address _operator, bool _approved) external {
+    function erc721_setApprovalForAll(
+        address _contractAddress,
+        address _operator,
+        bool _approved
+    ) external {
         IERC721(_contractAddress).setApprovalForAll(_operator, _approved);
     }
 
-    function erc20_approve(address _contractAddress, address _spender, uint256 _amount) external {
+    function erc20_approve(
+        address _contractAddress,
+        address _spender,
+        uint256 _amount
+    ) external {
         IERC20(_contractAddress).approve(_spender, _amount);
     }
 
@@ -43,7 +51,11 @@ contract ERC1271Impl {
         Rentals(_rentals).setUpdateOperator(_contractAddresses, _tokenIds, _operators);
     }
 
-    function rentals_claim(address _rentals, address[] calldata _contractAddresses, uint256[] calldata _tokenIds) external {
+    function rentals_claim(
+        address _rentals,
+        address[] calldata _contractAddresses,
+        uint256[] calldata _tokenIds
+    ) external {
         Rentals(_rentals).claim(_contractAddresses, _tokenIds);
     }
 
