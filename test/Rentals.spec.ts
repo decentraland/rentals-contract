@@ -1091,6 +1091,85 @@ describe('Rentals', () => {
         )
     })
 
+    it('should allow the smart contract lessor to rent, rent again and claim back the LAND when the rental is over.', async () => {
+      // Deploy the ERC1271 mock implementation with the lessor as its owner.
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(lessor.address)
+      await erc1271Impl.deployed()
+
+      // Transfer the land from the lessor to the ERC1271 mock implementation.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(lessor.address)
+      await land.connect(lessor).transferFrom(lessor.address, erc1271Impl.address, tokenId)
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(erc1271Impl.address)
+
+      // Approve the rentals contract to operate on behalf of the ERC1271 mock implementation.
+      erc1271Impl.erc721_setApprovalForAll(land.address, rentals.address, true)
+
+      // Create a listing were the signer is the ERC1271 mock implementation but the signer is the lessor.
+      listingParams.signer = erc1271Impl.address
+      let signature = await getListingSignature(lessor, rentals, listingParams)
+
+      // Accept the listing as the tenant.
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature },
+          acceptListingParams.operator,
+          acceptListingParams.conditionIndex,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      // Check that the rental entry has been updated correctly.
+      let rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(erc1271Impl.address)
+      expect(rental.tenant).to.be.equal(tenant.address)
+
+      // Check that the new owner is the rentals contract.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(rentals.address)
+      // Check that the asset is currently rented.
+      expect(await rentals.getIsRented(land.address, tokenId)).to.be.true
+
+      // Wait for the time required until the rental is over.
+      let increaseTime = daysToSeconds(acceptListingParams.rentalDays) + 1
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      // Create a new listing while the LAND is still in the contract
+      listingParams.indexes = [0, 0, 1]
+      listingParams.expiration = BigNumber.from(listingParams.expiration).add(BigNumber.from(increaseTime + 1000))
+      signature = await getListingSignature(lessor, rentals, listingParams)
+
+      // Accept the listing again as the extra.
+      await rentals
+        .connect(extra)
+        .acceptListing(
+          { ...listingParams, signature },
+          acceptListingParams.operator,
+          acceptListingParams.conditionIndex,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      // Check that the rental entry has been updated correctly.
+      rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(erc1271Impl.address)
+      expect(rental.tenant).to.be.equal(extra.address)
+
+      // Wait for the time required until the rental is over.
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      // Claim the asset back to the smart contract lessor.
+      await erc1271Impl.rentals_claim(rentals.address, [land.address], [tokenId])
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(erc1271Impl.address)
+
+      // Check that the rental entry has been reset.
+      rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(zeroAddress)
+      expect(rental.tenant).to.be.equal(zeroAddress)
+    })
+
     it('should not revert when the listing signer is a contract and the magic value does match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
       const erc1271Impl = await ERC1271Impl.deploy(lessor.address)
