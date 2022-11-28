@@ -1093,7 +1093,7 @@ describe('Rentals', () => {
 
     it('should not revert when the listing signer is a contract and the magic value does match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
-      const erc1271Impl = await ERC1271Impl.deploy(true)
+      const erc1271Impl = await ERC1271Impl.deploy(lessor.address)
       await erc1271Impl.deployed()
 
       listingParams.signer = erc1271Impl.address
@@ -1143,7 +1143,7 @@ describe('Rentals', () => {
 
     it('reverts when the listing signer is a contract and the magic value does not match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
-      const erc1271Impl = await ERC1271Impl.deploy(false)
+      const erc1271Impl = await ERC1271Impl.deploy(extra.address)
       await erc1271Impl.deployed()
 
       listingParams.signer = erc1271Impl.address
@@ -2044,7 +2044,7 @@ describe('Rentals', () => {
 
     it('should not revert when the offer signer is a contract and the magic value does match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
-      const erc1271Impl = await ERC1271Impl.deploy(true)
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
       await erc1271Impl.deployed()
 
       offerParams.signer = erc1271Impl.address
@@ -2064,7 +2064,7 @@ describe('Rentals', () => {
 
     it('reverts when the offer signer is a contract and the magic value does not match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
-      const erc1271Impl = await ERC1271Impl.deploy(false)
+      const erc1271Impl = await ERC1271Impl.deploy(extra.address)
       await erc1271Impl.deployed()
 
       offerParams.signer = erc1271Impl.address
@@ -3490,10 +3490,11 @@ describe('Rentals', () => {
 
     it('should not revert when the offer signer is a contract and the magic value does match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
-      const erc1271Impl = await ERC1271Impl.deploy(true)
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
       await erc1271Impl.deployed()
 
       offerEncodeValue[signerIndex] = erc1271Impl.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, { ...offerParams, signer: erc1271Impl.address })
 
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
@@ -3548,7 +3549,7 @@ describe('Rentals', () => {
 
     it('reverts when the offer signer is a contract and the magic value does not match', async () => {
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
-      const erc1271Impl = await ERC1271Impl.deploy(false)
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
       await erc1271Impl.deployed()
 
       offerEncodeValue[signerIndex] = erc1271Impl.address
