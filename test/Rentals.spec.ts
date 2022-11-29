@@ -2102,7 +2102,7 @@ describe('Rentals', () => {
     })
 
     it('should allow a lessor to accept the offer of a smart contract account. The smart contract account can then act as a tenant', async () => {
-      // Deploy the ERC1271 mock implementation with the lessor as its owner.
+      // Deploy the ERC1271 mock implementation with the tenant as its owner.
       const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
       const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
       await erc1271Impl.deployed()
@@ -3577,6 +3577,51 @@ describe('Rentals', () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
 
       await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
+    })
+
+    it('should allow a lessor to accept the offer of a smart contract account. The smart contract account can then act as a tenant', async () => {
+      // Deploy the ERC1271 mock implementation with the tenant as its owner.
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
+      await erc1271Impl.deployed()
+
+      // Mint mana to the ERC1271 mock implementation.
+      await mana.connect(deployer).mint(erc1271Impl.address, ether('100000'))
+
+      // Approve the rentals contract to spend the ERC1271Impl contract's mana.
+      await erc1271Impl.erc20_approve(mana.address, rentals.address, maxUint256)
+
+      // Create an offer with the ERC1271 mock implementation as the tenant.
+      offerEncodeValue[signerIndex] = offerParams.signer = erc1271Impl.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      // Accept the offer made by a smart contract account.
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      // Check that the rental entry has been updated correctly.
+      let rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(lessor.address)
+      expect(rental.tenant).to.be.equal(erc1271Impl.address)
+
+      // Check that the new owner is the rentals contract.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(rentals.address)
+      // Check that the asset is currently rented.
+      expect(await rentals.getIsRented(land.address, tokenId)).to.be.true
+
+      // Update the Update operator as the smart contract tenant.
+      expect(await land.connect(lessor).updateOperator(tokenId)).to.be.equal(operator.address)
+      await erc1271Impl.rentals_setUpdateOperator(rentals.address, [land.address], [tokenId], [extra.address])
+      expect(await land.connect(lessor).updateOperator(tokenId)).to.be.equal(extra.address)
+
+      // Wait for the time required until the rental is over.
+      let increaseTime = daysToSeconds(acceptListingParams.rentalDays) + 1
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      await expect(erc1271Impl.rentals_setUpdateOperator(rentals.address, [land.address], [tokenId], [extra.address])).to.be.revertedWith(
+        'Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR'
+      )
     })
 
     it('reverts when the caller is different from the contract address provided in the offer', async () => {
