@@ -1091,6 +1091,85 @@ describe('Rentals', () => {
         )
     })
 
+    it('should allow a tenant to accept the listing of a smart contract account. The smart contract account can then act as lessor', async () => {
+      // Deploy the ERC1271 mock implementation with the lessor as its owner.
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(lessor.address)
+      await erc1271Impl.deployed()
+
+      // Transfer the land from the lessor to the ERC1271 mock implementation.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(lessor.address)
+      await land.connect(lessor).transferFrom(lessor.address, erc1271Impl.address, tokenId)
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(erc1271Impl.address)
+
+      // Approve the rentals contract to operate on behalf of the ERC1271 mock implementation.
+      erc1271Impl.erc721_setApprovalForAll(land.address, rentals.address, true)
+
+      // Create a listing were the signer is the ERC1271 mock implementation but the signer is the lessor.
+      listingParams.signer = erc1271Impl.address
+      let signature = await getListingSignature(lessor, rentals, listingParams)
+
+      // Accept the listing as the tenant.
+      await rentals
+        .connect(tenant)
+        .acceptListing(
+          { ...listingParams, signature },
+          acceptListingParams.operator,
+          acceptListingParams.conditionIndex,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      // Check that the rental entry has been updated correctly.
+      let rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(erc1271Impl.address)
+      expect(rental.tenant).to.be.equal(tenant.address)
+
+      // Check that the new owner is the rentals contract.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(rentals.address)
+      // Check that the asset is currently rented.
+      expect(await rentals.getIsRented(land.address, tokenId)).to.be.true
+
+      // Wait for the time required until the rental is over.
+      let increaseTime = daysToSeconds(acceptListingParams.rentalDays) + 1
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      // Create a new listing while the LAND is still in the contract
+      listingParams.indexes = [0, 0, 1]
+      listingParams.expiration = BigNumber.from(listingParams.expiration).add(BigNumber.from(increaseTime + 1000))
+      signature = await getListingSignature(lessor, rentals, listingParams)
+
+      // Accept the listing again as the extra.
+      await rentals
+        .connect(extra)
+        .acceptListing(
+          { ...listingParams, signature },
+          acceptListingParams.operator,
+          acceptListingParams.conditionIndex,
+          acceptListingParams.rentalDays,
+          acceptListingParams.fingerprint
+        )
+
+      // Check that the rental entry has been updated correctly.
+      rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(erc1271Impl.address)
+      expect(rental.tenant).to.be.equal(extra.address)
+
+      // Wait for the time required until the rental is over.
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      // Claim the asset back to the smart contract lessor.
+      await erc1271Impl.rentals_claim(rentals.address, [land.address], [tokenId])
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(erc1271Impl.address)
+
+      // Check that the rental entry has been reset.
+      rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(zeroAddress)
+      expect(rental.tenant).to.be.equal(zeroAddress)
+    })
+
     it('reverts when lessor is same as tenant', async () => {
       listingParams = { ...listingParams, signer: lessor.address }
 
@@ -1107,7 +1186,7 @@ describe('Rentals', () => {
       ).to.be.revertedWith('Rentals#acceptListing: CALLER_CANNOT_BE_SIGNER')
     })
 
-    it('reverts when the lessor signer does not match the signer in params', async () => {
+    it('reverts when the listing signer does not match the signer in params', async () => {
       await expect(
         rentals
           .connect(tenant)
@@ -1118,7 +1197,27 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when the listing signer is a contract and the magic value does not match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(extra.address)
+      await erc1271Impl.deployed()
+
+      listingParams.signer = erc1271Impl.address
+
+      await expect(
+        rentals
+          .connect(tenant)
+          .acceptListing(
+            { ...listingParams, signature: await getListingSignature(lessor, rentals, listingParams) },
+            acceptListingParams.operator,
+            acceptListingParams.conditionIndex,
+            acceptListingParams.rentalDays,
+            acceptListingParams.fingerprint
+          )
+      ).to.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
     })
 
     it('reverts when pricePerDay maxDays and minDays length is 0', async () => {
@@ -1563,7 +1662,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
 
       await expect(
         rentals
@@ -1575,7 +1674,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
 
       await expect(
         rentals
@@ -1587,7 +1686,7 @@ describe('Rentals', () => {
             acceptListingParams.rentalDays,
             acceptListingParams.fingerprint
           )
-      ).to.be.revertedWith('Rentals#_verifyListingSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
     })
 
     it('reverts when rentals days exceeds MAX_RENTAL_DAYS', async () => {
@@ -2002,12 +2101,68 @@ describe('Rentals', () => {
       await rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
     })
 
+    it('should allow a lessor to accept the offer of a smart contract account. The smart contract account can then act as a tenant', async () => {
+      // Deploy the ERC1271 mock implementation with the tenant as its owner.
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
+      await erc1271Impl.deployed()
+
+      // Mint mana to the ERC1271 mock implementation.
+      await mana.connect(deployer).mint(erc1271Impl.address, ether('100000'))
+
+      // Approve the rentals contract to spend the ERC1271Impl contract's mana.
+      await erc1271Impl.erc20_approve(mana.address, rentals.address, maxUint256)
+
+      // Create an offer were the signer param is the ERC1271 mock implementation but the actual signer is the tenant.
+      offerParams.signer = erc1271Impl.address
+      let signature = await getOfferSignature(tenant, rentals, offerParams)
+
+      // Accept the offer as the lessor.
+      await rentals.connect(lessor).acceptOffer({ ...offerParams, signature })
+
+      // Check that the rental entry has been updated correctly.
+      let rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(lessor.address)
+      expect(rental.tenant).to.be.equal(erc1271Impl.address)
+
+      // Check that the new owner is the rentals contract.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(rentals.address)
+      // Check that the asset is currently rented.
+      expect(await rentals.getIsRented(land.address, tokenId)).to.be.true
+
+      // Update the Update operator as the smart contract tenant.
+      expect(await land.connect(lessor).updateOperator(tokenId)).to.be.equal(operator.address)
+      await erc1271Impl.rentals_setUpdateOperator(rentals.address, [land.address], [tokenId], [extra.address])
+      expect(await land.connect(lessor).updateOperator(tokenId)).to.be.equal(extra.address)
+
+      // Wait for the time required until the rental is over.
+      let increaseTime = daysToSeconds(acceptListingParams.rentalDays) + 1
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      await expect(erc1271Impl.rentals_setUpdateOperator(rentals.address, [land.address], [tokenId], [extra.address])).to.be.revertedWith(
+        'Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR'
+      )
+    })
+
     it('reverts when the offer signer does not match the signer provided in params', async () => {
       await expect(
         rentals
           .connect(lessor)
           .acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, { ...offerParams, signer: extra.address }) })
-      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when the offer signer is a contract and the magic value does not match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(extra.address)
+      await erc1271Impl.deployed()
+
+      offerParams.signer = erc1271Impl.address
+
+      await expect(
+        rentals.connect(lessor).acceptOffer({ ...offerParams, signature: await getOfferSignature(tenant, rentals, offerParams) })
+      ).to.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
     })
 
     it('reverts when lessor is same as tenant', async () => {
@@ -3424,6 +3579,51 @@ describe('Rentals', () => {
       await estate.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, estateId, bytes)
     })
 
+    it('should allow a lessor to accept the offer of a smart contract account. The smart contract account can then act as a tenant', async () => {
+      // Deploy the ERC1271 mock implementation with the tenant as its owner.
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
+      await erc1271Impl.deployed()
+
+      // Mint mana to the ERC1271 mock implementation.
+      await mana.connect(deployer).mint(erc1271Impl.address, ether('100000'))
+
+      // Approve the rentals contract to spend the ERC1271Impl contract's mana.
+      await erc1271Impl.erc20_approve(mana.address, rentals.address, maxUint256)
+
+      // Create an offer with the ERC1271 mock implementation as the tenant.
+      offerEncodeValue[signerIndex] = offerParams.signer = erc1271Impl.address
+      offerEncodeValue[signatureIndex] = await getOfferSignature(tenant, rentals, offerParams)
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      // Accept the offer made by a smart contract account.
+      await land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+
+      // Check that the rental entry has been updated correctly.
+      let rental = await rentals.connect(tenant).getRental(land.address, tokenId)
+      expect(rental.lessor).to.be.equal(lessor.address)
+      expect(rental.tenant).to.be.equal(erc1271Impl.address)
+
+      // Check that the new owner is the rentals contract.
+      expect(await land.connect(lessor).ownerOf(tokenId)).to.be.equal(rentals.address)
+      // Check that the asset is currently rented.
+      expect(await rentals.getIsRented(land.address, tokenId)).to.be.true
+
+      // Update the Update operator as the smart contract tenant.
+      expect(await land.connect(lessor).updateOperator(tokenId)).to.be.equal(operator.address)
+      await erc1271Impl.rentals_setUpdateOperator(rentals.address, [land.address], [tokenId], [extra.address])
+      expect(await land.connect(lessor).updateOperator(tokenId)).to.be.equal(extra.address)
+
+      // Wait for the time required until the rental is over.
+      let increaseTime = daysToSeconds(acceptListingParams.rentalDays) + 1
+      await evmIncreaseTime(increaseTime)
+      await evmMine()
+
+      await expect(erc1271Impl.rentals_setUpdateOperator(rentals.address, [land.address], [tokenId], [extra.address])).to.be.revertedWith(
+        'Rentals#setUpdateOperator: CANNOT_SET_UPDATE_OPERATOR'
+      )
+    })
+
     it('reverts when the caller is different from the contract address provided in the offer', async () => {
       const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
       await expect(rentals.onERC721Received(extra.address, lessor.address, tokenId, bytes)).to.be.revertedWith(
@@ -3465,7 +3665,21 @@ describe('Rentals', () => {
 
       await expect(
         land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
-      ).to.be.revertedWith('Rentals#_verifyOfferSigner: SIGNER_MISMATCH')
+      ).to.be.revertedWith('Rentals#_verifySigner: SIGNER_MISMATCH')
+    })
+
+    it('reverts when the offer signer is a contract and the magic value does not match', async () => {
+      const ERC1271Impl = await ethers.getContractFactory('ERC1271Impl')
+      const erc1271Impl = await ERC1271Impl.deploy(tenant.address)
+      await erc1271Impl.deployed()
+
+      offerEncodeValue[signerIndex] = erc1271Impl.address
+
+      const bytes = ethers.utils.defaultAbiCoder.encode([offerEncodeType], [offerEncodeValue])
+
+      await expect(
+        land.connect(lessor)['safeTransferFrom(address,address,uint256,bytes)'](lessor.address, rentals.address, tokenId, bytes)
+      ).to.be.revertedWith('Rentals#_verifySigner: MAGIC_VALUE_MISMATCH')
     })
 
     it('reverts when lessor is same as tenant', async () => {
